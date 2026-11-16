@@ -1,11 +1,14 @@
 console.log('[Vexel Background] Service Worker demarre')
-const BASES = ['http://127.0.0.1:49152', 'http://localhost:49152']
+const LOCAL_HOST = ['http://', '127.0.0.1', ':49152'].join('')
+const ALT_HOST = ['http://', 'localhost', ':49152'].join('')
+const BASES = [LOCAL_HOST, ALT_HOST]
+
 async function fetchBridgeEndpoint(endpoint: string) {
   let lastError = 'Inconnu'
   for (const base of BASES) {
     try {
       const controller = new AbortController()
-      const id = setTimeout(() => controller.abort(), 2500)
+      const id = setTimeout(() => controller.abort(), 5000)
       const res = await fetch(base + endpoint, { signal: controller.signal, cache: 'no-store' })
       clearTimeout(id)
       if (!res.ok) throw new Error('HTTP ' + res.status)
@@ -17,38 +20,28 @@ async function fetchBridgeEndpoint(endpoint: string) {
   }
   return { ok: false, error: lastError }
 }
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (!message || !message.type) return
   if (message.type === 'FETCH_SKILLS') {
     fetchBridgeEndpoint('/skills').then(sendResponse)
     return true
   }
-  if (message.type === "SEARCH_REMOTE_SKILLS") {
-    fetchBridgeEndpoint("/skills/search?q=" + encodeURIComponent(message.query || "")).then(sendResponse)
+  if (message.type === 'SEARCH_REMOTE_SKILLS') {
+    fetchBridgeEndpoint('/skills/search?q=' + encodeURIComponent(message.query || '')).then(sendResponse)
     return true
   }
-  if (message.type === "INSTALL_REMOTE_SKILL") {
-    fetch("http://127.0.0", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+  if (message.type === 'INSTALL_REMOTE_SKILL') {
+    fetch(LOCAL_HOST + '/skills/install', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ repo: message.repo, name: message.name }),
-    }).then((r) => r.json()).then((data) => sendResponse({ ok: true, data })).catch((e) => sendResponse({ ok: false, error: String(e) }))
+    })
+      .then((r) => r.json())
+      .then((data) => sendResponse({ ok: true, data }))
+      .catch((e) => sendResponse({ ok: false, error: String(e) }))
     return true
   }
-
-  if (message.type === "SEARCH_REMOTE_SKILLS") {
-    fetchBridgeEndpoint("/skills/search?q=" + encodeURIComponent(message.query || "")).then(sendResponse)
-    return true
-  }
-  if (message.type === "INSTALL_REMOTE_SKILL") {
-    fetch("http://127.0.0", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ repo: message.repo, name: message.name }),
-    }).then((r) => r.json()).then((data) => sendResponse({ ok: true, data })).catch((e) => sendResponse({ ok: false, error: String(e) }))
-    return true
-  }
-
   if (message.type === 'BROWSE_DIR') {
     const dir = encodeURIComponent(message.dir || '')
     const q = encodeURIComponent(message.query || '')

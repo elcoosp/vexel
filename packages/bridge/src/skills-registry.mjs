@@ -4,35 +4,38 @@ import { promisify } from 'node:util'
 const execFileAsync = promisify(execFile)
 const enrichCache = new Map()
 
-function formatInstalls(n) {
+function fmtInstalls(n) {
   const num = Number(n)
   if (!Number.isFinite(num) || num <= 0) return ''
-  if (num >= 1_000_000) return (num / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M'
-  if (num >= 1_000) return (num / 1_000).toFixed(1).replace(/\.0$/, '') + 'K'
+  if (num >= 1000000) return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M'
+  if (num >= 1000) return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K'
   return String(num)
 }
 
 export async function searchRemoteSkills(query = '') {
   const q = String(query || '').trim()
   if (!q) return []
-  const host = ["https://", "www.", "skills", ".sh"].join("")
-  const url = host + "/api/search?q=" + encodeURIComponent(q)
-  console.log("[Vexel Bridge] Query skills.sh:", q)
+  const host = ['https://', 'www.', 'skills', '.sh'].join('')
+  const url = host + '/api/search?q=' + encodeURIComponent(q)
   const res = await fetch(url, {
     signal: AbortSignal.timeout(4000),
     headers: { Accept: 'application/json', 'User-Agent': 'Vexel-Bridge/1.0' },
   })
   if (!res.ok) return []
   const data = await res.json()
-  const items = Array.isArray(data?.skills) ? data.skills : []
-  console.log("[Vexel Bridge] Hits:", items.length)
-  return items.slice(0, 15).map((item) => ({
-    id: item.skillId || item.name || item.id || '',
-    name: item.name || item.skillId || '',
-    repo: item.source || '',
-    installs: formatInstalls(item.installs),
-    description: item.source ? item.source + (item.installs ? ' • ' + formatInstalls(item.installs) + ' installs' : '') : '',
-  }))
+  const items = Array.isArray(data && data.skills) ? data.skills : []
+  return items.slice(0, 15).map((item) => {
+    const repo = String(item.source || item.repo || '')
+    const name = String(item.name || item.skillId || '')
+    const inst = fmtInstalls(item.installs)
+    return {
+      id: String(item.skillId || name),
+      name,
+      repo,
+      installs: inst,
+      description: repo ? repo + (inst ? ' • ' + inst + ' installs' : '') : '',
+    }
+  })
 }
 
 export async function enrichLocalSkill(skill) {
@@ -45,7 +48,7 @@ export async function enrichLocalSkill(skill) {
         m.id.toLowerCase() === skill.id.toLowerCase()
     )
     if (exact && exact.repo) {
-      const label = exact.installs ? `${exact.repo} (${exact.installs})` : exact.repo
+      const label = exact.installs ? exact.repo + ' (' + exact.installs + ')' : exact.repo
       const meta = { sourceRepo: label, installs: exact.installs }
       enrichCache.set(skill.id, meta)
       return { ...skill, ...meta }
