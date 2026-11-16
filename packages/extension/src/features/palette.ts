@@ -329,9 +329,34 @@ const finalTop =
 topAbove >= 12 ? topAbove : Math.min(window.innerHeight - popHeight - 12, rect.bottom + 10);
 const alignedLeft = rect.left + (rect.width - targetWidth) / 2;
 const finalLeft = Math.max(12, Math.min(window.innerWidth - targetWidth - 12, alignedLeft));
-popover.style.top = Math.round(finalTop) + 'px';
-popover.style.left = Math.round(finalLeft) + 'px';
+if (topAbove >= 12) {
+      popover.style.top = 'auto';
+      popover.style.bottom = Math.round(window.innerHeight - rect.top + 10) + 'px';
+    } else {
+      popover.style.bottom = 'auto';
+      popover.style.top = Math.round(finalTop) + 'px';
+    }
+    popover.style.left = Math.round(finalLeft) + 'px';
 }
+let heightAnim: { stop?: () => void; finished?: Promise<unknown> } | null = null;
+function animatePanelHeight(mutate: () => void): void {
+  if (!isOpen || !popover.classList.contains("open")) { mutate(); return; }
+  const prevHeight = popover.getBoundingClientRect().height;
+  if (prevHeight <= 0) { mutate(); return; }
+  if (heightAnim?.stop) heightAnim.stop();
+  popover.style.height = "auto";
+  mutate();
+  const nextHeight = popover.getBoundingClientRect().height;
+  if (Math.abs(nextHeight - prevHeight) < 2) { popover.style.height = "auto"; return; }
+  popover.style.height = prevHeight + "px";
+  heightAnim = animate(
+    popover,
+    { height: [prevHeight + "px", nextHeight + "px"] },
+    { type: "spring", stiffness: 460, damping: 36, mass: 0.8 }
+  ) as unknown as { stop?: () => void; finished?: Promise<unknown> };
+  heightAnim.finished?.then(() => { if (isOpen) popover.style.height = "auto"; });
+}
+
 function setEmptyMessage(msg: string): void {
 rowElements = [];
 rowHighlight.style.opacity = '0';
@@ -421,7 +446,9 @@ browseEntries = [
 browseEntries = rawEntries;
 }
 selectedIndex = 0;
-renderBreadcrumbs();
+animatePanelHeight(() => {
+      renderBreadcrumbs();
+    });
 renderList();
 });
 },
@@ -596,7 +623,9 @@ rowElements.push(row);
 frag.appendChild(row);
 }
 }
-listEl.replaceChildren(frag);
+animatePanelHeight(() => {
+      listEl.replaceChildren(frag);
+    });
 window.requestAnimationFrame(() => {
 syncActiveRowHighlight(true);
 positionPopover();
