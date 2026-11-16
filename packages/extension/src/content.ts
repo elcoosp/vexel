@@ -1,7 +1,6 @@
 import { initUntruncate } from './features/untruncate';
 import { initDomBooster } from './features/dom-booster';
 import { initCommandPalette } from './features/palette';
-import { initCodeRepair } from './features/code-repair';
 
 function showToast(message: string): void {
   const toast = document.createElement('div');
@@ -32,4 +31,3 @@ function showToast(message: string): void {
 initDomBooster();
 initUntruncate(showToast);
 initCommandPalette(showToast);
-initCodeRepair(showToast);
