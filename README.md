@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://jsdelivr.net" alt="Vexel Logo" width="300"/>
+  <img src="https://cdn.jsdelivr.net/gh/elcoosp/vexel@main/docs/logo.png" alt="Vexel Logo" width="300"/>
   <p>
     <strong>A Chrome Manifest V3 extension and local skill bridge that removes input truncation, split code blocks, and UI lag in Google AI Mode</strong><br/>
     Vexel intercepts long clipboard pastes and converts them into file attachments, injects local
@@ -8,11 +8,11 @@
     power users running multi-turn coding sessions on <code>google.com</code> and <code>google.fr</code>.
   </p>
   <p>
-    <a href="https://github.com"><img src="https://shields.io" alt="Version"/></a>
-    <a href="https://chrome.com"><img src="https://shields.io" alt="Chrome Manifest V3"/></a>
-    <a href="https://nodejs.org"><img src="https://shields.io" alt="Node.js"/></a>
-    <a href="https://typescriptlang.org"><img src="https://shields.io" alt="TypeScript"/></a>
-    <a href="https://github.com"><img src="https://shields.io" alt="MIT License"/></a>
+    <a href="https://github.com/elcoosp/vexel/releases"><img src="https://img.shields.io/badge/version-0.1.0-2563EB?style=flat-square" alt="Version"/></a>
+    <a href="https://developer.chrome.com/docs/extensions/develop/migrate/what-is-mv3"><img src="https://img.shields.io/badge/chrome-manifest%20v3-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Manifest V3"/></a>
+    <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-20%2B-339933?style=flat-square&logo=nodedotjs&logoColor=white" alt="Node.js"/></a>
+    <a href="https://typescriptlang.org"><img src="https://img.shields.io/badge/typescript-7.0-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript"/></a>
+    <a href="https://github.com/elcoosp/vexel/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT License"/></a>
   </p>
 </div>
 
@@ -161,7 +161,7 @@ description: Generate a grounded, funnel-ordered README from repository evidence
 ## Status
 
 > [!NOTE]
-> Version **0.1.0** — active personal tooling in daily use on macOS (`Node v24.22.2`, `pnpm 12.18.0`, Google Chrome) against `https://google.com` and `https://google.fr`.
+> Version **0.1.0** — active personal tooling in daily use on macOS (`Node v24.22.2`, `pnpm 12.18.0`, Google Chrome) against `https://www.://google.com` and `https://google.fr`.
 >
 > **Known limitations:**
 > - Google AI Mode DOM selectors (`.aiModeUiCodeBlock__Container`, `.a2TNg`, `|||[[` comment format) track current Search frontend markup and may need updates when Google ships layout changes.
