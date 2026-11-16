@@ -1,41 +1,34 @@
 import { MAX_SAFE_LENGTH, uploadAsTextFile } from './untruncate';
 import { exportConversationMarkdown } from './thread-tools';
-
 interface RefFile {
-  relPath: string;
-  content: string;
-  length: number;
+relPath: string;
+content: string;
+length: number;
 }
-
 interface SkillItem {
-  id: string;
-  name: string;
-  description: string;
-  smartContent: string;
-  smartLength: number;
-  fullContent: string;
-  fullLength: number;
-  refCount: number;
-  refs: RefFile[];
+id: string;
+name: string;
+description: string;
+smartContent: string;
+smartLength: number;
+fullContent: string;
+fullLength: number;
+refCount: number;
+refs: RefFile[];
 }
-
-interface RepoFileItem {
-  name: string;
-  relPath: string;
-  repo: string;
+interface BrowseEntry {
+name: string;
+relPath: string;
+isDir: boolean;
 }
-
 type MenuMode = 'skills' | 'refs' | 'files';
-
 const BT1 = String.fromCharCode(96);
 const BT3 = String.fromCharCode(96, 96, 96);
-
 function formatChars(len: number): string {
-  return len >= 1000 ? (len / 1000).toFixed(1) + 'k car.' : len + ' car.';
+return len >= 1000 ? (len / 1000).toFixed(1) + 'k car.' : len + ' car.';
 }
-
 const MENU_CSS = [
-  ':host { all: initial; }',
+':host { all: initial; color-scheme: dark; }',
 '.trigger-pill { position: fixed; z-index: 2147483645; display: none; align-items: center; gap: 6px; background: rgba(24, 24, 27, 0.92); color: #e4e4e7; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 999px; padding: 4px 10px; font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif; font-size: 11.5px; font-weight: 500; cursor: pointer; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); backdrop-filter: blur(6px); transition: background 0.15s ease, border-color 0.15s ease; }',
 '.trigger-pill:hover { background: rgba(39, 39, 42, 0.98); border-color: rgba(96, 165, 250, 0.5); color: #ffffff; }',
 '.trigger-pill kbd { font-family: ui-monospace, monospace; font-size: 10px; background: rgba(255, 255, 255, 0.08); padding: 1px 4px; border-radius: 4px; color: #a1a1aa; }',
@@ -47,16 +40,25 @@ const MENU_CSS = [
 '.tab.active { color: #ffffff; background: rgba(59, 130, 246, 0.18); border-color: rgba(59, 130, 246, 0.35); }',
 '.export-btn { font-size: 11px; font-weight: 500; color: #d4d4d8; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; padding: 3px 8px; cursor: pointer; }',
 '.export-btn:hover { background: rgba(255, 255, 255, 0.12); color: #ffffff; }',
+'.breadcrumbs { display: none; align-items: center; flex-wrap: wrap; gap: 4px; padding: 6px 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); background: rgba(255, 255, 255, 0.015); font-size: 11.5px; color: #a1a1aa; }',
+'.breadcrumbs.visible { display: flex; }',
+'.crumb { cursor: pointer; padding: 2px 5px; border-radius: 4px; color: #d4d4d8; }',
+'.crumb:hover { background: rgba(255, 255, 255, 0.09); color: #ffffff; }',
+'.crumb-sep { color: #52525b; }',
 '.filter-box { padding: 8px 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); display: flex; align-items: center; gap: 8px; }',
 '.filter-box input { flex: 1; background: transparent; border: none; outline: none; color: #fafafa; font-size: 13px; }',
-'.list { max-height: 290px; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 2px; }',
+'.list { max-height: 290px; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 2px; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.18) transparent; }',
+'.list::-webkit-scrollbar { width: 6px; height: 6px; }',
+'.list::-webkit-scrollbar-track { background: transparent; }',
+'.list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.16); border-radius: 999px; }',
+'.list::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.28); }',
 '.item { padding: 8px 10px; border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; border: 1px solid transparent; }',
 '.item.active { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.1); }',
 '.item-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }',
 '.item-title { font-size: 13px; font-weight: 500; color: #f4f4f5; }',
 '.item-sub { font-size: 11.5px; color: #71717a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
 '.badge { font-size: 10.5px; padding: 2px 6px; border-radius: 5px; background: rgba(255, 255, 255, 0.06); color: #a1a1aa; flex-shrink: 0; }',
-'.badge.repo { color: #93c5fd; background: rgba(59, 130, 246, 0.14); }',
+'.badge.dir { color: #fcd34d; background: rgba(245, 158, 11, 0.14); }',
 '.footer { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; border-top: 1px solid rgba(255, 255, 255, 0.08); background: rgba(14, 14, 17, 0.9); font-size: 11px; color: #71717a; }',
 '.empty { padding: 20px; text-align: center; color: #71717a; font-size: 12.5px; }'
 ].join('\n');
@@ -70,7 +72,9 @@ let skills: SkillItem[] = [];
 let filteredSkills: SkillItem[] = [];
 let activeSkill: SkillItem | null = null;
 let filteredRefs: RefFile[] = [];
-let repoFiles: RepoFileItem[] = [];
+let currentDir = '';
+let rootLabel = '~';
+let browseEntries: BrowseEntry[] = [];
 let selectedIndex = 0;
 let fileFetchTimer: number | undefined;
 const host = document.createElement('div');
@@ -105,7 +109,7 @@ tabSkills.textContent = '/ Skills';
 const tabFiles = document.createElement('button');
 tabFiles.type = 'button';
 tabFiles.className = 'tab';
-tabFiles.textContent = '@ Fichiers Repos';
+tabFiles.textContent = '@ Fichiers';
 tabs.appendChild(tabSkills);
 tabs.appendChild(tabFiles);
 const btnExport = document.createElement('button');
@@ -115,6 +119,9 @@ btnExport.textContent = 'Exporter .md (⌘⇧E)';
 topBar.appendChild(tabs);
 topBar.appendChild(btnExport);
 popover.appendChild(topBar);
+const breadcrumbsEl = document.createElement('div');
+breadcrumbsEl.className = 'breadcrumbs';
+popover.appendChild(breadcrumbsEl);
 const filterBox = document.createElement('div');
 filterBox.className = 'filter-box';
 const filterInput = document.createElement('input');
@@ -131,7 +138,7 @@ footer.className = 'footer';
 const statusText = document.createElement('span');
 statusText.textContent = '0 element';
 const hints = document.createElement('span');
-hints.textContent = '↑↓ naviguer • ↵ inserer • Esc fermer';
+hints.textContent = '↑↓ naviguer • ↵ ouvrir/inserer • ← dossier parent';
 footer.appendChild(statusText);
 footer.appendChild(hints);
 popover.appendChild(footer);
@@ -175,7 +182,7 @@ triggerPill.style.display = 'inline-flex';
 triggerPill.style.top = Math.max(8, rect.top - 32) + 'px';
 triggerPill.style.left = Math.max(12, rect.right - 118) + 'px';
 if (isOpen) {
-const popHeight = popover.offsetHeight || 330;
+const popHeight = popover.offsetHeight || 340;
 const topPos = rect.top - popHeight - 8;
 popover.style.top = (topPos > 10 ? topPos : Math.min(window.innerHeight - popHeight - 12, rect.bottom + 8)) + 'px';
 popover.style.left = Math.max(12, Math.min(window.innerWidth - 552, rect.left)) + 'px';
@@ -186,6 +193,53 @@ const empty = document.createElement('div');
 empty.className = 'empty';
 empty.textContent = msg;
 listEl.replaceChildren(empty);
+}
+function renderBreadcrumbs(): void {
+if (mode !== 'files') {
+breadcrumbsEl.classList.remove('visible');
+return;
+}
+breadcrumbsEl.classList.add('visible');
+breadcrumbsEl.replaceChildren();
+const rootBtn = document.createElement('span');
+rootBtn.className = 'crumb';
+rootBtn.textContent = rootLabel;
+rootBtn.addEventListener('mousedown', (e) => {
+e.preventDefault();
+navigateToDir('');
+});
+breadcrumbsEl.appendChild(rootBtn);
+if (!currentDir) return;
+const parts = currentDir.split('/');
+let acc = '';
+for (let i = 0; i < parts.length; i++) {
+const part = parts.slice(i, i + 1).find(() => true) || '';
+acc = acc ? acc + '/' + part : part;
+const targetPath = acc;
+const sep = document.createElement('span');
+sep.className = 'crumb-sep';
+sep.textContent = '/';
+breadcrumbsEl.appendChild(sep);
+const crumb = document.createElement('span');
+crumb.className = 'crumb';
+crumb.textContent = part;
+crumb.addEventListener('mousedown', (e) => {
+e.preventDefault();
+navigateToDir(targetPath);
+});
+breadcrumbsEl.appendChild(crumb);
+}
+}
+function navigateToDir(dirPath: string): void {
+currentDir = dirPath;
+filterInput.value = '';
+browseDir(currentDir, '');
+}
+function navigateUp(): void {
+if (!currentDir) return;
+const idx = currentDir.lastIndexOf('/');
+const parent = idx === -1 ? '' : currentDir.slice(0, idx);
+navigateToDir(parent);
 }
 function fetchSkills(): void {
 setEmptyMessage('Chargement des skills...');
@@ -198,20 +252,29 @@ skills = res.data?.skills || [];
 applyFilter(filterInput.value);
 });
 }
-function fetchFiles(query: string): void {
+function browseDir(dir: string, query: string): void {
 if (fileFetchTimer) window.clearTimeout(fileFetchTimer);
 fileFetchTimer = window.setTimeout(() => {
-setEmptyMessage('Recherche dans ~/Documents/Repos...');
-chrome.runtime.sendMessage({ type: 'FETCH_FILES', query }, (res) => {
+chrome.runtime.sendMessage({ type: 'BROWSE_DIR', dir, query }, (res) => {
 if (chrome.runtime.lastError || !res?.ok) {
 setEmptyMessage('Bridge local injoignable (127.0.0.1:49152)');
 return;
 }
-repoFiles = res.data?.files || [];
+rootLabel = res.data?.rootLabel || '~';
+currentDir = res.data?.dir || '';
+const rawEntries: BrowseEntry[] = res.data?.entries || [];
+if (!query && currentDir) {
+const idx = currentDir.lastIndexOf('/');
+const parentPath = idx === -1 ? '' : currentDir.slice(0, idx);
+browseEntries = [{ name: '.. (Dossier parent)', relPath: parentPath, isDir: true }, ...rawEntries];
+} else {
+browseEntries = rawEntries;
+}
 selectedIndex = 0;
+renderBreadcrumbs();
 renderList();
 });
-}, 100);
+}, query ? 90 : 0);
 }
 function switchMode(newMode: MenuMode, initialQuery = ''): void {
 mode = newMode;
@@ -219,16 +282,17 @@ activeSkill = null;
 tabSkills.classList.toggle('active', mode === 'skills' || mode === 'refs');
 tabFiles.classList.toggle('active', mode === 'files');
 filterInput.value = initialQuery;
+renderBreadcrumbs();
 if (mode === 'skills') {
-filterInput.placeholder = 'Filtrer les skills (~/.agents/skills)...';
+filterInput.placeholder = 'Filtrer les skills...';
 if (skills.length === 0) {
 fetchSkills();
 } else {
 applyFilter(initialQuery);
 }
 } else if (mode === 'files') {
-filterInput.placeholder = 'Nom ou chemin de fichier dans ~/Documents/Repos...';
-fetchFiles(initialQuery);
+filterInput.placeholder = 'Filtrer ce dossier ou rechercher un fichier...';
+browseDir(currentDir, initialQuery);
 }
 }
 function openMenu(initialMode: MenuMode, initialQuery = '', tokenLen = 0): void {
@@ -266,10 +330,10 @@ renderList();
 return;
 }
 if (mode === 'files') {
-fetchFiles(q);
+browseDir(currentDir, q);
 }
 }
-function createRow(index: number, title: string, badgeText: string, isRepoBadge: boolean, subText?: string): HTMLDivElement {
+function createRow(index: number, title: string, badgeText: string, isDirBadge: boolean, subText?: string): HTMLDivElement {
 const item = document.createElement('div');
 item.className = index === selectedIndex ? 'item active' : 'item';
 const row = document.createElement('div');
@@ -278,7 +342,7 @@ const titleEl = document.createElement('span');
 titleEl.className = 'item-title';
 titleEl.textContent = title;
 const badge = document.createElement('span');
-badge.className = isRepoBadge ? 'badge repo' : 'badge';
+badge.className = isDirBadge ? 'badge dir' : 'badge';
 badge.textContent = badgeText;
 row.appendChild(titleEl);
 row.appendChild(badge);
@@ -321,14 +385,18 @@ listEl.appendChild(createRow(i, '✦ ' + s.name, badge, false, s.description));
 }
 }
 } else if (mode === 'files') {
-statusText.textContent = repoFiles.length + ' fichier(s)';
-if (repoFiles.length === 0) {
-setEmptyMessage('Aucun fichier trouve dans ~/Documents/Repos.');
+statusText.textContent = browseEntries.length + ' element(s)';
+if (browseEntries.length === 0) {
+setEmptyMessage('Dossier vide ou aucun fichier correspondant.');
 return;
 }
-for (let i = 0; i < repoFiles.length; i++) {
-const f = repoFiles.slice(i, i + 1).find(() => true);
-if (f) listEl.appendChild(createRow(i, f.name, f.repo, true, f.relPath));
+for (let i = 0; i < browseEntries.length; i++) {
+const entry = browseEntries.slice(i, i + 1).find(() => true);
+if (!entry) continue;
+const icon = entry.isDir ? '📁 ' : '📄 ';
+const badge = entry.isDir ? 'Dossier' : 'Fichier';
+const showSub = filterInput.value.trim().length > 0 ? entry.relPath : undefined;
+listEl.appendChild(createRow(i, icon + entry.name, badge, entry.isDir, showSub));
 }
 }
 const active = listEl.querySelector('.item.active');
@@ -430,19 +498,23 @@ triggerTextLength = 0;
 return;
 }
 if (mode === 'files') {
-const file = repoFiles.slice(idx, idx + 1).find(() => true);
-if (!file) return;
-closeMenu();
-chrome.runtime.sendMessage({ type: 'FETCH_FILE_CONTENT', relPath: file.relPath }, (res) => {
-if (!res?.ok || !res.data) {
-showToast('Impossible de lire ' + file.relPath);
+const entry = browseEntries.slice(idx, idx + 1).find(() => true);
+if (!entry) return;
+if (entry.isDir) {
+navigateToDir(entry.relPath);
 return;
 }
-const wrapped = '### Fichier : ' + BT1 + file.relPath + BT1 + '\n\n' + BT3 + '\n' + res.data.content + '\n' + BT3;
+closeMenu();
+chrome.runtime.sendMessage({ type: 'FETCH_FILE_CONTENT', relPath: entry.relPath }, (res) => {
+if (!res?.ok || !res.data) {
+showToast('Impossible de lire ' + entry.relPath);
+return;
+}
+const wrapped = '### Fichier : ' + BT1 + entry.relPath + BT1 + '\n\n' + BT3 + '\n' + res.data.content + '\n' + BT3;
 const target = activeInput || findVisibleInput();
 if (target) {
 if (charsToStrip > 0) removeTriggerChars(target, charsToStrip);
-uploadAsTextFile(wrapped, target, showToast, file.name + '.txt');
+uploadAsTextFile(wrapped, target, showToast, entry.name + '.txt');
 }
 });
 }
@@ -490,7 +562,7 @@ handleEditableInput(e);
 }, true);
 document.addEventListener('keydown', (e: KeyboardEvent) => {
 if (!isOpen) return;
-const len = mode === 'refs' ? filteredRefs.length : mode === 'skills' ? filteredSkills.length : repoFiles.length;
+const len = mode === 'refs' ? filteredRefs.length : mode === 'skills' ? filteredSkills.length : browseEntries.length;
 if (e.key === 'Escape') {
 e.preventDefault();
 e.stopPropagation();
@@ -509,6 +581,17 @@ e.preventDefault();
 e.stopPropagation();
 selectedIndex = (selectedIndex - 1 + len) % Math.max(1, len);
 renderList();
+} else if (e.key === 'ArrowLeft' && mode === 'files' && filterInput.value === '' && currentDir) {
+e.preventDefault();
+e.stopPropagation();
+navigateUp();
+} else if (e.key === 'ArrowRight' && mode === 'files') {
+const entry = browseEntries.slice(selectedIndex, selectedIndex + 1).find(() => true);
+if (entry && entry.isDir) {
+e.preventDefault();
+e.stopPropagation();
+navigateToDir(entry.relPath);
+}
 } else if (e.key === 'ArrowRight' && mode === 'skills' && document.activeElement !== activeInput) {
 const s = filteredSkills.slice(selectedIndex, selectedIndex + 1).find(() => true);
 if (s && s.refs.length > 0) {

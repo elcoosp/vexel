@@ -4,12 +4,14 @@ import path from 'node:path';
 import os from 'node:os';
 
 const PORT = 49152;
-const SKILLS_DIR = path.join(os.homedir(), '.agents', 'skills');
-const REPOS_DIR = path.join(os.homedir(), 'Documents', 'Repos');
+const HOME_DIR = os.homedir();
+const ROOT_DIR = process.env.VEXEL_ROOT_DIR ? path.resolve(process.env.VEXEL_ROOT_DIR) : HOME_DIR;
+const SKILLS_DIR = path.join(HOME_DIR, '.agents', 'skills');
 
 const IGNORED_DIRS = new Set([
   'node_modules', '.git', 'tests', 'evals', '__pycache__',
-  'target', 'dist', 'build', '.next', '.astro', '.svelte-kit', 'coverage'
+  'target', 'dist', 'build', '.next', '.astro', '.svelte-kit', 'coverage',
+  'Library', 'Applications', 'Movies', 'Music', 'Pictures', 'Public', '.Trash'
 ]);
 const IGNORED_SKILL_FILES = new Set(['.DS_Store', 'package.json', 'package-lock.json', 'pnpm-lock.yaml', 'README.md', 'CLAUDE.md']);
 const ALLOWED_SKILL_EXT = new Set(['.md', '.txt', '.yaml', '.yml', '.toml', '.json']);
@@ -17,11 +19,8 @@ const ALLOWED_CODE_EXT = new Set([
   '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
   '.rs', '.go', '.py', '.zig', '.c', '.cpp', '.h', '.hpp',
   '.md', '.mdx', '.json', '.toml', '.yaml', '.yml',
-  '.html', '.css', '.scss', '.sql', '.sh', '.astro', '.svelte', '.vue'
+  '.html', '.css', '.scss', '.sql', '.sh', '.astro', '.svelte', '.vue', '.txt'
 ]);
-
-let cachedRepoFiles = [];
-let lastRepoScan = 0;
 
 function parseSkillMarkdown(raw, fallbackName) {
   const lines = raw.split(/\r?\n/);
@@ -83,41 +82,68 @@ async function collectReferenceFiles(dirPath, baseSkillDir) {
   return results;
 }
 
-async function scanRepoFiles(dirPath, depth = 0, out = []) {
-  if (depth > 6 || out.length >= 4000) return out;
+function resolveSafePath(relDir = '') {
+  const cleaned = String(relDir || '').replace(/^\/+/, '');
+  const resolved = path.resolve(ROOT_DIR, cleaned);
+  if (resolved !== ROOT_DIR && !resolved.startsWith(ROOT_DIR + path.sep)) {
+    return null;
+  }
+  return resolved;
+}
+
+async function listDirectoryEntries(absDir) {
+  const entries = await fs.readdir(absDir, { withFileTypes: true });
+  const folders = [];
+  const files = [];
+
+  for (const entry of entries) {
+    if (entry.name.startsWith('.') || IGNORED_DIRS.has(entry.name)) continue;
+    const fullPath = path.join(absDir, entry.name);
+    const relPath = path.relative(ROOT_DIR, fullPath);
+
+    if (entry.isDirectory()) {
+      folders.push({ name: entry.name, relPath, isDir: true });
+    } else if (entry.isFile()) {
+      const ext = path.extname(entry.name).toLowerCase();
+      if (!ALLOWED_CODE_EXT.has(ext)) continue;
+      files.push({ name: entry.name, relPath, isDir: false });
+    }
+  }
+
+  folders.sort((a, b) => a.name.localeCompare(b.name));
+  files.sort((a, b) => a.name.localeCompare(b.name));
+  return [...folders, ...files].slice(0, 120);
+}
+
+async function searchEntries(absDir, query, depth = 0, out = []) {
+  if (depth > 5 || out.length >= 40) return out;
   let entries;
   try {
-    entries = await fs.readdir(dirPath, { withFileTypes: true });
+    entries = await fs.readdir(absDir, { withFileTypes: true });
   } catch {
     return out;
   }
 
   for (const entry of entries) {
-    if (IGNORED_DIRS.has(entry.name) || entry.name.startsWith('.')) continue;
-    const fullPath = path.join(dirPath, entry.name);
+    if (out.length >= 40) break;
+    if (entry.name.startsWith('.') || IGNORED_DIRS.has(entry.name)) continue;
+    const fullPath = path.join(absDir, entry.name);
+    const relPath = path.relative(ROOT_DIR, fullPath);
+
     if (entry.isDirectory()) {
-      await scanRepoFiles(fullPath, depth + 1, out);
+      if (entry.name.toLowerCase().includes(query)) {
+        out.push({ name: entry.name, relPath, isDir: true });
+      }
+      await searchEntries(fullPath, query, depth + 1, out);
     } else if (entry.isFile()) {
       const ext = path.extname(entry.name).toLowerCase();
       if (!ALLOWED_CODE_EXT.has(ext)) continue;
-      const relPath = path.relative(REPOS_DIR, fullPath);
-      out.push({
-        name: entry.name,
-        relPath,
-        repo: relPath.split(path.sep).at(0) || ''
-      });
+      if (relPath.toLowerCase().includes(query)) {
+        out.push({ name: entry.name, relPath, isDir: false });
+      }
     }
   }
   return out;
-}
-
-async function getRepoFilesIndex() {
-  const now = Date.now();
-  if (now - lastRepoScan > 15000 || cachedRepoFiles.length === 0) {
-    cachedRepoFiles = await scanRepoFiles(REPOS_DIR);
-    lastRepoScan = now;
-  }
-  return cachedRepoFiles;
 }
 
 const server = http.createServer(async (req, res) => {
@@ -198,15 +224,29 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (parsedUrl.pathname === '/files') {
+  if (parsedUrl.pathname === '/browse') {
     try {
+      const dirParam = parsedUrl.searchParams.get('dir') || '';
       const q = (parsedUrl.searchParams.get('q') || '').toLowerCase().trim();
-      const allFiles = await getRepoFilesIndex();
-      const matched = q
-        ? allFiles.filter((f) => f.relPath.toLowerCase().includes(q))
-        : allFiles;
+      const targetDir = resolveSafePath(dirParam);
+
+      if (!targetDir) {
+        res.writeHead(403);
+        res.end(JSON.stringify({ error: 'Acces refuse hors de la racine' }));
+        return;
+      }
+
+      const relDir = path.relative(ROOT_DIR, targetDir);
+      const entries = q
+        ? await searchEntries(targetDir, q)
+        : await listDirectoryEntries(targetDir);
+
       res.writeHead(200);
-      res.end(JSON.stringify({ reposDir: REPOS_DIR, count: matched.length, files: matched.slice(0, 40) }));
+      res.end(JSON.stringify({
+        rootLabel: path.basename(ROOT_DIR),
+        dir: relDir,
+        entries
+      }));
     } catch (err) {
       res.writeHead(500);
       res.end(JSON.stringify({ error: String(err) }));
@@ -217,8 +257,8 @@ const server = http.createServer(async (req, res) => {
   if (parsedUrl.pathname === '/file') {
     try {
       const relPath = parsedUrl.searchParams.get('path') || '';
-      const resolved = path.resolve(REPOS_DIR, relPath);
-      if (!resolved.startsWith(REPOS_DIR + path.sep)) {
+      const resolved = resolveSafePath(relPath);
+      if (!resolved || resolved === ROOT_DIR) {
         res.writeHead(403);
         res.end(JSON.stringify({ error: 'Path traversal forbidden' }));
         return;
@@ -244,5 +284,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log('[Vexel Bridge] Pret sur http://127.0.0.1:' + PORT + ' (/skills, /files, /file)');
+console.log('[Vexel Bridge] Pret sur http://127.0.0.1:' + PORT + ' (Racine: ' + ROOT_DIR + ')');
 });
