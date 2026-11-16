@@ -1,138 +1,251 @@
-const KEEP_RECENT_TURNS = 2
-const DEBOUNCE_MS = 2200
+const KEEP_RECENT_TURNS = 3;
+const DEBOUNCE_MS = 600;
 
-let isUserInteracting = false
-let interactionTimer: number | undefined
-let scheduleTimer: number | undefined
-let cachedContainer: HTMLElement | null = null
+let isUserInteracting = false;
+let interactionTimer: number | undefined;
+let scheduleTimer: number | undefined;
 
 function markUserInteracting(): void {
-  isUserInteracting = true
+  isUserInteracting = true;
   if (interactionTimer !== undefined) {
-    globalThis.clearTimeout(interactionTimer)
+    window.clearTimeout(interactionTimer);
   }
-  interactionTimer = globalThis.setTimeout(() => {
-    isUserInteracting = false
-  }, 2000)
+  interactionTimer = window.setTimeout(() => {
+    isUserInteracting = false;
+  }, 1200);
 }
 
-function findVisibleInput(): HTMLElement | null {
-  const inputs = document.querySelectorAll('textarea, [contenteditable="true"]')
-  for (const el of inputs) {
-    if ((el as HTMLElement).offsetParent !== null) {
-      return el as HTMLElement
-    }
+function findVisibleInput(): Element | null {
+  const inputs = document.querySelectorAll('textarea, [contenteditable="true"]');
+  for (let i = 0; i < inputs.length; i++) {
+    const el = inputs[i] as HTMLElement;
+    if (el.offsetParent !== null) return el;
   }
-  return null
+  return null;
 }
 
-function resolveConversationContainer(visibleInput: HTMLElement | null): HTMLElement | null {
-  if (
-    cachedContainer &&
-    document.contains(cachedContainer) &&
-    cachedContainer.children.length >= 4
-  ) {
-    return cachedContainer
-  }
+function findConversationTurnElements(visibleInput: Element | null): HTMLElement[] {
+  const anchors = document.querySelectorAll('.aiModeUiCodeBlock__Container, [data-hveid]');
+  if (anchors.length === 0) return [];
 
-  const anchors = document.querySelectorAll('[data-hveid]')
-  if (anchors.length === 0) return null
-
-  const parentCounts = new Map<HTMLElement, number>()
-  const limit = Math.min(anchors.length, 60)
-  for (let i = 0; i < limit; i++) {
-    const anchor = anchors.item(i)
-    let curr: HTMLElement | null = anchor?.parentElement || null
-    let depth = 0
-    while (curr && curr !== document.body && depth < 10) {
-      if (curr.children.length >= 4 && curr.children.length <= 400) {
-        parentCounts.set(curr, (parentCounts.get(curr) || 0) + 1)
+  const parentCounts = new Map<HTMLElement, number>();
+  for (let i = 0; i < anchors.length; i++) {
+    let curr: HTMLElement | null = anchors[i].parentElement;
+    let depth = 0;
+    while (curr && curr !== document.body && depth < 8) {
+      if (curr.children.length >= 4 && curr.children.length <= 500) {
+        parentCounts.set(curr, (parentCounts.get(curr) || 0) + 1);
       }
-      curr = curr.parentElement
-      depth++
+      curr = curr.parentElement;
+      depth++;
     }
   }
 
-  let bestContainer: HTMLElement | null = null
-  let bestScore = 0
+  let bestContainer: HTMLElement | null = null;
+  let bestScore = 0;
   parentCounts.forEach((count, container) => {
-    if (!visibleInput || !container.contains(visibleInput)) {
-      const score = count * container.children.length
+    if (visibleInput && !container.contains(visibleInput)) {
+      const score = count * container.children.length;
       if (score > bestScore) {
-        bestScore = score
-        bestContainer = container
+        bestScore = score;
+        bestContainer = container;
       }
     }
-  })
+  });
 
-  cachedContainer = bestContainer
-  return bestContainer
+  if (!bestContainer) return [];
+
+  const turns: HTMLElement[] = [];
+  const children = (bestContainer as HTMLElement).children;
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i] as HTMLElement;
+    if (!visibleInput || !child.contains(visibleInput)) {
+      turns.push(child);
+    }
+  }
+  return turns;
 }
 
 function virtualizeOldTurns(): void {
-  if (isUserInteracting) return
+  if (isUserInteracting) {
+    scheduleBoost();
+    return;
+  }
 
-  const visibleInput = findVisibleInput()
-  const container = resolveConversationContainer(visibleInput)
-  if (!container) return
+  const visibleInput = findVisibleInput();
+  const turns = findConversationTurnElements(visibleInput);
+  if (turns.length <= KEEP_RECENT_TURNS) return;
 
-  const children = [...container.children] as HTMLElement[]
-  if (children.length <= KEEP_RECENT_TURNS * 2) return
-
-  const cutoff = children.length - KEEP_RECENT_TURNS * 2
-  let newlyVirtualized = 0
+  const cutoff = turns.length - KEEP_RECENT_TURNS;
+  let newlyVirtualized = 0;
 
   for (let i = 0; i < cutoff; i++) {
-    const turn = children.slice(i, i + 1).find(() => true)
-    if (!turn || turn.dataset.vexelVirtualized === 'true') continue
-    if (visibleInput && turn.contains(visibleInput)) continue
+    const turn = turns[i];
+    if (!turn.classList.contains('vexel-virtualized')) {
+      turn.classList.add('vexel-virtualized');
+      turn.style.contentVisibility = 'auto';
+      turn.style.containIntrinsicSize = 'auto 450px';
+      turn.style.contain = 'layout style paint';
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      turn.inert = true;
+      newlyVirtualized++;
+    }
+  }
 
-    const rect = turn.getBoundingClientRect()
-    if (rect.height === 0 || rect.bottom > -250) continue
-
-    const height = Math.max(80, Math.round(rect.height))
-    turn.style.contentVisibility = 'auto'
-    turn.style.containIntrinsicSize = 'auto ' + height + 'px'
-    turn.style.contain = 'layout style paint'
-    turn.inert = true
-    turn.dataset.vexelVirtualized = 'true'
-    newlyVirtualized++
+  for (let i = cutoff; i < turns.length; i++) {
+    const turn = turns[i];
+    if (turn.classList.contains('vexel-virtualized')) {
+      turn.classList.remove('vexel-virtualized');
+      turn.style.contentVisibility = '';
+      turn.style.containIntrinsicSize = '';
+      turn.style.contain = '';
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+      turn.inert = false;
+    }
   }
 
   if (newlyVirtualized > 0) {
-    console.log('[Vexel DOM Booster] ' + newlyVirtualized + ' anciens blocs virtualises')
+    console.log(`[Vexel DOM Booster] ${newlyVirtualized} tours virtualises (${cutoff}/${turns.length})`);
   }
 }
 
-function scheduleVirtualization(): void {
+function scheduleBoost(): void {
   if (scheduleTimer !== undefined) {
-    globalThis.clearTimeout(scheduleTimer)
+    window.clearTimeout(scheduleTimer);
   }
-  scheduleTimer = globalThis.setTimeout(() => {
-    if ('requestIdleCallback' in globalThis) {
-      globalThis.requestIdleCallback(() => virtualizeOldTurns(), { timeout: 2000 })
+  scheduleTimer = window.setTimeout(() => {
+    if ('requestIdleCallback' in window) {
+      window.requestIdleCallback(() => virtualizeOldTurns(), { timeout: 1000 });
     } else {
-      virtualizeOldTurns()
+      virtualizeOldTurns();
     }
-  }, DEBOUNCE_MS)
+  }, DEBOUNCE_MS);
 }
 
 export function initDomBooster(): void {
-  globalThis.addEventListener('keydown', markUserInteracting, { capture: true, passive: true })
-  globalThis.addEventListener('paste', markUserInteracting, { capture: true, passive: true })
-  globalThis.addEventListener('pointerdown', markUserInteracting, { capture: true, passive: true })
+  console.log('[Vexel DOM Booster] Demarrage (mode non-imbrique + idle)');
+
+  document.documentElement.style.overflowAnchor = 'none';
+  if (document.body) {
+    document.body.style.overflowAnchor = 'none';
+  }
+
+  window.addEventListener('keydown', markUserInteracting, { capture: true, passive: true });
+  window.addEventListener('paste', markUserInteracting, { capture: true, passive: true });
+  window.addEventListener('pointerdown', markUserInteracting, { capture: true, passive: true });
 
   const observer = new MutationObserver((mutations) => {
-    for (const m of mutations) {
-      const target = m.target as HTMLElement
-      if (target?.id?.startsWith('vexel-')) continue
-      if (m.addedNodes.length > 0) {
-        scheduleVirtualization()
-        return
+    for (let i = 0; i < mutations.length; i++) {
+      if (mutations[i].addedNodes.length > 0) {
+        scheduleBoost();
+        return;
       }
     }
-  })
+  });
 
-  observer.observe(document.body, { childList: true, subtree: true })
-  scheduleVirtualization()
+  if (document.body) {
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+
+  scheduleBoost();
 }

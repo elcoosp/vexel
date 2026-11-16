@@ -1,172 +1,221 @@
-let isUserSubmitting = false
-let submitPauseTimer: number | undefined
-let isMutating = false
-function pauseDuringSubmit(): void {
-  isUserSubmitting = true
+let isUserSubmitting = false;
+let submitPauseTimer: number | undefined;
+
+function pauseRepairBriefly(): void {
+  isUserSubmitting = true;
   if (submitPauseTimer !== undefined) {
-    globalThis.clearTimeout(submitPauseTimer)
+    window.clearTimeout(submitPauseTimer);
   }
-  submitPauseTimer = globalThis.setTimeout(() => {
-    isUserSubmitting = false
-  }, 1800)
+  submitPauseTimer = window.setTimeout(() => {
+    isUserSubmitting = false;
+  }, 1500);
 }
-function parseWizCodeComment(rawComment: string): string | null {
-  const sepIdx = rawComment.indexOf('|||[[')
-  if (sepIdx === -1) return null
-  const jsonPart = rawComment.slice(sepIdx + 3).trim()
-  try {
-    const parsed = JSON.parse(jsonPart)
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      const [firstEntry] = parsed
-      if (Array.isArray(firstEntry) && firstEntry.length > 1) {
-        const [, codeText] = firstEntry
-        if (typeof codeText === 'string') {
-          return codeText
+
+export function initCodeRepair(showToast: (msg: string) => void): void {
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) pauseRepairBriefly();
+  }, { capture: true, passive: true });
+
+  window.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement | null;
+    if (target?.closest('button')) pauseRepairBriefly();
+  }, { capture: true, passive: true });
+
+  const parseWizCodeComment = (rawComment: string): string | null => {
+    const sepIdx = rawComment.indexOf('|||[[');
+    if (sepIdx === -1) return null;
+    try {
+      const jsonStr = rawComment.slice(sepIdx + 3);
+      const parsed = JSON.parse(jsonStr);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const firstEntry = parsed[0];
+        if (Array.isArray(firstEntry) && firstEntry.length > 1) {
+          const codeText = firstEntry[1];
+          if (typeof codeText === 'string') {
+            return codeText;
+          }
+        }
+      }
+    } catch {
+      // Ignore non-code JSON comments
+    }
+    return null;
+  };
+
+  const findRawCode = (codeBlock: Element): string | null => {
+    const scopes: Node[] = [codeBlock];
+    if (codeBlock.parentElement) scopes.push(codeBlock.parentElement);
+    if (codeBlock.parentElement?.parentElement) scopes.push(codeBlock.parentElement.parentElement);
+
+    for (const scope of scopes) {
+      const walker = document.createTreeWalker(scope, NodeFilter.SHOW_COMMENT);
+      let node = walker.nextNode();
+      while (node) {
+        const val = node.nodeValue || '';
+        const extracted = parseWizCodeComment(val);
+        if (extracted !== null) {
+          return extracted;
+        }
+        node = walker.nextNode();
+      }
+    }
+    return null;
+  };
+
+  const collectSpilledCodeAfterBlock = (codeBlock: Element, initialCode: string): string => {
+    let blockWrapper: Element = codeBlock;
+    while (
+      blockWrapper.parentElement &&
+      blockWrapper.parentElement.children.length <= 2 &&
+      !blockWrapper.parentElement.classList.contains('Y3BBE')
+    ) {
+      blockWrapper = blockWrapper.parentElement;
+    }
+
+    const parent = blockWrapper.parentElement;
+    if (!parent) return initialCode;
+
+    const siblings = Array.from(parent.children);
+    const startIdx = siblings.indexOf(blockWrapper);
+    if (startIdx === -1) return initialCode;
+
+    const spilledChunks: string[] = [];
+    let foundOverflow = false;
+
+    for (let i = startIdx + 1; i < siblings.length; i++) {
+      const el = siblings[i] as HTMLElement;
+      // Utiliser textContent en priorite pour eviter un forced synchronous layout (innerText)
+      const text = (el.textContent || '').trim();
+      if (!text) continue;
+
+      if (
+        text.startsWith('Utilisez ce code avec pr') ||
+        text.startsWith('Use code with caution')
+      ) {
+        continue;
+      }
+
+      if (el.querySelector('.aiModeUiCodeBlock__Container')) {
+        const innerCode = el.querySelector('code')?.textContent || '';
+        if (innerCode.trim().startsWith('<FollowUp>')) {
+          el.style.display = 'none';
+          break;
+        }
+        break;
+      }
+
+      if (text.startsWith('<FollowUp>') || text.includes('</FollowUp>')) {
+        el.style.display = 'none';
+        break;
+      }
+
+      const looksLikeCode =
+        text.includes('EOF') ||
+        text.includes('pnpm ') ||
+        text.includes('function ') ||
+        text.includes('const ') ||
+        text.includes('export ') ||
+        text.includes('return ') ||
+        text.includes('document.') ||
+        text.includes('=>') ||
+        text.startsWith('```') ||
+        (text.includes('{') && text.includes('}'));
+
+      if (looksLikeCode || foundOverflow) {
+        foundOverflow = true;
+        const cleaned = text
+          .replace(/^```[a-z]*\s*/i, '')
+          .replace(/\s*```$/g, '');
+        if (cleaned) {
+          spilledChunks.push(cleaned);
         }
       }
     }
-  } catch {
-    return null
-  }
-  return null
-}
-function findRawCode(codeBlock: Element): string | null {
-  const scopes: Node[] = [codeBlock]
-  if (codeBlock.parentElement) scopes.push(codeBlock.parentElement)
-  if (codeBlock.parentElement?.parentElement) {
-    scopes.push(codeBlock.parentElement.parentElement)
-  }
-  for (const scope of scopes) {
-    const walker = document.createTreeWalker(scope, NodeFilter.SHOW_COMMENT)
-    let node = walker.nextNode()
-    while (node) {
-      const extracted = parseWizCodeComment(node.nodeValue || '')
-      if (extracted !== null) return extracted
-      node = walker.nextNode()
+
+    if (spilledChunks.length === 0) {
+      return initialCode;
     }
-  }
-  return null
-}
-function collectSpilledCodeAfterBlock(codeBlock: Element, initialCode: string): string {
-  let blockWrapper: Element = codeBlock
-  while (
-    blockWrapper.parentElement &&
-    blockWrapper.parentElement.children.length <= 2 &&
-    !blockWrapper.parentElement.classList.contains('Y3BBE')
-  ) {
-    blockWrapper = blockWrapper.parentElement
-  }
-  const parent = blockWrapper.parentElement
-  if (!parent) return initialCode
-  const siblings = [...parent.children]
-  const startIdx = siblings.indexOf(blockWrapper)
-  if (startIdx === -1) return initialCode
-  const spilledChunks: string[] = []
-  let foundOverflow = false
-  for (let i = startIdx + 1; i < siblings.length; i++) {
-    const el = siblings.slice(i, i + 1).find(() => true) as HTMLElement | undefined
-    if (!el) continue
-    const text = (el.textContent || '').trim()
-    if (!text) continue
-    if (text.startsWith('Utilisez ce code avec pr') || text.startsWith('Use code with caution')) {
-      continue
-    }
-    if (el.querySelector('.aiModeUiCodeBlock__Container')) {
-      const innerCode = el.querySelector('code')?.textContent || ''
-      if (innerCode.trim().startsWith('')) {
-        el.style.display = 'none'
-      }
-      break
-    }
-    if (text.startsWith('') || text.includes('')) {
-      el.style.display = 'none'
-      break
-    }
-    const looksLikeCode =
-      text.includes('EOF') ||
-      text.includes('pnpm ') ||
-      text.includes('function ') ||
-      text.includes('const ') ||
-      text.includes('export ') ||
-      text.includes('return ') ||
-      text.includes('document.') ||
-      text.includes('=>') ||
-      (text.includes('{') && text.includes('}'))
-    if (looksLikeCode || foundOverflow) {
-      foundOverflow = true
-      const cleaned = text.replace(/^[a-z]\s/iu, '').replaceAll(/\s*$/gu, '')
-      if (cleaned) spilledChunks.push(cleaned)
-    }
-  }
-  if (spilledChunks.length === 0) return initialCode
-  return initialCode.replace(/\s+$/u, '') + '\n\n' + spilledChunks.join('\n\n')
-}
-export function initCodeRepair(showToast: (msg: string) => void): void {
-  globalThis.addEventListener(
-    'keydown',
-    (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && !e.shiftKey) pauseDuringSubmit()
-    },
-    true
-  )
-  globalThis.addEventListener('click', () => pauseDuringSubmit(), true)
-  const processCodeBlock = (codeBlock: Element) => {
-    const htmlBlock = codeBlock as HTMLElement
-    if (htmlBlock.dataset.vexelRepaired === 'true') return
-    const baseCode = findRawCode(codeBlock) || codeBlock.querySelector('code')?.textContent || ''
-    if (!baseCode) return
-    htmlBlock.dataset.vexelRepaired = 'true'
-    const fullCode = collectSpilledCodeAfterBlock(codeBlock, baseCode)
-    const wasStitched = fullCode.length > baseCode.length
-    const headerBar = codeBlock.querySelector('.a2TNg') || codeBlock.firstElementChild
-    if (!headerBar) return
-    const btn = document.createElement('button')
-    btn.type = 'button'
-    btn.textContent = wasStitched ? 'Copier complet' : 'Copier brut'
-    btn.style.cssText =
-      'margin-left: 8px; padding: 3px 10px; font-size: 11px; font-weight: 500; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: inherit; cursor: pointer;'
-    btn.addEventListener('click', (e) => {
-      e.preventDefault()
-      e.stopPropagation()
-      navigator.clipboard.writeText(fullCode)
-      showToast(wasStitched ? 'Script complet reconstitue et copie' : 'Code brut copie')
-    })
-    headerBar.append(btn)
-  }
+
+    return `${initialCode.replace(/\s+$/, '')}\n\n${spilledChunks.join('\n\n')}`;
+  };
+
   const scanAll = () => {
-    if (isUserSubmitting) return
-    isMutating = true
-    try {
-      const blocks = document.querySelectorAll('.aiModeUiCodeBlock__Container')
-      for (const block of blocks) {
-        processCodeBlock(block)
-      }
-    } finally {
-      isMutating = false
+    if (isUserSubmitting) {
+      scheduleScan();
+      return;
     }
-  }
-  let timer: number | undefined
+
+    const containers = document.querySelectorAll('.aiModeUiCodeBlock__Container:not([data-vexel-repaired="true"])');
+    containers.forEach((codeBlock) => {
+      codeBlock.setAttribute('data-vexel-repaired', 'true');
+
+      const baseCode = findRawCode(codeBlock) || codeBlock.querySelector('code')?.textContent || '';
+
+      if (baseCode.trim().startsWith('<FollowUp>')) {
+        (codeBlock as HTMLElement).style.display = 'none';
+        return;
+      }
+
+      const fullCode = collectSpilledCodeAfterBlock(codeBlock, baseCode);
+      const wasStitched = fullCode.length > baseCode.length;
+
+      const headerBar = codeBlock.querySelector('.a2TNg') || codeBlock.firstElementChild;
+      if (!headerBar) return;
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = wasStitched
+        ? `Copier complet + suite (${fullCode.length} car.)`
+        : `Copier source exacte (${fullCode.length} car.)`;
+
+      Object.assign(btn.style, {
+        marginLeft: 'auto',
+        backgroundColor: wasStitched ? '#059669' : '#2563eb',
+        color: '#ffffff',
+        border: 'none',
+        borderRadius: '6px',
+        padding: '4px 10px',
+        fontSize: '12px',
+        fontWeight: '600',
+        cursor: 'pointer',
+      });
+
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        navigator.clipboard.writeText(fullCode);
+        showToast(
+          wasStitched
+            ? `Code complet reconstitue copie (${fullCode.length} car.)`
+            : `Source exacte copiee (${fullCode.length} car.)`
+        );
+      });
+
+      headerBar.appendChild(btn);
+    });
+  };
+
+  let timer: number | undefined;
   const scheduleScan = () => {
-    if (timer) globalThis.clearTimeout(timer)
-    timer = globalThis.setTimeout(() => {
-      if ('requestIdleCallback' in globalThis) {
-        globalThis.requestIdleCallback(() => scanAll(), { timeout: 1500 })
+    if (timer) window.clearTimeout(timer);
+    timer = window.setTimeout(() => {
+      if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(() => scanAll(), { timeout: 1200 });
       } else {
-        scanAll()
+        scanAll();
       }
-    }, 1200)
-  }
+    }, 650);
+  };
+
   const observer = new MutationObserver((mutations) => {
-    if (isMutating) return
-    for (const m of mutations) {
-      const target = m.target as HTMLElement
-      if (target?.id?.startsWith('vexel-')) continue
-      if (m.addedNodes.length > 0) {
-        scheduleScan()
-        return
+    for (let i = 0; i < mutations.length; i++) {
+      if (mutations[i].addedNodes.length > 0) {
+        scheduleScan();
+        return;
       }
     }
-  })
-  observer.observe(document.body, { childList: true, subtree: true })
-  scheduleScan()
+  });
+
+  observer.observe(document.body, { childList: true, subtree: true });
+  scheduleScan();
 }
