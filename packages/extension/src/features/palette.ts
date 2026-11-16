@@ -1,38 +1,41 @@
 import { MAX_SAFE_LENGTH, uploadAsTextFile } from './untruncate';
 import { exportConversationMarkdown } from './thread-tools';
+
 interface RefFile {
-relPath: string;
-content: string;
-length: number;
+  relPath: string;
+  content: string;
+  length: number;
 }
+
 interface SkillItem {
-id: string;
-name: string;
-description: string;
-smartContent: string;
-smartLength: number;
-fullContent: string;
-fullLength: number;
-refCount: number;
-refs: RefFile[];
+  id: string;
+  name: string;
+  description: string;
+  smartContent: string;
+  smartLength: number;
+  fullContent: string;
+  fullLength: number;
+  refCount: number;
+  refs: RefFile[];
 }
+
 interface RepoFileItem {
-name: string;
-relPath: string;
-repo: string;
+  name: string;
+  relPath: string;
+  repo: string;
 }
+
 type MenuMode = 'skills' | 'refs' | 'files';
+
 const BT1 = String.fromCharCode(96);
 const BT3 = String.fromCharCode(96, 96, 96);
+
 function formatChars(len: number): string {
-return len >= 1000 ? (len / 1000).toFixed(1) + 'k car.' : len + ' car.';
+  return len >= 1000 ? (len / 1000).toFixed(1) + 'k car.' : len + ' car.';
 }
-function escapeHtml(str: string): string {
-return str.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
-}
-const MENU_HTML = [
-'',
-':host { all: initial; }',
+
+const MENU_CSS = [
+  ':host { all: initial; }',
 '.trigger-pill { position: fixed; z-index: 2147483645; display: none; align-items: center; gap: 6px; background: rgba(24, 24, 27, 0.92); color: #e4e4e7; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 999px; padding: 4px 10px; font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif; font-size: 11.5px; font-weight: 500; cursor: pointer; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); backdrop-filter: blur(6px); transition: background 0.15s ease, border-color 0.15s ease; }',
 '.trigger-pill:hover { background: rgba(39, 39, 42, 0.98); border-color: rgba(96, 165, 250, 0.5); color: #ffffff; }',
 '.trigger-pill kbd { font-family: ui-monospace, monospace; font-size: 10px; background: rgba(255, 255, 255, 0.08); padding: 1px 4px; border-radius: 4px; color: #a1a1aa; }',
@@ -55,31 +58,13 @@ const MENU_HTML = [
 '.badge { font-size: 10.5px; padding: 2px 6px; border-radius: 5px; background: rgba(255, 255, 255, 0.06); color: #a1a1aa; flex-shrink: 0; }',
 '.badge.repo { color: #93c5fd; background: rgba(59, 130, 246, 0.14); }',
 '.footer { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; border-top: 1px solid rgba(255, 255, 255, 0.08); background: rgba(14, 14, 17, 0.9); font-size: 11px; color: #71717a; }',
-'.empty { padding: 20px; text-align: center; color: #71717a; font-size: 12.5px; }',
-'',
-'⚡ Vexel / @',
-'',
-'  ',
-'    ',
-'      / Skills',
-'      @ Fichiers Repos',
-'    ',
-'    Exporter .md (⌘⇧E)',
-'  ',
-'  ',
-'    ',
-'  ',
-'  ',
-'  ',
-'    0 element',
-'    ↑↓ naviguer • ↵ inserer • Esc fermer',
-'  ',
-''
+'.empty { padding: 20px; text-align: center; color: #71717a; font-size: 12.5px; }'
 ].join('\n');
 export function initCommandPalette(showToast: (msg: string) => void): void {
 let isOpen = false;
 let mode: MenuMode = 'skills';
-let triggerRange: { start: number; end: number } | null = null;
+let triggerTextLength = 0;
+let hasInlineTrigger = false;
 let activeInput: HTMLElement | null = null;
 let skills: SkillItem[] = [];
 let filteredSkills: SkillItem[] = [];
@@ -91,16 +76,81 @@ let fileFetchTimer: number | undefined;
 const host = document.createElement('div');
 host.id = 'vexel-inline-menu-host';
 const shadow = host.attachShadow({ mode: 'open' });
-shadow.innerHTML = MENU_HTML;
+const styleEl = document.createElement('style');
+styleEl.textContent = MENU_CSS;
+shadow.appendChild(styleEl);
+const triggerPill = document.createElement('button');
+triggerPill.type = 'button';
+triggerPill.className = 'trigger-pill';
+triggerPill.title = 'Menu Vexel (/ skills, @ fichiers)';
+triggerPill.textContent = '⚡ Vexel ';
+const kbdSlash = document.createElement('kbd');
+kbdSlash.textContent = '/';
+const kbdAt = document.createElement('kbd');
+kbdAt.textContent = '@';
+triggerPill.appendChild(kbdSlash);
+triggerPill.appendChild(document.createTextNode(' '));
+triggerPill.appendChild(kbdAt);
+shadow.appendChild(triggerPill);
+const popover = document.createElement('div');
+popover.className = 'popover';
+const topBar = document.createElement('div');
+topBar.className = 'top-bar';
+const tabs = document.createElement('div');
+tabs.className = 'tabs';
+const tabSkills = document.createElement('button');
+tabSkills.type = 'button';
+tabSkills.className = 'tab active';
+tabSkills.textContent = '/ Skills';
+const tabFiles = document.createElement('button');
+tabFiles.type = 'button';
+tabFiles.className = 'tab';
+tabFiles.textContent = '@ Fichiers Repos';
+tabs.appendChild(tabSkills);
+tabs.appendChild(tabFiles);
+const btnExport = document.createElement('button');
+btnExport.type = 'button';
+btnExport.className = 'export-btn';
+btnExport.textContent = 'Exporter .md (⌘⇧E)';
+topBar.appendChild(tabs);
+topBar.appendChild(btnExport);
+popover.appendChild(topBar);
+const filterBox = document.createElement('div');
+filterBox.className = 'filter-box';
+const filterInput = document.createElement('input');
+filterInput.type = 'text';
+filterInput.placeholder = 'Filtrer...';
+filterInput.autocomplete = 'off';
+filterBox.appendChild(filterInput);
+popover.appendChild(filterBox);
+const listEl = document.createElement('div');
+listEl.className = 'list';
+popover.appendChild(listEl);
+const footer = document.createElement('div');
+footer.className = 'footer';
+const statusText = document.createElement('span');
+statusText.textContent = '0 element';
+const hints = document.createElement('span');
+hints.textContent = '↑↓ naviguer • ↵ inserer • Esc fermer';
+footer.appendChild(statusText);
+footer.appendChild(hints);
+popover.appendChild(footer);
+shadow.appendChild(popover);
 document.body.appendChild(host);
-const triggerPill = shadow.getElementById('trigger-pill') as HTMLButtonElement;
-const popover = shadow.getElementById('popover') as HTMLDivElement;
-const tabSkills = shadow.getElementById('tab-skills') as HTMLButtonElement;
-const tabFiles = shadow.getElementById('tab-files') as HTMLButtonElement;
-const btnExport = shadow.getElementById('btn-export') as HTMLButtonElement;
-const filterInput = shadow.getElementById('filter-input') as HTMLInputElement;
-const listEl = shadow.getElementById('list') as HTMLDivElement;
-const statusText = shadow.getElementById('status-text') as HTMLSpanElement;
+function isEditableElement(el: HTMLElement | null): boolean {
+if (!el) return false;
+if (el.tagName === 'TEXTAREA') return true;
+if (el.isContentEditable || el.getAttribute('contenteditable') === 'true') return true;
+return false;
+}
+function resolveEditable(target: EventTarget | null): HTMLElement | null {
+const node = target as HTMLElement | null;
+if (!node) return null;
+if (node.tagName === 'TEXTAREA') return node;
+const ce = node.closest('[contenteditable="true"]') as HTMLElement | null;
+if (ce) return ce;
+return isEditableElement(node) ? node : null;
+}
 function findVisibleInput(): HTMLElement | null {
 const inputs = document.querySelectorAll('textarea, [contenteditable="true"]');
 for (let i = 0; i < inputs.length; i++) {
@@ -122,20 +172,26 @@ triggerPill.style.display = 'none';
 return;
 }
 triggerPill.style.display = 'inline-flex';
-triggerPill.style.top = Math.max(8, rect.top - 30) + 'px';
+triggerPill.style.top = Math.max(8, rect.top - 32) + 'px';
 triggerPill.style.left = Math.max(12, rect.right - 118) + 'px';
 if (isOpen) {
-const popHeight = popover.offsetHeight || 340;
+const popHeight = popover.offsetHeight || 330;
 const topPos = rect.top - popHeight - 8;
 popover.style.top = (topPos > 10 ? topPos : Math.min(window.innerHeight - popHeight - 12, rect.bottom + 8)) + 'px';
 popover.style.left = Math.max(12, Math.min(window.innerWidth - 552, rect.left)) + 'px';
 }
 }
+function setEmptyMessage(msg: string): void {
+const empty = document.createElement('div');
+empty.className = 'empty';
+empty.textContent = msg;
+listEl.replaceChildren(empty);
+}
 function fetchSkills(): void {
-listEl.innerHTML = 'Chargement des skills...';
+setEmptyMessage('Chargement des skills...');
 chrome.runtime.sendMessage({ type: 'FETCH_SKILLS' }, (res) => {
 if (chrome.runtime.lastError || !res?.ok) {
-listEl.innerHTML = 'Bridge local injoignable (127.0.0.1:49152)';
+setEmptyMessage('Bridge local injoignable (127.0.0.1:49152)');
 return;
 }
 skills = res.data?.skills || [];
@@ -145,17 +201,17 @@ applyFilter(filterInput.value);
 function fetchFiles(query: string): void {
 if (fileFetchTimer) window.clearTimeout(fileFetchTimer);
 fileFetchTimer = window.setTimeout(() => {
-listEl.innerHTML = 'Recherche dans ~/Documents/Repos...';
+setEmptyMessage('Recherche dans ~/Documents/Repos...');
 chrome.runtime.sendMessage({ type: 'FETCH_FILES', query }, (res) => {
 if (chrome.runtime.lastError || !res?.ok) {
-listEl.innerHTML = 'Bridge local injoignable (127.0.0.1:49152)';
+setEmptyMessage('Bridge local injoignable (127.0.0.1:49152)');
 return;
 }
 repoFiles = res.data?.files || [];
 selectedIndex = 0;
 renderList();
 });
-}, 120);
+}, 100);
 }
 function switchMode(newMode: MenuMode, initialQuery = ''): void {
 mode = newMode;
@@ -175,19 +231,21 @@ filterInput.placeholder = 'Nom ou chemin de fichier dans ~/Documents/Repos...';
 fetchFiles(initialQuery);
 }
 }
-function openMenu(initialMode: MenuMode, initialQuery = '', range: { start: number; end: number } | null = null): void {
-triggerRange = range;
+function openMenu(initialMode: MenuMode, initialQuery = '', tokenLen = 0): void {
+hasInlineTrigger = tokenLen > 0;
+triggerTextLength = tokenLen;
 isOpen = true;
 popover.classList.add('open');
 switchMode(initialMode, initialQuery);
 positionElements();
-if (!range) {
+if (!hasInlineTrigger) {
 filterInput.focus();
 }
 }
 function closeMenu(): void {
 isOpen = false;
-triggerRange = null;
+hasInlineTrigger = false;
+triggerTextLength = 0;
 activeSkill = null;
 popover.classList.remove('open');
 }
@@ -211,94 +269,120 @@ if (mode === 'files') {
 fetchFiles(q);
 }
 }
+function createRow(index: number, title: string, badgeText: string, isRepoBadge: boolean, subText?: string): HTMLDivElement {
+const item = document.createElement('div');
+item.className = index === selectedIndex ? 'item active' : 'item';
+const row = document.createElement('div');
+row.className = 'item-row';
+const titleEl = document.createElement('span');
+titleEl.className = 'item-title';
+titleEl.textContent = title;
+const badge = document.createElement('span');
+badge.className = isRepoBadge ? 'badge repo' : 'badge';
+badge.textContent = badgeText;
+row.appendChild(titleEl);
+row.appendChild(badge);
+item.appendChild(row);
+if (subText) {
+const sub = document.createElement('div');
+sub.className = 'item-sub';
+sub.textContent = subText;
+item.appendChild(sub);
+}
+item.addEventListener('mousedown', (e) => {
+e.preventDefault();
+selectCurrentItem(index, (e as MouseEvent).metaKey || (e as MouseEvent).ctrlKey);
+});
+return item;
+}
 function renderList(): void {
+listEl.replaceChildren();
 if (mode === 'refs' && activeSkill) {
 statusText.textContent = filteredRefs.length + ' reference(s) — ' + activeSkill.name;
 if (filteredRefs.length === 0) {
-listEl.innerHTML = 'Aucune reference correspondante.';
+setEmptyMessage('Aucune reference correspondante.');
 return;
 }
-listEl.innerHTML = filteredRefs
-.map((r) => [
-'',
-'  ',
-'    📄 ' + escapeHtml(r.relPath) + '',
-'    ' + formatChars(r.length) + '',
-'  ',
-''
-].join(''))
-.join('');
-bindRowClicks();
-return;
+for (let i = 0; i < filteredRefs.length; i++) {
+const r = filteredRefs.slice(i, i + 1).find(() => true);
+if (r) listEl.appendChild(createRow(i, '📄 ' + r.relPath, formatChars(r.length), false));
 }
-if (mode === 'skills') {
+} else if (mode === 'skills') {
 statusText.textContent = filteredSkills.length + ' skill(s)';
 if (filteredSkills.length === 0) {
-listEl.innerHTML = 'Aucun skill correspondant.';
+setEmptyMessage('Aucun skill correspondant.');
 return;
 }
-listEl.innerHTML = filteredSkills
-.map((s) => [
-'',
-'  ',
-'    ✦ ' + escapeHtml(s.name) + '',
-'    ' + (s.refCount > 0 ? s.refCount + ' refs • ' : '') + formatChars(s.smartLength) + '',
-'  ',
-s.description ? '  ' + escapeHtml(s.description) + '' : '',
-''
-].join(''))
-.join('');
-bindRowClicks();
-return;
+for (let i = 0; i < filteredSkills.length; i++) {
+const s = filteredSkills.slice(i, i + 1).find(() => true);
+if (s) {
+const badge = (s.refCount > 0 ? s.refCount + ' refs • ' : '') + formatChars(s.smartLength);
+listEl.appendChild(createRow(i, '✦ ' + s.name, badge, false, s.description));
 }
-if (mode === 'files') {
+}
+} else if (mode === 'files') {
 statusText.textContent = repoFiles.length + ' fichier(s)';
 if (repoFiles.length === 0) {
-listEl.innerHTML = 'Aucun fichier trouve dans ~/Documents/Repos.';
+setEmptyMessage('Aucun fichier trouve dans ~/Documents/Repos.');
 return;
 }
-listEl.innerHTML = repoFiles
-.map((f) => [
-'',
-'  ',
-'    ' + escapeHtml(f.name) + '',
-'    ' + escapeHtml(f.repo) + '',
-'  ',
-'  ' + escapeHtml(f.relPath) + '',
-''
-].join(''))
-.join('');
-bindRowClicks();
+for (let i = 0; i < repoFiles.length; i++) {
+const f = repoFiles.slice(i, i + 1).find(() => true);
+if (f) listEl.appendChild(createRow(i, f.name, f.repo, true, f.relPath));
 }
 }
-function bindRowClicks(): void {
-listEl.querySelectorAll('.item').forEach((node) => {
-node.addEventListener('mousedown', (e) => {
-e.preventDefault();
-const idx = Number((node as HTMLElement).getAttribute('data-idx'));
-selectCurrentItem(idx, (e as MouseEvent).metaKey || (e as MouseEvent).ctrlKey);
-});
-});
 const active = listEl.querySelector('.item.active');
 if (active) active.scrollIntoView({ block: 'nearest' });
 }
-function stripTriggerToken(ta: HTMLTextAreaElement): void {
-if (!triggerRange) return;
-const before = ta.value.slice(0, triggerRange.start);
-const after = ta.value.slice(triggerRange.end);
-ta.value = before + after;
-ta.selectionStart = ta.selectionEnd = before.length;
+function getTextBeforeCursor(editable: HTMLElement): string {
+if (editable.tagName === 'TEXTAREA') {
+const ta = editable as HTMLTextAreaElement;
+return ta.value.slice(0, ta.selectionStart ?? ta.value.length);
+}
+const sel = window.getSelection();
+if (!sel || sel.rangeCount === 0) return editable.textContent || '';
+const range = sel.getRangeAt(0).cloneRange();
+range.selectNodeContents(editable);
+range.setEnd(sel.getRangeAt(0).endContainer, sel.getRangeAt(0).endOffset);
+return range.toString();
+}
+function removeTriggerChars(editable: HTMLElement, count: number): void {
+if (count <= 0) return;
+if (editable.tagName === 'TEXTAREA') {
+const ta = editable as HTMLTextAreaElement;
+const pos = ta.selectionStart ?? ta.value.length;
+const start = Math.max(0, pos - count);
+ta.value = ta.value.slice(0, start) + ta.value.slice(pos);
+ta.selectionStart = ta.selectionEnd = start;
 ta.dispatchEvent(new Event('input', { bubbles: true }));
+return;
+}
+editable.focus();
+const sel = window.getSelection();
+if (!sel || sel.rangeCount === 0) return;
+const range = sel.getRangeAt(0);
+if (range.endContainer.nodeType === Node.TEXT_NODE) {
+const textNode = range.endContainer as Text;
+const start = Math.max(0, range.endOffset - count);
+textNode.deleteData(start, range.endOffset - start);
+const newRange = document.createRange();
+newRange.setStart(textNode, start);
+newRange.collapse(true);
+sel.removeAllRanges();
+sel.addRange(newRange);
+editable.dispatchEvent(new Event('input', { bubbles: true }));
+}
 }
 function injectContent(content: string, fileName: string, toastMsg: string): void {
 const target = activeInput || findVisibleInput();
+const charsToStrip = hasInlineTrigger ? triggerTextLength : 0;
 if (!target) {
 navigator.clipboard.writeText(content);
 showToast(toastMsg + ' (copie)');
 return;
 }
-if (target.tagName === 'TEXTAREA') {
-stripTriggerToken(target as HTMLTextAreaElement);
+if (charsToStrip > 0) {
+removeTriggerChars(target, charsToStrip);
 }
 target.focus();
 if (content.length > MAX_SAFE_LENGTH || fileName.endsWith('.ts') || fileName.endsWith('.rs') || fileName.endsWith('.mjs')) {
@@ -316,28 +400,37 @@ document.execCommand('insertText', false, content);
 showToast(toastMsg);
 }
 function selectCurrentItem(idx = selectedIndex, fullBundle = false): void {
+const charsToStrip = hasInlineTrigger ? triggerTextLength : 0;
 if (mode === 'refs' && activeSkill) {
-const ref = filteredRefs.slice(idx, (idx) + 1).find(() => true);
+const ref = filteredRefs.slice(idx, idx + 1).find(() => true);
 if (!ref) return;
 const skillName = activeSkill.name;
 closeMenu();
+hasInlineTrigger = charsToStrip > 0;
+triggerTextLength = charsToStrip;
 injectContent(
 '## Reference (' + skillName + ') : ' + ref.relPath + '\n\n' + ref.content,
 ref.relPath.split('/').join('-'),
 'Reference "' + ref.relPath + '" ajoutee'
 );
+hasInlineTrigger = false;
+triggerTextLength = 0;
 return;
 }
 if (mode === 'skills') {
-const skill = filteredSkills.slice(idx, (idx) + 1).find(() => true);
+const skill = filteredSkills.slice(idx, idx + 1).find(() => true);
 if (!skill) return;
 closeMenu();
+hasInlineTrigger = charsToStrip > 0;
+triggerTextLength = charsToStrip;
 const payload = fullBundle ? skill.fullContent : skill.smartContent;
 injectContent(payload, skill.id + '.md', 'Skill "' + skill.name + '" ajoute');
+hasInlineTrigger = false;
+triggerTextLength = 0;
 return;
 }
 if (mode === 'files') {
-const file = repoFiles.slice(idx, (idx) + 1).find(() => true);
+const file = repoFiles.slice(idx, idx + 1).find(() => true);
 if (!file) return;
 closeMenu();
 chrome.runtime.sendMessage({ type: 'FETCH_FILE_CONTENT', relPath: file.relPath }, (res) => {
@@ -348,49 +441,54 @@ return;
 const wrapped = '### Fichier : ' + BT1 + file.relPath + BT1 + '\n\n' + BT3 + '\n' + res.data.content + '\n' + BT3;
 const target = activeInput || findVisibleInput();
 if (target) {
-if (target.tagName === 'TEXTAREA') stripTriggerToken(target as HTMLTextAreaElement);
+if (charsToStrip > 0) removeTriggerChars(target, charsToStrip);
 uploadAsTextFile(wrapped, target, showToast, file.name + '.txt');
 }
 });
 }
 }
-document.addEventListener('input', (e: Event) => {
-    const target = e.target as HTMLElement | null;
-    if (!target || target.tagName !== 'TEXTAREA') return;
-    const ta = target as HTMLTextAreaElement;
-    activeInput = ta;
-
-    const cursor = ta.selectionStart ?? ta.value.length;
-    const textBeforeCursor = ta.value.slice(0, cursor);
-    const lastSlash = textBeforeCursor.lastIndexOf('/');
-    const lastAt = textBeforeCursor.lastIndexOf('@');
-    const triggerPos = Math.max(lastSlash, lastAt);
-    let match: { symbol: string; query: string; start: number } | null = null;
-
-    if (triggerPos !== -1) {
-      const prevChar = triggerPos === 0 ? ' ' : textBeforeCursor.charAt(triggerPos - 1);
-      const afterTrigger = textBeforeCursor.slice(triggerPos + 1);
-      if (/\s/.test(prevChar) && !/\s/.test(afterTrigger)) {
-        match = { symbol: textBeforeCursor.charAt(triggerPos), query: afterTrigger, start: triggerPos };
-      }
-    }
-
-    if (match) {
-      const targetMode: MenuMode = match.symbol === '/' ? 'skills' : 'files';
-      if (!isOpen || mode !== targetMode) {
-        openMenu(targetMode, match.query, { start: match.start, end: cursor });
-      } else {
-        triggerRange = { start: match.start, end: cursor };
-        filterInput.value = match.query;
-        applyFilter(match.query);
-        positionElements();
-      }
-    } else if (isOpen && triggerRange) {
-      closeMenu();
-    }
-  }, true);
-
-  document.addEventListener('keydown', (e: KeyboardEvent) => {
+const handleEditableInput = (e: Event) => {
+const editable = resolveEditable(e.target);
+if (!editable) return;
+activeInput = editable;
+const textBeforeCursor = getTextBeforeCursor(editable);
+const lastSlash = textBeforeCursor.lastIndexOf('/');
+const lastAt = textBeforeCursor.lastIndexOf('@');
+const triggerPos = Math.max(lastSlash, lastAt);
+let match: { symbol: string; query: string; len: number } | null = null;
+if (triggerPos !== -1) {
+const prevChar = triggerPos === 0 ? ' ' : textBeforeCursor.charAt(triggerPos - 1);
+const afterTrigger = textBeforeCursor.slice(triggerPos + 1);
+if (/\s/.test(prevChar) && !/\s/.test(afterTrigger)) {
+match = {
+symbol: textBeforeCursor.charAt(triggerPos),
+query: afterTrigger,
+len: afterTrigger.length + 1
+};
+}
+}
+if (match) {
+const targetMode: MenuMode = match.symbol === '/' ? 'skills' : 'files';
+if (!isOpen || mode !== targetMode) {
+openMenu(targetMode, match.query, match.len);
+} else {
+hasInlineTrigger = true;
+triggerTextLength = match.len;
+filterInput.value = match.query;
+applyFilter(match.query);
+positionElements();
+}
+} else if (isOpen && hasInlineTrigger) {
+closeMenu();
+}
+};
+document.addEventListener('input', handleEditableInput, true);
+document.addEventListener('keyup', (e: KeyboardEvent) => {
+if (e.key === '/' || e.key === '@' || e.key === 'Backspace') {
+handleEditableInput(e);
+}
+}, true);
+document.addEventListener('keydown', (e: KeyboardEvent) => {
 if (!isOpen) return;
 const len = mode === 'refs' ? filteredRefs.length : mode === 'skills' ? filteredSkills.length : repoFiles.length;
 if (e.key === 'Escape') {
@@ -412,7 +510,7 @@ e.stopPropagation();
 selectedIndex = (selectedIndex - 1 + len) % Math.max(1, len);
 renderList();
 } else if (e.key === 'ArrowRight' && mode === 'skills' && document.activeElement !== activeInput) {
-const s = filteredSkills.slice(selectedIndex, (selectedIndex) + 1).find(() => true);
+const s = filteredSkills.slice(selectedIndex, selectedIndex + 1).find(() => true);
 if (s && s.refs.length > 0) {
 e.preventDefault();
 activeSkill = s;
@@ -428,7 +526,7 @@ selectCurrentItem(selectedIndex, e.metaKey || e.ctrlKey);
 }, true);
 triggerPill.addEventListener('click', () => {
 if (isOpen) closeMenu();
-else openMenu('skills', '', null);
+else openMenu('skills', '', 0);
 });
 tabSkills.addEventListener('click', () => switchMode('skills', filterInput.value));
 tabFiles.addEventListener('click', () => switchMode('files', filterInput.value));
@@ -440,7 +538,7 @@ filterInput.addEventListener('input', () => applyFilter(filterInput.value));
 document.addEventListener('mousedown', (e) => {
 if (!isOpen) return;
 const path = e.composedPath();
-if (!path.includes(popover) && !path.includes(triggerPill) && e.target !== activeInput) {
+if (!path.includes(popover) && !path.includes(triggerPill) && !resolveEditable(e.target)) {
 closeMenu();
 }
 });
