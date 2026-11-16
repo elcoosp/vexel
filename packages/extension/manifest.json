@@ -7,19 +7,11 @@
     "service_worker": "background.js",
     "type": "module"
   },
-  "host_permissions": [
-    "http://127.0.0.1:49152/*"
-  ],
+  "host_permissions": ["http://127.0.0.1:49152/*"],
   "content_scripts": [
     {
-      "matches": [
-        "https://www.google.com/*",
-        "https://www.google.fr/*",
-        "https://google.com/*"
-      ],
-      "js": [
-        "content.js"
-      ],
+      "matches": ["https://www.google.com/*", "https://www.google.fr/*", "https://google.com/*"],
+      "js": ["content.js"],
       "run_at": "document_idle"
     }
   ]

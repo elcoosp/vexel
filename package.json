@@ -1,10 +1,18 @@
 {
   "name": "vexel",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "scripts": {
     "build": "pnpm -r build",
     "dev:bridge": "pnpm --filter @vexel/bridge dev",
-    "dev:ext": "pnpm --filter @vexel/extension dev"
+    "dev:ext": "pnpm --filter @vexel/extension dev",
+    "lint": "oxlint --deny-warnings",
+    "lint:fix": "oxlint --fix",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check"
+  },
+  "devDependencies": {
+    "oxfmt": "^0.78.0",
+    "oxlint": "^1.93.0"
   }
 }

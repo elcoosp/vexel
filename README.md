@@ -62,4 +62,3 @@ pnpm dev:bridge
 
 - Paste any log or source file over `8,000` characters to watch it convert into an attached `.txt` file.
 - Press `Cmd+K` (`Ctrl+K` on Linux/Windows) to search and inject skills from `~/.agents/skills/`.
-
