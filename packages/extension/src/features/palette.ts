@@ -19,6 +19,16 @@ interface SkillItem {
   fullLength: number;
   refCount: number;
   refs: RefFile[];
+  sourceRepo?: string;
+  installs?: string | number;
+}
+
+interface RemoteSkill {
+  id: string;
+  name: string;
+  repo: string;
+  installs?: string | number;
+  description?: string;
 }
 
 interface BrowseEntry {
@@ -81,6 +91,9 @@ const POPOVER_CSS = [
   '.badge { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 10.5px; padding: 2px 7px; border-radius: 999px; background: #f1f3f4; color: #5f6368; flex-shrink: 0; transition: background-color 0.14s ease, color 0.14s ease; }',
   '.item.active .badge { background: #e8f0fe; color: #1967d2; }',
   '.badge.dir { font-family: inherit; font-weight: 500; color: #1967d2; background: #e8f0fe; }',
+  '.badge.install { font-family: inherit; font-weight: 600; color: #ffffff; background: #1a73e8; border: none; cursor: pointer; padding: 3px 9px; }',
+  '.badge.install:hover { background: #1557b0; }',
+  '.section-label { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #80868b; padding: 8px 12px 2px 12px; }',
   '.footer { display: flex; justify-content: space-between; align-items: center; padding: 7px 16px; border-top: 1px solid #f1f3f4; background: #fafbfc; font-size: 11px; color: #5f6368; }',
   '.empty { padding: 24px 16px; text-align: center; color: #5f6368; font-size: 12.5px; }',
 ].join('\n');
@@ -93,6 +106,8 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
   let activeInput: HTMLElement | null = null;
   let skills: SkillItem[] = [];
   let filteredSkills: SkillItem[] = [];
+  let remoteSkills: RemoteSkill[] = [];
+  let remoteTimer: number | undefined;
   let activeSkill: SkillItem | null = null;
   let filteredRefs: RefFile[] = [];
   let currentDir = '';
@@ -469,6 +484,7 @@ if (skills.length === 0) fetchSkills();
 else applyFilter(initialQuery);
 } else if (mode === 'files') {
 filterInput.placeholder = 'Filtrer ce dossier ou rechercher un fichier...';
+setEmptyMessage('Chargement des fichiers...');
 browseDir(currentDir, initialQuery);
 }
 window.requestAnimationFrame(positionPopover);
@@ -529,6 +545,21 @@ filteredSkills = q
 : skills;
 selectedIndex = 0;
 renderList();
+if (remoteTimer) window.clearTimeout(remoteTimer);
+if (q.length >= 2) {
+remoteTimer = window.setTimeout(() => {
+chrome.runtime.sendMessage({ type: 'SEARCH_REMOTE_SKILLS', query: q }, (res) => {
+if (!res?.ok) return;
+const localNames = new Set(skills.map((x) => x.name.toLowerCase()));
+remoteSkills = (res.data?.skills || []).filter(
+(r: RemoteSkill) => r.repo && !localNames.has(r.name.toLowerCase())
+);
+if (mode === 'skills') renderList();
+});
+}, 220);
+} else {
+remoteSkills = [];
+}
 return;
 }
 if (mode === 'files') {
@@ -593,16 +624,36 @@ frag.appendChild(row);
 }
 }
 } else if (mode === 'skills') {
-statusText.textContent = filteredSkills.length + ' skill(s)';
-if (filteredSkills.length === 0) {
+statusText.textContent = filteredSkills.length + ' local(aux)' + (remoteSkills.length ? ' • ' + remoteSkills.length + ' sur skills.sh' : '');
+if (filteredSkills.length === 0 && remoteSkills.length === 0) {
 setEmptyMessage('Aucun skill correspondant.');
 return;
 }
+let rowIdx = 0;
 for (let i = 0; i < filteredSkills.length; i++) {
 const s = filteredSkills.slice(i, i + 1).find(() => true);
 if (s) {
-const badge = (s.refCount > 0 ? s.refCount + ' refs • ' : '') + formatChars(s.smartLength);
-const row = createRow(i, createLucideIcon('sparkles', 13, '#1a73e8'), s.name, badge, false, s.description);
+const metaParts: string[] = [];
+if (s.sourceRepo) metaParts.push(s.sourceRepo);
+if (s.refCount > 0) metaParts.push(s.refCount + ' refs');
+metaParts.push(formatChars(s.smartLength));
+const row = createRow(rowIdx++, createLucideIcon('sparkles', 13, '#1a73e8'), s.name, metaParts.join(' • '), false, s.description);
+rowElements.push(row);
+frag.appendChild(row);
+}
+}
+if (remoteSkills.length > 0) {
+const sec = document.createElement('div');
+sec.className = 'section-label';
+sec.textContent = 'Disponible sur skills.sh (npx skills add)';
+frag.appendChild(sec);
+for (let i = 0; i < remoteSkills.length; i++) {
+const r = remoteSkills.slice(i, i + 1).find(() => true);
+if (!r) continue;
+const sub = [r.repo, r.installs ? r.installs + ' installs' : '', r.description].filter(Boolean).join(' • ');
+const row = createRow(rowIdx++, createLucideIcon('download', 13, '#1a73e8'), r.name, 'Installer', true, sub);
+const badgeEl = row.querySelector('.badge');
+if (badgeEl) badgeEl.className = 'badge install';
 rowElements.push(row);
 frag.appendChild(row);
 }
@@ -718,6 +769,21 @@ triggerTextLength = 0;
 return;
 }
 if (mode === 'skills') {
+if (idx >= filteredSkills.length) {
+const remote = remoteSkills[idx - filteredSkills.length];
+if (!remote) return;
+showToast('Installation de ' + remote.name + ' (' + remote.repo + ')...');
+chrome.runtime.sendMessage({ type: 'INSTALL_REMOTE_SKILL', repo: remote.repo, name: remote.name }, (res) => {
+if (!res?.ok) {
+showToast('Echec installation npx: ' + (res?.error || 'erreur'));
+return;
+}
+showToast('Skill "' + remote.name + '" installe !');
+remoteSkills = remoteSkills.filter((x) => x.name !== remote.name);
+fetchSkills();
+});
+return;
+}
 const skill = filteredSkills.slice(idx, idx + 1).find(() => true);
 if (!skill) return;
 closeMenu();

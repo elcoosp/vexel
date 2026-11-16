@@ -1,3 +1,5 @@
+import { searchRemoteSkills, enrichLocalSkill, installRemoteSkill } from './skills-registry.mjs'
+import { searchRemoteSkills, enrichLocalSkill, installRemoteSkill } from './skills-registry.mjs'
 import http from 'node:http'
 import fs from 'node:fs/promises'
 import path from 'node:path'
@@ -205,7 +207,8 @@ async function searchEntries(absDir, query, depth = 0, out = []) {
 
 const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   res.setHeader('Content-Type', 'application/json; charset=utf-8')
 
   if (req.method === 'OPTIONS') {
@@ -271,13 +274,51 @@ const server = http.createServer(async (req, res) => {
         })
       }
 
-      skills.sort((a, b) => a.name.localeCompare(b.name))
+      const enriched = await Promise.all(skills.map(enrichLocalSkill))
+      enriched.sort((a, b) => a.name.localeCompare(b.name))
+      skills.splice(0, skills.length, ...enriched)
       res.writeHead(200)
       res.end(JSON.stringify({ skillsDir: SKILLS_DIR, count: skills.length, skills }))
     } catch (err) {
       res.writeHead(500)
       res.end(JSON.stringify({ error: String(err), skillsDir: SKILLS_DIR }))
     }
+    return
+  }
+
+
+  if (parsedUrl.pathname === "/skills/search") {
+    const q = parsedUrl.searchParams.get("q") || ""
+    const remote = await searchRemoteSkills(q).catch(() => [])
+    res.writeHead(200)
+    res.end(JSON.stringify({ skills: remote }))
+    return
+  }
+  if (parsedUrl.pathname === "/skills/install" && req.method === "POST") {
+    let body = ""
+    for await (const chunk of req) body += chunk
+    const { repo, name } = JSON.parse(body || "{}")
+    const result = await installRemoteSkill(repo, name)
+    res.writeHead(200)
+    res.end(JSON.stringify(result))
+    return
+  }
+
+
+  if (parsedUrl.pathname === "/skills/search") {
+    const q = parsedUrl.searchParams.get("q") || ""
+    const remote = await searchRemoteSkills(q).catch(() => [])
+    res.writeHead(200)
+    res.end(JSON.stringify({ skills: remote }))
+    return
+  }
+  if (parsedUrl.pathname === "/skills/install" && req.method === "POST") {
+    let body = ""
+    for await (const chunk of req) body += chunk
+    const { repo, name } = JSON.parse(body || "{}")
+    const result = await installRemoteSkill(repo, name)
+    res.writeHead(200)
+    res.end(JSON.stringify(result))
     return
   }
 

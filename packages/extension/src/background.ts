@@ -23,6 +23,32 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     fetchBridgeEndpoint('/skills').then(sendResponse)
     return true
   }
+  if (message.type === "SEARCH_REMOTE_SKILLS") {
+    fetchBridgeEndpoint("/skills/search?q=" + encodeURIComponent(message.query || "")).then(sendResponse)
+    return true
+  }
+  if (message.type === "INSTALL_REMOTE_SKILL") {
+    fetch("http://127.0.0", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ repo: message.repo, name: message.name }),
+    }).then((r) => r.json()).then((data) => sendResponse({ ok: true, data })).catch((e) => sendResponse({ ok: false, error: String(e) }))
+    return true
+  }
+
+  if (message.type === "SEARCH_REMOTE_SKILLS") {
+    fetchBridgeEndpoint("/skills/search?q=" + encodeURIComponent(message.query || "")).then(sendResponse)
+    return true
+  }
+  if (message.type === "INSTALL_REMOTE_SKILL") {
+    fetch("http://127.0.0", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ repo: message.repo, name: message.name }),
+    }).then((r) => r.json()).then((data) => sendResponse({ ok: true, data })).catch((e) => sendResponse({ ok: false, error: String(e) }))
+    return true
+  }
+
   if (message.type === 'BROWSE_DIR') {
     const dir = encodeURIComponent(message.dir || '')
     const q = encodeURIComponent(message.query || '')
