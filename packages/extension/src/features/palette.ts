@@ -1,4 +1,4 @@
-import { createLucideIcon } from './icons'
+import { createLucideIcon, createFileOrFolderIcon } from './icons'
 import { MAX_SAFE_LENGTH, uploadAsTextFile } from './untruncate'
 import { exportConversationMarkdown } from './thread-tools'
 interface RefFile {
@@ -29,39 +29,38 @@ function formatChars(len: number): string {
   return len >= 1000 ? (len / 1000).toFixed(1) + 'k car.' : len + ' car.'
 }
 const MENU_CSS = [
-  ':host { all: initial; color-scheme: dark; }',
-  '.trigger-pill { position: fixed; z-index: 2147483645; display: none; align-items: center; gap: 6px; background: rgba(24, 24, 27, 0.92); color: #e4e4e7; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 999px; padding: 4px 10px; font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif; font-size: 11.5px; font-weight: 500; cursor: pointer; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); backdrop-filter: blur(6px); transition: background 0.15s ease, border-color 0.15s ease; }',
-  '.trigger-pill:hover { background: rgba(39, 39, 42, 0.98); border-color: rgba(96, 165, 250, 0.5); color: #ffffff; }',
-  '.trigger-pill kbd { font-family: ui-monospace, monospace; font-size: 10px; background: rgba(255, 255, 255, 0.08); padding: 1px 4px; border-radius: 4px; color: #a1a1aa; }',
-  '.popover { position: fixed; width: 540px; max-width: 92vw; background: rgba(20, 20, 23, 0.98); border: 1px solid rgba(255, 255, 255, 0.13); border-radius: 12px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75); z-index: 2147483646; display: none; flex-direction: column; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif; color: #f4f4f5; }',
+  ':host { all: initial; color-scheme: light; }',
+  '.trigger-pill { position: fixed; z-index: 2147483645; display: none; align-items: center; gap: 5px; background: #ffffff; color: #3c4043; border: 1px solid #dadce0; border-radius: 999px; padding: 3px 9px; font-family: "Google Sans", -apple-system, BlinkMacSystemFont, "Inter", sans-serif; font-size: 11.5px; font-weight: 500; cursor: pointer; box-shadow: 0 1px 3px rgba(60, 64, 67, 0.14); transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease; }',
+  '.trigger-pill:hover { background: #f1f3f4; border-color: #c6dafc; color: #1a73e8; }',
+  '.trigger-pill kbd { font-family: ui-monospace, monospace; font-size: 10px; background: #f1f3f4; border: 1px solid #e0e0e0; padding: 0px 4px; border-radius: 4px; color: #5f6368; }',
+  '.popover { position: fixed; width: 540px; max-width: 92vw; background: #ffffff; border: 1px solid #dadce0; border-radius: 16px; box-shadow: 0 12px 32px rgba(60, 64, 67, 0.22), 0 2px 6px rgba(60, 64, 67, 0.12); z-index: 2147483646; display: none; flex-direction: column; overflow: hidden; font-family: "Google Sans", -apple-system, BlinkMacSystemFont, "Inter", sans-serif; color: #1f1f1f; }',
   '.popover.open { display: flex; }',
-  '.top-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.02); gap: 8px; }',
+  '.top-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid #e8eaed; background: #f8f9fa; gap: 8px; }',
   '.tabs { display: flex; align-items: center; gap: 6px; }',
-  '.tab { font-size: 11.5px; font-weight: 500; padding: 3px 8px; border-radius: 6px; cursor: pointer; color: #a1a1aa; background: transparent; border: 1px solid transparent; }',
-  '.tab.active { color: #ffffff; background: rgba(59, 130, 246, 0.18); border-color: rgba(59, 130, 246, 0.35); }',
-  '.export-btn { font-size: 11px; font-weight: 500; color: #d4d4d8; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; padding: 3px 8px; cursor: pointer; }',
-  '.export-btn:hover { background: rgba(255, 255, 255, 0.12); color: #ffffff; }',
-  '.breadcrumbs { display: none; align-items: center; flex-wrap: wrap; gap: 4px; padding: 6px 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); background: rgba(255, 255, 255, 0.015); font-size: 11.5px; color: #a1a1aa; }',
+  '.tab { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 999px; cursor: pointer; color: #5f6368; background: transparent; border: 1px solid transparent; }',
+  '.tab:hover { background: #f1f3f4; color: #1f1f1f; }',
+  '.tab.active { color: #1a73e8; background: #e8f0fe; border-color: #d2e3fc; }',
+  '.export-btn { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 500; color: #3c4043; background: #ffffff; border: 1px solid #dadce0; border-radius: 999px; padding: 4px 10px; cursor: pointer; }',
+  '.export-btn:hover { background: #f1f3f4; color: #1a73e8; border-color: #c6dafc; }',
+  '.breadcrumbs { display: none; align-items: center; flex-wrap: wrap; gap: 4px; padding: 6px 12px; border-bottom: 1px solid #e8eaed; background: #f8f9fa; font-size: 11.5px; color: #5f6368; }',
   '.breadcrumbs.visible { display: flex; }',
-  '.crumb { cursor: pointer; padding: 2px 5px; border-radius: 4px; color: #d4d4d8; }',
-  '.crumb:hover { background: rgba(255, 255, 255, 0.09); color: #ffffff; }',
-  '.crumb-sep { color: #52525b; }',
-  '.filter-box { padding: 8px 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); display: flex; align-items: center; gap: 8px; }',
-  '.filter-box input { flex: 1; background: transparent; border: none; outline: none; color: #fafafa; font-size: 13px; }',
-  '.list { max-height: 290px; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 2px; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.18) transparent; }',
+  '.crumb { cursor: pointer; padding: 2px 6px; border-radius: 6px; color: #1a73e8; font-weight: 500; }',
+  '.crumb:hover { background: #e8f0fe; }',
+  '.crumb-sep { color: #9aa0a6; }',
+  '.filter-box { padding: 9px 14px; border-bottom: 1px solid #e8eaed; display: flex; align-items: center; gap: 8px; background: #ffffff; }',
+  '.filter-box input { flex: 1; background: transparent; border: none; outline: none; color: #1f1f1f; font-size: 13.5px; }',
+  '.list { max-height: 290px; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 2px; scrollbar-width: thin; scrollbar-color: #dadce0 transparent; }',
   '.list::-webkit-scrollbar { width: 6px; height: 6px; }',
-  '.list::-webkit-scrollbar-track { background: transparent; }',
-  '.list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.16); border-radius: 999px; }',
-  '.list::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.28); }',
-  '.item { padding: 8px 10px; border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; border: 1px solid transparent; }',
-  '.item.active { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.1); }',
+  '.list::-webkit-scrollbar-thumb { background: #dadce0; border-radius: 999px; }',
+  '.item { padding: 8px 10px; border-radius: 10px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; border: 1px solid transparent; }',
+  '.item.active { background: #e8f0fe; border-color: #d2e3fc; }',
   '.item-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }',
-  '.item-title { font-size: 13px; font-weight: 500; color: #f4f4f5; }',
-  '.item-sub { font-size: 11.5px; color: #71717a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
-  '.badge { font-size: 10.5px; padding: 2px 6px; border-radius: 5px; background: rgba(255, 255, 255, 0.06); color: #a1a1aa; flex-shrink: 0; }',
-  '.badge.dir { color: #fcd34d; background: rgba(245, 158, 11, 0.14); }',
-  '.footer { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; border-top: 1px solid rgba(255, 255, 255, 0.08); background: rgba(14, 14, 17, 0.9); font-size: 11px; color: #71717a; }',
-  '.empty { padding: 20px; text-align: center; color: #71717a; font-size: 12.5px; }',
+  '.item-title { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 500; color: #1f1f1f; min-width: 0; }',
+  '.item-sub { font-size: 11.5px; color: #5f6368; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 21px; }',
+  '.badge { font-size: 10.5px; padding: 2px 7px; border-radius: 999px; background: #f1f3f4; color: #5f6368; flex-shrink: 0; font-weight: 500; }',
+  '.badge.dir { color: #1967d2; background: #e8f0fe; }',
+  '.footer { display: flex; justify-content: space-between; align-items: center; padding: 6px 14px; border-top: 1px solid #e8eaed; background: #f8f9fa; font-size: 11px; color: #5f6368; }',
+  '.empty { padding: 22px; text-align: center; color: #5f6368; font-size: 12.5px; }',
 ].join('\n')
 export function initCommandPalette(showToast: (msg: string) => void): void {
   let isOpen = false
@@ -88,7 +87,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
   triggerPill.type = 'button'
   triggerPill.className = 'trigger-pill'
   triggerPill.title = 'Menu Vexel (/ skills, @ fichiers)'
-  triggerPill.append(createLucideIcon('zap', 12), ' Vexel ')
+  triggerPill.append(createLucideIcon('zap', 12, '#1a73e8'), 'Vexel')
   const kbdSlash = document.createElement('kbd')
   kbdSlash.textContent = '/'
   const kbdAt = document.createElement('kbd')
@@ -106,17 +105,17 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
   const tabSkills = document.createElement('button')
   tabSkills.type = 'button'
   tabSkills.className = 'tab active'
-  tabSkills.textContent = '/ Skills'
+  tabSkills.append(createLucideIcon('sparkles', 12), '/ Skills')
   const tabFiles = document.createElement('button')
   tabFiles.type = 'button'
   tabFiles.className = 'tab'
-  tabFiles.textContent = '@ Fichiers'
+  tabFiles.append(createLucideIcon('folder', 12), '@ Fichiers')
   tabs.appendChild(tabSkills)
   tabs.appendChild(tabFiles)
   const btnExport = document.createElement('button')
   btnExport.type = 'button'
   btnExport.className = 'export-btn'
-  btnExport.textContent = 'Exporter .md (⌘⇧E)'
+  btnExport.append(createLucideIcon('download', 12), 'Exporter .md')
   topBar.appendChild(tabs)
   topBar.appendChild(btnExport)
   popover.appendChild(topBar)
@@ -139,7 +138,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
   const statusText = document.createElement('span')
   statusText.textContent = '0 element'
   const hints = document.createElement('span')
-  hints.textContent = '↑↓ naviguer • ↵ ouvrir/inserer • ← dossier parent'
+  hints.textContent = 'Fleches: naviguer | Entree: inserer | Gauche: parent'
   footer.appendChild(statusText)
   footer.appendChild(hints)
   popover.appendChild(footer)
@@ -167,27 +166,48 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
     }
     return null
   }
+  function findInputBox(input: HTMLElement): HTMLElement {
+    let curr: HTMLElement | null = input.parentElement
+    let best: HTMLElement = input
+    let depth = 0
+    while (curr && curr !== document.body && depth < 5) {
+      const r = curr.getBoundingClientRect()
+      if (r.width >= 300 && r.width <= window.innerWidth * 0.92 && r.height >= 40 && r.height <= 420) best = curr
+      curr = curr.parentElement
+      depth++
+    }
+    return best
+  }
+  let observedBox: HTMLElement | null = null
+  const boxResizeObserver = new ResizeObserver(() => schedulePosition())
+  let posRaf = 0
+  function schedulePosition(): void {
+    if (posRaf) return
+    posRaf = window.requestAnimationFrame(() => { posRaf = 0; positionElements() })
+  }
   function positionElements(): void {
     const input = activeInput && document.contains(activeInput) ? activeInput : findVisibleInput()
-    if (!input) {
-      triggerPill.style.display = 'none'
-      return
-    }
+    if (!input) { triggerPill.style.display = 'none'; return }
     activeInput = input
-    const rect = input.getBoundingClientRect()
-    if (rect.width === 0 || rect.height === 0) {
-      triggerPill.style.display = 'none'
-      return
+    const box = findInputBox(input)
+    if (box !== observedBox) {
+      boxResizeObserver.disconnect()
+      boxResizeObserver.observe(box)
+      boxResizeObserver.observe(input)
+      observedBox = box
     }
+    const rect = box.getBoundingClientRect()
+    if (rect.width === 0 || rect.height === 0) { triggerPill.style.display = 'none'; return }
     triggerPill.style.display = 'inline-flex'
-    triggerPill.style.top = Math.max(8, rect.top - 32) + 'px'
-    triggerPill.style.left = Math.max(12, rect.right - 118) + 'px'
+    const pillWidth = triggerPill.offsetWidth || 106
+    const topBelow = rect.bottom + 6
+    const placeBelow = topBelow + 28 <= window.innerHeight - 6
+    triggerPill.style.top = (placeBelow ? topBelow : Math.max(8, rect.top - 30)) + 'px'
+    triggerPill.style.left = Math.max(12, rect.right - pillWidth - 8) + 'px'
     if (isOpen) {
       const popHeight = popover.offsetHeight || 340
       const topPos = rect.top - popHeight - 8
-      popover.style.top =
-        (topPos > 10 ? topPos : Math.min(window.innerHeight - popHeight - 12, rect.bottom + 8)) +
-        'px'
+      popover.style.top = (topPos > 10 ? topPos : Math.min(window.innerHeight - popHeight - 12, rect.bottom + 36)) + 'px'
       popover.style.left = Math.max(12, Math.min(window.innerWidth - 552, rect.left)) + 'px'
     }
   }
@@ -346,20 +366,14 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
       browseDir(currentDir, q)
     }
   }
-  function createRow(
-    index: number,
-    title: string,
-    badgeText: string,
-    isDirBadge: boolean,
-    subText?: string
-  ): HTMLDivElement {
+  function createRow(index: number, iconEl: Element, title: string, badgeText: string, isDirBadge: boolean, subText?: string): HTMLDivElement {
     const item = document.createElement('div')
     item.className = index === selectedIndex ? 'item active' : 'item'
     const row = document.createElement('div')
     row.className = 'item-row'
     const titleEl = document.createElement('span')
     titleEl.className = 'item-title'
-    titleEl.textContent = title
+    titleEl.append(iconEl, title)
     const badge = document.createElement('span')
     badge.className = isDirBadge ? 'badge dir' : 'badge'
     badge.textContent = badgeText
@@ -388,7 +402,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
       }
       for (let i = 0; i < filteredRefs.length; i++) {
         const r = filteredRefs.slice(i, i + 1).find(() => true)
-        if (r) listEl.appendChild(createRow(i, '📄 ' + r.relPath, formatChars(r.length), false))
+        if (r) listEl.appendChild(createRow(i, createFileOrFolderIcon(r.relPath, false, 14), r.relPath, formatChars(r.length), false))
       }
     } else if (mode === 'skills') {
       statusText.textContent = filteredSkills.length + ' skill(s)'
@@ -400,7 +414,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
         const s = filteredSkills.slice(i, i + 1).find(() => true)
         if (s) {
           const badge = (s.refCount > 0 ? s.refCount + ' refs • ' : '') + formatChars(s.smartLength)
-          listEl.appendChild(createRow(i, '✦ ' + s.name, badge, false, s.description))
+          listEl.appendChild(createRow(i, createLucideIcon('sparkles', 13, '#1a73e8'), s.name, badge, false, s.description))
         }
       }
     } else if (mode === 'files') {
@@ -412,10 +426,9 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
       for (let i = 0; i < browseEntries.length; i++) {
         const entry = browseEntries.slice(i, i + 1).find(() => true)
         if (!entry) continue
-        const icon = ''
         const badge = entry.isDir ? 'Dossier' : 'Fichier'
         const showSub = filterInput.value.trim().length > 0 ? entry.relPath : undefined
-        listEl.appendChild(createRow(i, icon + entry.name, badge, entry.isDir, showSub))
+        listEl.appendChild(createRow(i, createFileOrFolderIcon(entry.name, entry.isDir, 14), entry.name, badge, entry.isDir, showSub))
       }
     }
     const active = listEl.querySelector('.item.active')
@@ -681,7 +694,10 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
       closeMenu()
     }
   })
-  window.addEventListener('resize', positionElements, { passive: true })
-  window.addEventListener('scroll', positionElements, { passive: true })
-  document.addEventListener('focusin', positionElements, true)
+  window.addEventListener('resize', schedulePosition, { passive: true })
+  document.addEventListener('scroll', schedulePosition, { capture: true, passive: true })
+  document.addEventListener('focusin', schedulePosition, true)
+  schedulePosition()
+  window.setTimeout(schedulePosition, 600)
+  window.setTimeout(schedulePosition, 1800)
 }
