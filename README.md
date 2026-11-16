@@ -9,6 +9,7 @@
     <a href="https://chrome.com"><img src="https://shields.io" alt="Chrome Manifest V3"/></a>
     <a href="https://nodejs.org"><img src="https://shields.io" alt="Node.js 20+"/></a>
     <a href="https://typescriptlang.org"><img src="https://shields.io" alt="TypeScript"/></a>
+    <a href="LICENSE"><img src="https://shields.io" alt="License"/></a>
   </p>
   <p>
     <a href="#quickstart">Quickstart</a> •
@@ -35,9 +36,9 @@ pnpm build
 ```text
 packages/extension build$ tsc && vite build
 ✓ 7 modules transformed.
-dist/background.js   0.85 kB
-dist/content.js     18.90 kB
-✓ built in 15ms
+dist/background.js   0.52 kB
+dist/content.js     18.93 kB
+✓ built in 16ms
 packages/bridge build$ echo 'Bridge ready (native ESM)'
 Bridge ready (native ESM)
 ```
