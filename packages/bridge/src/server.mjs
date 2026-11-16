@@ -304,23 +304,6 @@ const server = http.createServer(async (req, res) => {
   }
 
 
-  if (parsedUrl.pathname === "/skills/search") {
-    const q = parsedUrl.searchParams.get("q") || ""
-    const remote = await searchRemoteSkills(q).catch(() => [])
-    res.writeHead(200)
-    res.end(JSON.stringify({ skills: remote }))
-    return
-  }
-  if (parsedUrl.pathname === "/skills/install" && req.method === "POST") {
-    let body = ""
-    for await (const chunk of req) body += chunk
-    const { repo, name } = JSON.parse(body || "{}")
-    const result = await installRemoteSkill(repo, name)
-    res.writeHead(200)
-    res.end(JSON.stringify(result))
-    return
-  }
-
   if (parsedUrl.pathname === '/browse') {
     try {
       const dirParam = parsedUrl.searchParams.get('dir') || ''
