@@ -1,11 +1,13 @@
 import { MAX_SAFE_LENGTH, uploadAsTextFile } from './untruncate'
 import { exportConversationMarkdown } from './thread-tools'
 import { createMenuRow, createPaletteDom } from './palette-ui'
+
 interface RefFile {
   relPath: string
   content: string
   length: number
 }
+
 interface SkillItem {
   id: string
   name: string
@@ -17,17 +19,22 @@ interface SkillItem {
   refCount: number
   refs: RefFile[]
 }
+
 interface BrowseEntry {
   name: string
   relPath: string
   isDir: boolean
 }
+
 type MenuMode = 'skills' | 'refs' | 'files'
+
 const BT1 = String.fromCodePoint(96)
 const BT3 = String.fromCodePoint(96, 96, 96)
+
 function formatChars(len: number): string {
   return len >= 1000 ? (len / 1000).toFixed(1) + 'k car.' : len + ' car.'
 }
+
 function resolveEditable(target: EventTarget | null): HTMLElement | null {
   const node = target as HTMLElement | null
   if (!node) return null
@@ -36,6 +43,7 @@ function resolveEditable(target: EventTarget | null): HTMLElement | null {
   if (ce) return ce
   return node.isContentEditable ? node : null
 }
+
 function findVisibleInput(): HTMLElement | null {
   const inputs = document.querySelectorAll('textarea, [contenteditable="true"]')
   for (const el of inputs) {
@@ -43,6 +51,7 @@ function findVisibleInput(): HTMLElement | null {
   }
   return null
 }
+
 function getTextBeforeCursor(editable: HTMLElement): string {
   if (editable.tagName === 'TEXTAREA') {
     const ta = editable as HTMLTextAreaElement
@@ -55,6 +64,7 @@ function getTextBeforeCursor(editable: HTMLElement): string {
   range.setEnd(sel.getRangeAt(0).endContainer, sel.getRangeAt(0).endOffset)
   return range.toString()
 }
+
 function removeTriggerChars(editable: HTMLElement, count: number): void {
   if (count <= 0) return
   if (editable.tagName === 'TEXTAREA') {
@@ -67,6 +77,7 @@ function removeTriggerChars(editable: HTMLElement, count: number): void {
     ta.dispatchEvent(new Event('input', { bubbles: true }))
     return
   }
+
   editable.focus()
   const sel = globalThis.getSelection()
   if (!sel || sel.rangeCount === 0) return
@@ -83,6 +94,7 @@ function removeTriggerChars(editable: HTMLElement, count: number): void {
     editable.dispatchEvent(new Event('input', { bubbles: true }))
   }
 }
+
 export function initCommandPalette(showToast: (msg: string) => void): void {
   const ui = createPaletteDom()
   let isOpen = false
@@ -90,45 +102,70 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
   let triggerTextLength = 0
   let hasInlineTrigger = false
   let activeInput: HTMLElement | null = null
+
   let skills: SkillItem[] = []
   let filteredSkills: SkillItem[] = []
   let activeSkill: SkillItem | null = null
   let filteredRefs: RefFile[] = []
+
   let currentDir = ''
   let rootLabel = '~'
   let browseEntries: BrowseEntry[] = []
   let selectedIndex = 0
   let fileFetchTimer: number | undefined
+
   const setEmptyMessage = (msg: string) => {
     const empty = document.createElement('div')
     empty.className = 'empty'
     empty.textContent = msg
     ui.listEl.replaceChildren(empty)
   }
+
   const positionElements = () => {
     const input = activeInput && document.contains(activeInput) ? activeInput : findVisibleInput()
     if (!input) {
-      ui.triggerPill.style.display = 'none'
+      ui.triggerPill.style.display = 'inline-flex'
+      ui.triggerPill.style.bottom = '18px'
+      ui.triggerPill.style.right = '24px'
+      ui.triggerPill.style.top = 'auto'
+      ui.triggerPill.style.left = 'auto'
+      if (isOpen) {
+        ui.popover.style.bottom = '56px'
+        ui.popover.style.right = '24px'
+        ui.popover.style.top = 'auto'
+        ui.popover.style.left = 'auto'
+      }
       return
     }
     activeInput = input
     const rect = input.getBoundingClientRect()
     if (rect.width === 0 || rect.height === 0) {
-      ui.triggerPill.style.display = 'none'
+      ui.triggerPill.style.display = 'inline-flex'
+      ui.triggerPill.style.bottom = '18px'
+      ui.triggerPill.style.right = '24px'
+      ui.triggerPill.style.top = 'auto'
+      ui.triggerPill.style.left = 'auto'
       return
     }
+
     ui.triggerPill.style.display = 'inline-flex'
+    ui.triggerPill.style.bottom = 'auto'
+    ui.triggerPill.style.right = 'auto'
     ui.triggerPill.style.top = Math.max(8, rect.top - 32) + 'px'
     ui.triggerPill.style.left = Math.max(12, rect.right - 118) + 'px'
+
     if (isOpen) {
       const popHeight = ui.popover.offsetHeight || 340
       const topPos = rect.top - popHeight - 8
       const resolvedTop =
         topPos > 10 ? topPos : Math.min(globalThis.innerHeight - popHeight - 12, rect.bottom + 8)
+      ui.popover.style.bottom = 'auto'
+      ui.popover.style.right = 'auto'
       ui.popover.style.top = resolvedTop + 'px'
       ui.popover.style.left = Math.max(12, Math.min(globalThis.innerWidth - 552, rect.left)) + 'px'
     }
   }
+
   const renderBreadcrumbs = () => {
     if (mode !== 'files') {
       ui.breadcrumbsEl.classList.remove('visible')
@@ -136,6 +173,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
     }
     ui.breadcrumbsEl.classList.add('visible')
     ui.breadcrumbsEl.replaceChildren()
+
     const rootBtn = document.createElement('span')
     rootBtn.className = 'crumb'
     rootBtn.textContent = rootLabel
@@ -144,6 +182,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
       navigateToDir('')
     })
     ui.breadcrumbsEl.append(rootBtn)
+
     if (!currentDir) return
     const parts = currentDir.split('/')
     let acc = ''
@@ -163,16 +202,19 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
       ui.breadcrumbsEl.append(sep, crumb)
     }
   }
+
   const navigateToDir = (dirPath: string) => {
     currentDir = dirPath
     ui.filterInput.value = ''
     browseDir(currentDir, '')
   }
+
   const navigateUp = () => {
     if (!currentDir) return
     const idx = currentDir.lastIndexOf('/')
     navigateToDir(idx === -1 ? '' : currentDir.slice(0, idx))
   }
+
   const fetchSkills = () => {
     setEmptyMessage('Chargement des skills...')
     chrome.runtime.sendMessage({ type: 'FETCH_SKILLS' }, (res) => {
@@ -184,6 +226,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
       applyFilter(ui.filterInput.value)
     })
   }
+
   const browseDir = (dir: string, query: string) => {
     if (fileFetchTimer) globalThis.clearTimeout(fileFetchTimer)
     fileFetchTimer = globalThis.setTimeout(
@@ -196,6 +239,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
           rootLabel = res.data?.rootLabel || '~'
           currentDir = res.data?.dir || ''
           const rawEntries: BrowseEntry[] = res.data?.entries || []
+
           if (!query && currentDir) {
             const idx = currentDir.lastIndexOf('/')
             const parentPath = idx === -1 ? '' : currentDir.slice(0, idx)
@@ -206,6 +250,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
           } else {
             browseEntries = rawEntries
           }
+
           selectedIndex = 0
           renderBreadcrumbs()
           renderList()
@@ -214,6 +259,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
       query ? 90 : 0
     )
   }
+
   const switchMode = (newMode: MenuMode, initialQuery = '') => {
     mode = newMode
     activeSkill = null
@@ -221,6 +267,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
     ui.tabFiles.classList.toggle('active', mode === 'files')
     ui.filterInput.value = initialQuery
     renderBreadcrumbs()
+
     if (mode === 'skills') {
       ui.filterInput.placeholder = 'Filtrer les skills...'
       if (skills.length === 0) fetchSkills()
@@ -230,6 +277,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
       browseDir(currentDir, initialQuery)
     }
   }
+
   const openMenu = (initialMode: MenuMode, initialQuery = '', tokenLen = 0) => {
     hasInlineTrigger = tokenLen > 0
     triggerTextLength = tokenLen
@@ -239,6 +287,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
     positionElements()
     if (!hasInlineTrigger) ui.filterInput.focus()
   }
+
   const closeMenu = () => {
     isOpen = false
     hasInlineTrigger = false
@@ -246,6 +295,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
     activeSkill = null
     ui.popover.classList.remove('open')
   }
+
   const applyFilter = (qRaw: string) => {
     const q = qRaw.toLowerCase().trim()
     if (mode === 'refs' && activeSkill) {
@@ -548,6 +598,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
     }
   })
   globalThis.addEventListener('resize', positionElements, { passive: true })
-  globalThis.addEventListener('scroll', positionElements, { passive: true })
   document.addEventListener('focusin', positionElements, true)
+  positionElements()
+  globalThis.setTimeout(positionElements, 800)
 }
