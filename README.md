@@ -1,10 +1,10 @@
 <div align="center">
   <img src="https://jsdelivr.net" alt="Vexel Logo" width="300"/>
   <p>
-    <strong>A Chrome Manifest V3 extension and local skill bridge that removes input truncation, split code blocks, and UI lag in Google AI Mode</strong><br/>
+    <strong>A Chrome Manifest V3 extension and local skill bridge that eliminates input truncation and UI lag in Google AI Mode</strong><br/>
     Vexel intercepts long clipboard pastes and converts them into file attachments, injects local
     <code>~/.agents/skills</code> playbooks through a <code>Cmd+K</code> palette with progressive disclosure,
-    and reconstructs code blocks broken mid-stream by Google's Markdown parser. It is for developers and
+    and virtualizes off-screen conversation turns to keep long sessions responsive. It is for developers and
     power users running multi-turn coding sessions on <code>google.com</code> and <code>google.fr</code>.
   </p>
   <p>
