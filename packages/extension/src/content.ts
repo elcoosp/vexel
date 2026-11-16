@@ -1,32 +1,52 @@
 import { initUntruncate } from './features/untruncate'
-import { initDomBooster } from './features/dom-booster'
+import { initCodeRepair } from './features/code-repair'
 import { initCommandPalette } from './features/palette'
 import { initThreadTools } from './features/thread-tools'
-function showToast(message: string): void {
-  const toast = document.createElement('div')
-  toast.textContent = `Vexel : ${message}`
-  Object.assign(toast.style, {
-    position: 'fixed',
-    bottom: '24px',
-    right: '24px',
-    backgroundColor: '#18181b',
-    color: '#fafafa',
-    border: '1px solid #27272a',
-    padding: '10px 16px',
-    borderRadius: '8px',
-    fontSize: '13px',
-    fontFamily: 'system-ui, -apple-system, sans-serif',
-    boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
-    zIndex: '2147483647',
-    transition: 'opacity 0.3s ease',
-  })
-  document.body.append(toast)
-  setTimeout(() => {
-    toast.style.opacity = '0'
-    setTimeout(() => toast.remove(), 300)
-  }, 3000)
+import { initDomBooster } from './features/dom-booster'
+
+function createToastManager(): (msg: string) => void {
+  const host = document.createElement('div')
+  host.id = 'vexel-toast-host'
+  const shadow = host.attachShadow({ mode: 'open' })
+
+  const style = document.createElement('style')
+  style.textContent = [
+    ':host { all: initial; }',
+    '.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(16px); z-index: 2147483647; background: rgba(20, 20, 23, 0.96); color: #f4f4f5; border: 1px solid rgba(255, 255, 255, 0.14); padding: 8px 14px; border-radius: 8px; font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif; font-size: 12.5px; font-weight: 500; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); opacity: 0; pointer-events: none; transition: all 0.18s ease; }',
+    '.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }',
+  ].join('\n')
+
+  const toastEl = document.createElement('div')
+  toastEl.className = 'toast'
+  shadow.append(style, toastEl)
+  ;(document.body || document.documentElement).append(host)
+
+  let hideTimer: number | undefined
+  return (msg: string) => {
+    toastEl.textContent = msg
+    toastEl.classList.add('show')
+    if (hideTimer !== undefined) {
+      globalThis.clearTimeout(hideTimer)
+    }
+    hideTimer = globalThis.setTimeout(() => {
+      toastEl.classList.remove('show')
+    }, 2600)
+  }
 }
-initDomBooster()
-initUntruncate(showToast)
-initCommandPalette(showToast)
-initThreadTools(showToast)
+
+function bootstrap(): void {
+  if (document.querySelector('#vexel-toast-host')) return
+  console.log('[Vexel] Initialisation sur', globalThis.location.href)
+  const showToast = createToastManager()
+  initUntruncate(showToast)
+  initCodeRepair(showToast)
+  initCommandPalette(showToast)
+  initThreadTools(showToast)
+  initDomBooster()
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootstrap, { once: true })
+} else {
+  bootstrap()
+}
