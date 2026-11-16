@@ -548,13 +548,15 @@ renderList();
 if (remoteTimer) window.clearTimeout(remoteTimer);
 if (q.length >= 2) {
 remoteTimer = window.setTimeout(() => {
+console.log("[Vexel Palette] Search ->", q);
 chrome.runtime.sendMessage({ type: 'SEARCH_REMOTE_SKILLS', query: q }, (res) => {
+console.log("[Vexel Palette] Search <-", res?.data?.skills?.length, res?.data?.skills?.[0]);
 if (!res?.ok) return;
 const localNames = new Set(skills.map((x) => x.name.toLowerCase()));
 remoteSkills = (res.data?.skills || []).filter(
 (r: RemoteSkill) => r.repo && !localNames.has(r.name.toLowerCase())
 );
-if (mode === 'skills') renderList();
+if (mode === 'skills') { renderList(); window.requestAnimationFrame(positionPopover); }
 });
 }, 220);
 } else {

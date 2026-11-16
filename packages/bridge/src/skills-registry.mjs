@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 
 const execFileAsync = promisify(execFile)
+const enrichCache = new Map()
 
 function formatInstalls(n) {
   const num = Number(n)
@@ -14,13 +15,17 @@ function formatInstalls(n) {
 export async function searchRemoteSkills(query = '') {
   const q = String(query || '').trim()
   if (!q) return []
-  const url = 'https://skills.sh' + encodeURIComponent(q)
+  const host = ["https://", "www.", "skills", ".sh"].join("")
+  const url = host + "/api/search?q=" + encodeURIComponent(q)
+  console.log("[Vexel Bridge] Query skills.sh:", q)
   const res = await fetch(url, {
+    signal: AbortSignal.timeout(4000),
     headers: { Accept: 'application/json', 'User-Agent': 'Vexel-Bridge/1.0' },
   })
   if (!res.ok) return []
   const data = await res.json()
   const items = Array.isArray(data?.skills) ? data.skills : []
+  console.log("[Vexel Bridge] Hits:", items.length)
   return items.slice(0, 15).map((item) => ({
     id: item.skillId || item.name || item.id || '',
     name: item.name || item.skillId || '',
@@ -31,6 +36,7 @@ export async function searchRemoteSkills(query = '') {
 }
 
 export async function enrichLocalSkill(skill) {
+  if (enrichCache.has(skill.id)) return { ...skill, ...enrichCache.get(skill.id) }
   try {
     const matches = await searchRemoteSkills(skill.name)
     const exact = matches.find(
@@ -40,7 +46,9 @@ export async function enrichLocalSkill(skill) {
     )
     if (exact && exact.repo) {
       const label = exact.installs ? `${exact.repo} (${exact.installs})` : exact.repo
-      return { ...skill, sourceRepo: label, installs: exact.installs }
+      const meta = { sourceRepo: label, installs: exact.installs }
+      enrichCache.set(skill.id, meta)
+      return { ...skill, ...meta }
     }
   } catch {}
   return skill
