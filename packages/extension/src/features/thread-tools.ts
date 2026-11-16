@@ -1,3 +1,4 @@
+import { animate } from 'motion';
 interface ThreadTurn {
   index: number;
   element: HTMLElement;
@@ -112,13 +113,17 @@ export function exportConversationMarkdown(showToast: (msg: string) => void): vo
 }
 
 const TOC_CSS = [
-  ':host { all: initial; }',
-  '.rail { position: fixed; right: 14px; top: 50%; transform: translateY(-50%); z-index: 2147483640; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; padding: 8px 4px; font-family: "Google Sans", -apple-system, BlinkMacSystemFont, "Inter", sans-serif; }',
-  '.tick-wrap { position: relative; display: flex; align-items: center; justify-content: flex-end; cursor: pointer; padding: 3px 4px; }',
-  '.tick { width: 14px; height: 3px; border-radius: 999px; background: #dadce0; transition: all 0.15s ease; }',
-  '.tick-wrap:hover .tick { width: 24px; background: #1a73e8; }',
-  '.tooltip { position: absolute; right: 30px; background: #ffffff; color: #1f1f1f; border: 1px solid #dadce0; padding: 6px 10px; border-radius: 10px; font-size: 12px; font-weight: 500; white-space: nowrap; max-width: 280px; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 4px 12px rgba(60, 64, 67, 0.18); opacity: 0; pointer-events: none; transform: translateX(4px); transition: all 0.12s ease; }',
-  '.tick-wrap:hover .tooltip { opacity: 1; transform: translateX(0); }',
+  ':host { all: initial; color-scheme: light; }',
+  '.rail { position: fixed; right: 16px; top: 50%; transform: translateY(-50%); z-index: 2147483640; display: none; flex-direction: column; align-items: flex-end; gap: 3px; padding: 8px 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.88); backdrop-filter: blur(14px); border: 1px solid #e1e3e6; box-shadow: 0 4px 16px rgba(60, 64, 67, 0.1), 0 1px 3px rgba(60, 64, 67, 0.06); font-family: "Google Sans", -apple-system, BlinkMacSystemFont, "Inter", sans-serif; transition: border-color 0.18s ease, box-shadow 0.18s ease; }',
+  '.rail.visible { display: flex; }',
+  '.rail:hover { border-color: #dadce0; box-shadow: 0 8px 24px rgba(60, 64, 67, 0.14); }',
+  '.tick-wrap { position: relative; display: flex; align-items: center; justify-content: flex-end; cursor: pointer; padding: 4px 4px; border-radius: 999px; }',
+  '.tick { width: 12px; height: 3px; border-radius: 999px; background: #dadce0; will-change: width, background-color; transition: background-color 0.15s ease; }',
+  '.tick-wrap.current .tick { width: 18px; background: #1a73e8; }',
+  '.tick-wrap:hover .tick { background: #1a73e8; }',
+  '.tooltip { position: absolute; right: 34px; display: inline-flex; align-items: center; gap: 7px; background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(16px); color: #1f1f1f; border: 1px solid #dadce0; padding: 6px 11px 6px 8px; border-radius: 12px; font-size: 12px; font-weight: 500; white-space: nowrap; max-width: 300px; box-shadow: 0 8px 24px rgba(60, 64, 67, 0.16), 0 1px 3px rgba(60, 64, 67, 0.08); opacity: 0; pointer-events: none; will-change: transform, opacity; }',
+  '.tip-badge { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 10.5px; font-weight: 600; color: #1a73e8; background: #e8f0fe; padding: 1px 6px; border-radius: 999px; flex-shrink: 0; }',
+  '.tip-text { overflow: hidden; text-overflow: ellipsis; }',
 ].join('\n');
 
 export function initThreadTools(showToast: (msg: string) => void): void {
@@ -140,14 +145,68 @@ export function initThreadTools(showToast: (msg: string) => void): void {
   shadow.appendChild(rail);
   document.body.appendChild(host);
 
-  let lastSignature = '';
+    let lastSignature = '';
+  let railWarm = false;
+  let warmResetTimer: number | undefined;
+  let activeTip: HTMLElement | null = null;
+  let hoverDelayTimer: number | undefined;
+  let turnEntries: Array<{ wrap: HTMLDivElement; tick: HTMLDivElement; target: HTMLElement }> = [];
+
+  const updateCurrentTurn = () => {
+    if (turnEntries.length === 0) return;
+    const mid = window.innerHeight * 0.42;
+    let bestIdx = 0;
+    let bestDist = Infinity;
+    for (let i = 0; i < turnEntries.length; i++) {
+      const rect = turnEntries[i].target.getBoundingClientRect();
+      const dist = Math.abs(rect.top - mid);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestIdx = i;
+      }
+    }
+    for (let i = 0; i < turnEntries.length; i++) {
+      const isCurr = i === bestIdx;
+      const wasCurr = turnEntries[i].wrap.classList.contains('current');
+      if (isCurr !== wasCurr) {
+        turnEntries[i].wrap.classList.toggle('current', isCurr);
+        animate(
+          turnEntries[i].tick,
+          { width: isCurr ? 18 : 12 },
+          { type: 'spring', stiffness: 520, damping: 34 }
+        );
+      }
+    }
+  };
+
+  rail.addEventListener('pointerleave', () => {
+    if (hoverDelayTimer) window.clearTimeout(hoverDelayTimer);
+    if (activeTip) {
+      const closing = activeTip;
+      activeTip = null;
+      animate(closing, { opacity: 0, x: 4, scale: 0.97 }, { duration: 0.12 });
+    }
+    warmResetTimer = window.setTimeout(() => {
+      railWarm = false;
+    }, 320);
+  });
+
+  rail.addEventListener('pointerenter', () => {
+    if (warmResetTimer) window.clearTimeout(warmResetTimer);
+  });
+
   const refreshToc = () => {
     const userTurns = extractTurns().filter((t) => t.role === 'user');
     const sig = userTurns.map((t) => t.preview).join('|');
     if (sig === lastSignature) return;
     lastSignature = sig;
+    turnEntries = [];
     rail.replaceChildren();
-    if (userTurns.length < 1) return;
+    if (userTurns.length < 1) {
+      rail.classList.remove('visible');
+      return;
+    }
+    rail.classList.add('visible');
 
     const step = userTurns.length > 35 ? Math.ceil(userTurns.length / 35) : 1;
     for (let i = 0; i < userTurns.length; i += step) {
@@ -155,15 +214,51 @@ export function initThreadTools(showToast: (msg: string) => void): void {
       if (!turn) continue;
       const wrap = document.createElement('div');
       wrap.className = 'tick-wrap';
+
       const tip = document.createElement('div');
       tip.className = 'tooltip';
-      tip.textContent = '#' + (i + 1) + ' — ' + turn.preview;
+      const badge = document.createElement('span');
+      badge.className = 'tip-badge';
+      badge.textContent = '#' + (i + 1);
+      const txt = document.createElement('span');
+      txt.className = 'tip-text';
+      txt.textContent = turn.preview;
+      tip.append(badge, txt);
+
       const tick = document.createElement('div');
       tick.className = 'tick';
-      wrap.appendChild(tip);
-      wrap.appendChild(tick);
+      wrap.append(tip, tick);
+
+      const turnRoot = turn.element.closest<HTMLElement>('.CKgc1d') || turn.element;
+      turnEntries.push({ wrap, tick, target: turnRoot });
+
+      const showTip = () => {
+        if (activeTip && activeTip !== tip) {
+          activeTip.style.opacity = '0';
+        }
+        activeTip = tip;
+        railWarm = true;
+        animate(
+          tip,
+          { opacity: 1, x: 0, scale: [0.97, 1] },
+          { type: 'spring', stiffness: 540, damping: 34, mass: 0.7 }
+        );
+      };
+
+      wrap.addEventListener('pointerenter', () => {
+        animate(tick, { width: 24 }, { type: 'spring', stiffness: 560, damping: 32 });
+        if (hoverDelayTimer) window.clearTimeout(hoverDelayTimer);
+        if (railWarm) showTip();
+        else hoverDelayTimer = window.setTimeout(showTip, 160);
+      });
+
+      wrap.addEventListener('pointerleave', () => {
+        const isCurr = wrap.classList.contains('current');
+        animate(tick, { width: isCurr ? 18 : 12 }, { type: 'spring', stiffness: 500, damping: 34 });
+      });
+
       wrap.addEventListener('click', () => {
-        const turnRoot = turn.element.closest<HTMLElement>('.CKgc1d') || turn.element;
+        animate(tick, { scaleX: [0.85, 1.08, 1] }, { duration: 0.24 });
         turnRoot.classList.remove('vexel-virtualized');
         turnRoot.style.contentVisibility = '';
         turnRoot.style.containIntrinsicSize = '';
@@ -171,9 +266,13 @@ export function initThreadTools(showToast: (msg: string) => void): void {
         turnRoot.inert = false;
         turnRoot.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
+
       rail.appendChild(wrap);
     }
+    updateCurrentTurn();
   };
+
+  window.addEventListener('scroll', updateCurrentTurn, { passive: true });
 
   let tocTimer: number | undefined;
   const scheduleToc = () => {
@@ -181,7 +280,7 @@ export function initThreadTools(showToast: (msg: string) => void): void {
     tocTimer = window.setTimeout(() => {
       if ('requestIdleCallback' in window) window.requestIdleCallback(refreshToc, { timeout: 1500 });
       else refreshToc();
-    }, 900);
+    }, 600);
   };
 
   const obs = new MutationObserver((mutations) => {
