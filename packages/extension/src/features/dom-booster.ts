@@ -112,6 +112,7 @@ function virtualizeOldTurns(): void {
       turn.inert = true;
       turn.inert = true;
       turn.inert = true;
+      turn.inert = true;
       newlyVirtualized++;
     }
   }
@@ -123,6 +124,7 @@ function virtualizeOldTurns(): void {
       turn.style.contentVisibility = '';
       turn.style.containIntrinsicSize = '';
       turn.style.contain = '';
+      turn.inert = false;
       turn.inert = false;
       turn.inert = false;
       turn.inert = false;
