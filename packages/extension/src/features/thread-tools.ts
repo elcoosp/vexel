@@ -114,13 +114,14 @@ export function exportConversationMarkdown(showToast: (msg: string) => void): vo
 
 const TOC_CSS = [
   ':host { all: initial; color-scheme: light; }',
-  '.rail { position: fixed; right: 14px; top: 50%; transform: translateY(-50%); z-index: 2147483640; display: none; flex-direction: column; align-items: flex-end; gap: 2px; padding: 8px 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.78); backdrop-filter: blur(14px); border: 1px solid rgba(218, 220, 224, 0.75); box-shadow: 0 2px 10px rgba(60, 64, 67, 0.06); font-family: "Google Sans", -apple-system, BlinkMacSystemFont, "Inter", sans-serif; transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }',
+  '.rail { position: fixed; right: 14px; top: 50%; transform: translateY(-50%); z-index: 2147483640; display: none; flex-direction: column; align-items: flex-end; gap: 2px; padding: 8px 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.78); backdrop-filter: blur(14px); border: 1px solid rgba(218, 220, 224, 0.75); box-shadow: 0 2px 10px rgba(60, 64, 67, 0.06); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif; transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }',
   '.rail.visible { display: flex; }',
   '.rail:hover { background: rgba(255, 255, 255, 0.96); border-color: #dadce0; box-shadow: 0 6px 20px rgba(60, 64, 67, 0.11); }',
   '.tick-wrap { display: flex; align-items: center; justify-content: flex-end; cursor: pointer; padding: 4px 4px; }',
   '.tick { width: 8px; height: 2px; border-radius: 999px; background: #dadce0; will-change: width, background-color; transition: background-color 0.15s ease; }',
   '.tick-wrap.current .tick { width: 14px; background: #1a73e8; }',
   '.tick-wrap:hover .tick { background: #1a73e8; }',
+  '.shared-tip, .shared-tip * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif; }',
   '.shared-tip { position: fixed; right: 44px; top: 0; display: inline-flex; align-items: center; gap: 7px; background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(16px); color: #1f1f1f; border: 1px solid #e1e3e6; padding: 6px 11px 6px 8px; border-radius: 12px; font-size: 12px; font-weight: 500; white-space: nowrap; max-width: 280px; box-shadow: 0 8px 24px rgba(60, 64, 67, 0.14), 0 1px 3px rgba(60, 64, 67, 0.06); opacity: 0; pointer-events: none; will-change: transform, opacity; z-index: 2147483641; }',
   '.tip-badge { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 10px; font-weight: 600; color: #1a73e8; background: #e8f0fe; padding: 1px 6px; border-radius: 999px; flex-shrink: 0; }',
   '.tip-text { overflow: hidden; text-overflow: ellipsis; color: #3c4043; }',
