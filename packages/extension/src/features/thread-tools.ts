@@ -42,29 +42,24 @@ function findConversationContainer(): HTMLElement | null {
   return bestContainer;
 }
 
-function isUserBubble(el: HTMLElement, containerRect: DOMRect): boolean {
-  const rawText = (el.textContent || "").trim();
-  if (!rawText) return false;
-  if (el.querySelector("pre, code, table, ul, ol, h1, h2, h3, .aiModeUiCodeBlock__Container")) {
-    return false;
-  }
-  const rect = el.getBoundingClientRect();
-  if (rect.width > 0 && rect.width < containerRect.width * 0.85) {
-    if (rect.left - containerRect.left > containerRect.width * 0.12) return true;
-  }
-  const inner = el.querySelectorAll("div, p, span");
-  const maxCheck = Math.min(inner.length, 30);
-  for (let i = 0; i < maxCheck; i++) {
-    const node = inner.item(i);
-    if (!node) continue;
-    const nRect = node.getBoundingClientRect();
-    if (nRect.width > 12 && nRect.width < containerRect.width * 0.82) {
-      if (nRect.left - containerRect.left > containerRect.width * 0.14 && (node.textContent || "").trim() === rawText) {
-        return true;
-      }
+function findUserBubbleInBlock(el: HTMLElement, containerRect: DOMRect): HTMLElement | null {
+  const candidates = [el, ...Array.from(el.querySelectorAll<HTMLElement>("div, p, span"))];
+  for (const node of candidates) {
+    const text = (node.innerText || node.textContent || "").trim();
+    if (!text || text.length > 2500) continue;
+    if (/^\d{1,2}:\d{2}$/.test(text)) continue;
+    if (node.querySelector("pre, code, table, ul, ol, h1, h2, h3, .aiModeUiCodeBlock__Container")) continue;
+
+    const r = node.getBoundingClientRect();
+    if (r.width < 12 || r.height < 12) continue;
+
+    const isNarrower = r.width < containerRect.width * 0.78;
+    const isShiftedRight = r.left - containerRect.left > containerRect.width * 0.22;
+    if (isNarrower && isShiftedRight) {
+      return node;
     }
   }
-  return false;
+  return null;
 }
 
 function extractTurns(): ThreadTurn[] {
@@ -73,6 +68,7 @@ function extractTurns(): ThreadTurn[] {
 
   const containerRect = container.getBoundingClientRect();
   const turns: ThreadTurn[] = [];
+  const seenElements = new Set<HTMLElement>();
   const children = Array.from(container.children) as HTMLElement[];
 
   for (let i = 0; i < children.length; i++) {
@@ -80,12 +76,29 @@ function extractTurns(): ThreadTurn[] {
     const rawText = (el.textContent || "").trim();
     if (!rawText) continue;
 
-    const isUser = isUserBubble(el, containerRect);
+    const bubble = findUserBubbleInBlock(el, containerRect);
+    if (bubble) {
+      const bubbleText = (bubble.innerText || bubble.textContent || "")
+        .replace(/\b\d{1,2}:\d{2}\b/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (bubbleText && !seenElements.has(bubble)) {
+        seenElements.add(bubble);
+        turns.push({
+          index: turns.length + 1,
+          element: bubble,
+          role: "user",
+          preview: bubbleText.slice(0, 72)
+        });
+      }
+      continue;
+    }
+
     const cleanPreview = rawText.replace(/\s+/g, " ").slice(0, 72);
     turns.push({
       index: turns.length + 1,
       element: el,
-      role: isUser ? "user" : "assistant",
+      role: "assistant",
       preview: cleanPreview
     });
   }

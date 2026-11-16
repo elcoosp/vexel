@@ -1,3 +1,4 @@
+import { createLucideIcon, type LucideIconName } from './icons';
 import { MAX_SAFE_LENGTH, uploadAsTextFile } from './untruncate';
 import { exportConversationMarkdown } from './thread-tools';
 interface RefFile {
@@ -87,7 +88,7 @@ const triggerPill = document.createElement('button');
 triggerPill.type = 'button';
 triggerPill.className = 'trigger-pill';
 triggerPill.title = 'Menu Vexel (/ skills, @ fichiers)';
-triggerPill.textContent = '⚡ Vexel ';
+triggerPill.append(createLucideIcon('zap', 12), ' Vexel ');
 const kbdSlash = document.createElement('kbd');
 kbdSlash.textContent = '/';
 const kbdAt = document.createElement('kbd');
@@ -105,17 +106,17 @@ tabs.className = 'tabs';
 const tabSkills = document.createElement('button');
 tabSkills.type = 'button';
 tabSkills.className = 'tab active';
-tabSkills.textContent = '/ Skills';
+tabSkills.append(createLucideIcon('sparkles', 12), ' / Skills');
 const tabFiles = document.createElement('button');
 tabFiles.type = 'button';
 tabFiles.className = 'tab';
-tabFiles.textContent = '@ Fichiers';
+tabFiles.append(createLucideIcon('folder', 12), ' @ Fichiers');
 tabs.appendChild(tabSkills);
 tabs.appendChild(tabFiles);
 const btnExport = document.createElement('button');
 btnExport.type = 'button';
 btnExport.className = 'export-btn';
-btnExport.textContent = 'Exporter .md (⌘⇧E)';
+btnExport.append(createLucideIcon('download', 12), ' Exporter .md');
 topBar.appendChild(tabs);
 topBar.appendChild(btnExport);
 popover.appendChild(topBar);
@@ -138,7 +139,7 @@ footer.className = 'footer';
 const statusText = document.createElement('span');
 statusText.textContent = '0 element';
 const hints = document.createElement('span');
-hints.textContent = '↑↓ naviguer • ↵ ouvrir/inserer • ← dossier parent';
+hints.textContent = 'Fleches: naviguer | Entree: ouvrir | Gauche: parent';
 footer.appendChild(statusText);
 footer.appendChild(hints);
 popover.appendChild(footer);
@@ -333,14 +334,14 @@ if (mode === 'files') {
 browseDir(currentDir, q);
 }
 }
-function createRow(index: number, title: string, badgeText: string, isDirBadge: boolean, subText?: string): HTMLDivElement {
+function createRow(index: number, iconName: LucideIconName, title: string, badgeText: string, isDirBadge: boolean, subText?: string): HTMLDivElement {
 const item = document.createElement('div');
 item.className = index === selectedIndex ? 'item active' : 'item';
 const row = document.createElement('div');
 row.className = 'item-row';
 const titleEl = document.createElement('span');
 titleEl.className = 'item-title';
-titleEl.textContent = title;
+titleEl.style.display = "inline-flex"; titleEl.style.alignItems = "center"; titleEl.style.gap = "6px"; titleEl.append(createLucideIcon(iconName, 13), title);
 const badge = document.createElement('span');
 badge.className = isDirBadge ? 'badge dir' : 'badge';
 badge.textContent = badgeText;
@@ -369,7 +370,7 @@ return;
 }
 for (let i = 0; i < filteredRefs.length; i++) {
 const r = filteredRefs.slice(i, i + 1).find(() => true);
-if (r) listEl.appendChild(createRow(i, '📄 ' + r.relPath, formatChars(r.length), false));
+if (r) listEl.appendChild(createRow(i, 'file-text', r.relPath, formatChars(r.length), false));
 }
 } else if (mode === 'skills') {
 statusText.textContent = filteredSkills.length + ' skill(s)';
@@ -381,7 +382,7 @@ for (let i = 0; i < filteredSkills.length; i++) {
 const s = filteredSkills.slice(i, i + 1).find(() => true);
 if (s) {
 const badge = (s.refCount > 0 ? s.refCount + ' refs • ' : '') + formatChars(s.smartLength);
-listEl.appendChild(createRow(i, '✦ ' + s.name, badge, false, s.description));
+listEl.appendChild(createRow(i, 'sparkles', s.name, badge, false, s.description));
 }
 }
 } else if (mode === 'files') {
@@ -393,10 +394,10 @@ return;
 for (let i = 0; i < browseEntries.length; i++) {
 const entry = browseEntries.slice(i, i + 1).find(() => true);
 if (!entry) continue;
-const icon = entry.isDir ? '📁 ' : '📄 ';
 const badge = entry.isDir ? 'Dossier' : 'Fichier';
 const showSub = filterInput.value.trim().length > 0 ? entry.relPath : undefined;
-listEl.appendChild(createRow(i, icon + entry.name, badge, entry.isDir, showSub));
+const iconName: LucideIconName = entry.isDir ? 'folder' : 'file-text';
+        listEl.appendChild(createRow(i, iconName, entry.name, badge, entry.isDir, showSub));
 }
 }
 const active = listEl.querySelector('.item.active');
