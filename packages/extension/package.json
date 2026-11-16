@@ -11,5 +11,8 @@
     "@types/chrome": "^0.3.7",
     "typescript": "^7.0.2",
     "vite": "^8.3.8"
+  },
+  "dependencies": {
+    "motion": "^14.14.0"
   }
 }

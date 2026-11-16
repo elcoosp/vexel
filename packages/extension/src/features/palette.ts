@@ -1,3 +1,4 @@
+import { animate } from 'motion';
 import { createLucideIcon, createFileOrFolderIcon } from './icons';
 import { MAX_SAFE_LENGTH, uploadAsTextFile } from './untruncate';
 import { exportConversationMarkdown } from './thread-tools';
@@ -37,44 +38,48 @@ function formatChars(len: number): string {
 
 const DOCK_CSS = [
   ':host { all: initial; display: inline-flex; align-items: center; vertical-align: middle; margin-left: 6px; color-scheme: light; }',
-  '.dock-btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 11px 0 9px; border-radius: 999px; background: #f8f9fa; color: #3c4043; border: 1px solid #e1e3e6; font-family: "Google Sans", -apple-system, BlinkMacSystemFont, "Inter", sans-serif; font-size: 12px; font-weight: 500; letter-spacing: -0.01em; cursor: pointer; user-select: none; transition: all 0.16s cubic-bezier(0.2, 0, 0, 1); box-shadow: 0 1px 2px rgba(60, 64, 67, 0.05); }',
-  '.dock-btn:hover { background: #f1f3f4; border-color: #c6dafc; color: #1a73e8; box-shadow: 0 1px 4px rgba(26, 115, 232, 0.12); }',
+  '.dock-btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 11px 0 9px; border-radius: 999px; background: #f8f9fa; color: #3c4043; border: 1px solid #e1e3e6; font-family: "Google Sans", -apple-system, BlinkMacSystemFont, "Inter", sans-serif; font-size: 12px; font-weight: 500; letter-spacing: -0.01em; cursor: pointer; user-select: none; will-change: transform; transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease; box-shadow: 0 1px 2px rgba(60, 64, 67, 0.05); }',
+  '.dock-btn:hover { background: #f1f3f4; border-color: #c6dafc; color: #1a73e8; box-shadow: 0 2px 6px rgba(26, 115, 232, 0.12); }',
   '.dock-btn.active { background: #e8f0fe; border-color: #a8c7fa; color: #1967d2; }',
   '.dock-keys { display: inline-flex; align-items: center; gap: 3px; margin-left: 2px; }',
-  '.dock-keys kbd { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 10px; font-weight: 600; line-height: 1; background: #ffffff; border: 1px solid #dadce0; border-bottom-width: 1.5px; padding: 2px 4px; border-radius: 5px; color: #5f6368; }',
+  '.dock-keys kbd { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 10px; font-weight: 600; line-height: 1; background: #ffffff; border: 1px solid #dadce0; border-bottom-width: 1.5px; padding: 2px 4px; border-radius: 5px; color: #5f6368; transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease; }',
   '.dock-btn:hover .dock-keys kbd, .dock-btn.active .dock-keys kbd { border-color: #c6dafc; color: #1a73e8; }',
+  '.dock-keys kbd.lit { background: #1a73e8; color: #ffffff !important; border-color: #1a73e8 !important; }',
 ].join('\n');
 
 const POPOVER_CSS = [
   ':host { all: initial; color-scheme: light; }',
-  '.popover { position: fixed; width: 580px; max-width: calc(100vw - 24px); background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(16px); border: 1px solid #dadce0; border-radius: 24px; box-shadow: 0 16px 40px rgba(60, 64, 67, 0.2), 0 2px 8px rgba(60, 64, 67, 0.08); z-index: 2147483646; display: none; flex-direction: column; overflow: hidden; font-family: "Google Sans", -apple-system, BlinkMacSystemFont, "Inter", sans-serif; color: #1f1f1f; }',
+  '.popover { position: fixed; width: 580px; max-width: calc(100vw - 24px); background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(18px); border: 1px solid #dadce0; border-radius: 24px; box-shadow: 0 18px 44px rgba(60, 64, 67, 0.22), 0 2px 8px rgba(60, 64, 67, 0.08); z-index: 2147483646; display: none; flex-direction: column; overflow: hidden; transform-origin: bottom center; will-change: transform, opacity; font-family: "Google Sans", -apple-system, BlinkMacSystemFont, "Inter", sans-serif; color: #1f1f1f; }',
   '.popover.open { display: flex; }',
   '.header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px 8px 14px; border-bottom: 1px solid #f1f3f4; background: #fafbfc; gap: 8px; flex-wrap: wrap; }',
-  '.tabs { display: inline-flex; align-items: center; background: #f1f3f4; padding: 3px; border-radius: 999px; gap: 2px; }',
-  '.tab { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; padding: 4px 11px; border-radius: 999px; cursor: pointer; color: #5f6368; background: transparent; border: none; transition: all 0.14s ease; }',
+  '.tabs { position: relative; display: inline-flex; align-items: center; background: #f1f3f4; padding: 3px; border-radius: 999px; gap: 2px; }',
+  '.tab-pill { position: absolute; top: 3px; left: 3px; height: calc(100% - 6px); border-radius: 999px; background: #ffffff; box-shadow: 0 1px 3px rgba(60, 64, 67, 0.16); pointer-events: none; will-change: transform, width; z-index: 0; }',
+  '.tab { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; padding: 4px 12px; border-radius: 999px; cursor: pointer; color: #5f6368; background: transparent; border: none; transition: color 0.16s ease; }',
   '.tab:hover { color: #1f1f1f; }',
-  '.tab.active { color: #1a73e8; background: #ffffff; box-shadow: 0 1px 3px rgba(60, 64, 67, 0.14); }',
-  '.export-btn { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 500; color: #5f6368; background: #ffffff; border: 1px solid #e0e0e0; border-radius: 999px; padding: 5px 11px; cursor: pointer; transition: all 0.14s ease; }',
+  '.tab.active { color: #1a73e8; }',
+  '.export-btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 112px; font-size: 11.5px; font-weight: 500; color: #5f6368; background: #ffffff; border: 1px solid #e0e0e0; border-radius: 999px; padding: 5px 11px; cursor: pointer; will-change: transform; transition: background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease; }',
   '.export-btn:hover { background: #f8f9fa; color: #1a73e8; border-color: #c6dafc; }',
+  '.export-btn.done { background: #e6f4ea; color: #137333; border-color: #ceead6; }',
   '.breadcrumbs { display: none; align-items: center; flex-wrap: wrap; gap: 3px; padding: 6px 16px; border-bottom: 1px solid #f1f3f4; background: #ffffff; font-size: 11.5px; color: #5f6368; }',
   '.breadcrumbs.visible { display: flex; }',
-  '.crumb { cursor: pointer; padding: 2px 6px; border-radius: 6px; color: #1a73e8; font-weight: 500; }',
+  '.crumb { cursor: pointer; padding: 2px 6px; border-radius: 6px; color: #1a73e8; font-weight: 500; transition: background-color 0.12s ease; }',
   '.crumb:hover { background: #e8f0fe; }',
   '.crumb-sep { color: #bdc1c6; }',
   '.search-row { padding: 10px 16px; border-bottom: 1px solid #f1f3f4; display: flex; align-items: center; gap: 10px; background: #ffffff; }',
   '.search-row input { flex: 1; background: transparent; border: none; outline: none; color: #1f1f1f; font-family: inherit; font-size: 14px; }',
   '.search-row input::placeholder { color: #80868b; }',
-  '.list { max-height: 280px; overflow-y: auto; padding: 6px 8px; display: flex; flex-direction: column; gap: 2px; scrollbar-width: thin; scrollbar-color: #dadce0 transparent; }',
+  '.list { position: relative; max-height: 280px; overflow-y: auto; padding: 6px 8px; display: flex; flex-direction: column; gap: 2px; scrollbar-width: thin; scrollbar-color: #dadce0 transparent; }',
   '.list::-webkit-scrollbar { width: 5px; }',
   '.list::-webkit-scrollbar-thumb { background: #dadce0; border-radius: 999px; }',
-  '.item { position: relative; padding: 8px 12px; border-radius: 12px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; border: 1px solid transparent; transition: background 0.1s ease; }',
-  '.item:hover { background: #f8f9fa; }',
-  '.item.active { background: #f0f6ff; border-color: #d2e3fc; }',
-  '.item.active::before { content: ""; position: absolute; left: 4px; top: 9px; bottom: 9px; width: 3px; border-radius: 999px; background: #1a73e8; }',
+  '.row-highlight { position: absolute; left: 8px; right: 8px; top: 0; border-radius: 12px; background: #f0f6ff; border: 1px solid #d2e3fc; pointer-events: none; will-change: transform, height; z-index: 0; opacity: 0; }',
+  '.row-highlight::before { content: ""; position: absolute; left: 4px; top: 8px; bottom: 8px; width: 3px; border-radius: 999px; background: #1a73e8; }',
+  '.item { position: relative; z-index: 1; padding: 8px 12px; border-radius: 12px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; border: 1px solid transparent; will-change: transform; }',
   '.item-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }',
   '.item-title { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: #1f1f1f; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
+  '.item.active .item-title { color: #1967d2; }',
   '.item-sub { font-size: 11.5px; color: #5f6368; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 22px; }',
-  '.badge { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 10.5px; padding: 2px 7px; border-radius: 999px; background: #f1f3f4; color: #5f6368; flex-shrink: 0; }',
+  '.badge { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 10.5px; padding: 2px 7px; border-radius: 999px; background: #f1f3f4; color: #5f6368; flex-shrink: 0; transition: background-color 0.14s ease, color 0.14s ease; }',
+  '.item.active .badge { background: #e8f0fe; color: #1967d2; }',
   '.badge.dir { font-family: inherit; font-weight: 500; color: #1967d2; background: #e8f0fe; }',
   '.footer { display: flex; justify-content: space-between; align-items: center; padding: 7px 16px; border-top: 1px solid #f1f3f4; background: #fafbfc; font-size: 11px; color: #5f6368; }',
   '.empty { padding: 24px 16px; text-align: center; color: #5f6368; font-size: 12.5px; }',
@@ -95,6 +100,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
   let browseEntries: BrowseEntry[] = [];
   let selectedIndex = 0;
   let fileFetchTimer: number | undefined;
+  let rowElements: HTMLDivElement[] = [];
 
   // 1. Dock integre directement dans la barre d'outils de l'input Google (.o8Wipc)
   const dockHost = document.createElement('span');
@@ -107,7 +113,8 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
   dockBtn.type = 'button';
   dockBtn.className = 'dock-btn';
   dockBtn.title = 'Vexel — Skills (/) et Fichiers (@)';
-  dockBtn.append(createLucideIcon('zap', 13, '#1a73e8'), document.createTextNode('Vexel'));
+  const zapIcon = createLucideIcon('zap', 13, '#1a73e8');
+  dockBtn.append(zapIcon, document.createTextNode('Vexel'));
 
   const keysWrap = document.createElement('span');
   keysWrap.className = 'dock-keys';
@@ -120,63 +127,72 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
 
   dockShadow.append(dockStyle, dockBtn);
 
+  // Micro-interaction tactile sur le bouton Dock (spring detent style interior.dev)
+  dockBtn.addEventListener('pointerdown', () => {
+    animate(dockBtn, { scale: 0.95 }, { duration: 0.1 });
+  });
+  dockBtn.addEventListener('pointerup', () => {
+    animate(dockBtn, { scale: 1 }, { type: 'spring', stiffness: 600, damping: 28 });
+  });
+  dockBtn.addEventListener('pointerleave', () => {
+    animate(dockBtn, { scale: 1 }, { type: 'spring', stiffness: 500, damping: 30 });
+  });
+
   // 2. Popover flottant ancre au-dessus du conteneur de saisie Google
   const popHost = document.createElement('div');
   popHost.id = 'vexel-inline-menu-host';
   const shadow = popHost.attachShadow({ mode: 'open' });
-  const styleEl = document.createElement('style');
-  styleEl.textContent = POPOVER_CSS;
-  shadow.appendChild(styleEl);
 
-  const popover = document.createElement('div');
-  popover.className = 'popover';
-
-  const header = document.createElement('div');
-  header.className = 'header';
-
-  const tabs = document.createElement('div');
-  tabs.className = 'tabs';
-
-  const tabSkills = document.createElement('button');
-  tabSkills.type = 'button';
-  tabSkills.className = 'tab active';
-  tabSkills.append(createLucideIcon('sparkles', 12), document.createTextNode('Skills'));
-
-  const tabFiles = document.createElement('button');
-  tabFiles.type = 'button';
-  tabFiles.className = 'tab';
-  tabFiles.append(createLucideIcon('folder', 12), document.createTextNode('Fichiers'));
-
-  tabs.append(tabSkills, tabFiles);
-
-  const btnExport = document.createElement('button');
-  btnExport.type = 'button';
-  btnExport.className = 'export-btn';
-  btnExport.append(createLucideIcon('download', 12), document.createTextNode('Exporter .md'));
-
-  header.append(tabs, btnExport);
-  popover.appendChild(header);
-
-  const breadcrumbsEl = document.createElement('div');
-  breadcrumbsEl.className = 'breadcrumbs';
-  popover.appendChild(breadcrumbsEl);
-
-  const searchRow = document.createElement('div');
-  searchRow.className = 'search-row';
-  const filterInput = document.createElement('input');
-  filterInput.type = 'text';
-  filterInput.placeholder = 'Rechercher un skill ou un fichier...';
-  filterInput.autocomplete = 'off';
-  searchRow.appendChild(filterInput);
-  popover.appendChild(searchRow);
-
-  const listEl = document.createElement('div');
-  listEl.className = 'list';
-  popover.appendChild(listEl);
-
-  const footer = document.createElement('div');
-  footer.className = 'footer';
-  const statusText = document.createElement('span');
+const styleEl = document.createElement('style');
+styleEl.textContent = POPOVER_CSS;
+shadow.appendChild(styleEl);
+const popover = document.createElement('div');
+popover.className = 'popover';
+const header = document.createElement('div');
+header.className = 'header';
+const tabs = document.createElement('div');
+tabs.className = 'tabs';
+const tabPill = document.createElement('div');
+tabPill.className = 'tab-pill';
+const tabSkills = document.createElement('button');
+tabSkills.type = 'button';
+tabSkills.className = 'tab active';
+tabSkills.append(createLucideIcon('sparkles', 12), document.createTextNode('Skills'));
+const tabFiles = document.createElement('button');
+tabFiles.type = 'button';
+tabFiles.className = 'tab';
+tabFiles.append(createLucideIcon('folder', 12), document.createTextNode('Fichiers'));
+tabs.append(tabPill, tabSkills, tabFiles);
+const btnExport = document.createElement('button');
+btnExport.type = 'button';
+btnExport.className = 'export-btn';
+const setExportIdle = () => {
+btnExport.classList.remove('done');
+btnExport.replaceChildren(createLucideIcon('download', 12), document.createTextNode('Exporter .md'));
+};
+setExportIdle();
+header.append(tabs, btnExport);
+popover.appendChild(header);
+const breadcrumbsEl = document.createElement('div');
+breadcrumbsEl.className = 'breadcrumbs';
+popover.appendChild(breadcrumbsEl);
+const searchRow = document.createElement('div');
+searchRow.className = 'search-row';
+const filterInput = document.createElement('input');
+filterInput.type = 'text';
+filterInput.placeholder = 'Rechercher un skill ou un fichier...';
+filterInput.autocomplete = 'off';
+searchRow.appendChild(filterInput);
+popover.appendChild(searchRow);
+const listEl = document.createElement('div');
+listEl.className = 'list';
+const rowHighlight = document.createElement('div');
+rowHighlight.className = 'row-highlight';
+listEl.appendChild(rowHighlight);
+popover.appendChild(listEl);
+const footer = document.createElement('div');
+footer.className = 'footer';
+const statusText = document.createElement('span');
 statusText.textContent = '0 element';
 const hints = document.createElement('span');
 hints.textContent = 'Naviguer: fleches | Inserer: Entree | Dossier parent: gauche';
@@ -184,6 +200,50 @@ footer.append(statusText, hints);
 popover.appendChild(footer);
 shadow.appendChild(popover);
 document.body.appendChild(popHost);
+// Segmented Control coulissant ("The selection travels. Nothing jumps.")
+function syncSegmentedPill(instant = false): void {
+const activeTab = mode === 'files' ? tabFiles : tabSkills;
+const x = activeTab.offsetLeft - 3;
+const w = activeTab.offsetWidth;
+if (w === 0) return;
+kSlash.classList.toggle('lit', isOpen && mode !== 'files');
+kAt.classList.toggle('lit', isOpen && mode === 'files');
+if (instant) {
+tabPill.style.width = w + 'px';
+tabPill.style.transform = 'translateX(' + x + 'px)';
+return;
+}
+animate(
+tabPill,
+{ x, width: w },
+{ type: 'spring', stiffness: 520, damping: 36, mass: 0.8 }
+);
+}
+// Curseur glissant sur la ligne active de la liste
+function syncActiveRowHighlight(instant = false): void {
+for (let i = 0; i < rowElements.length; i++) {
+rowElements[i].classList.toggle('active', i === selectedIndex);
+}
+const targetRow = rowElements[selectedIndex];
+if (!targetRow) {
+rowHighlight.style.opacity = '0';
+return;
+}
+rowHighlight.style.opacity = '1';
+const y = targetRow.offsetTop;
+const h = targetRow.offsetHeight;
+if (instant) {
+rowHighlight.style.height = h + 'px';
+rowHighlight.style.transform = 'translateY(' + y + 'px)';
+} else {
+animate(
+rowHighlight,
+{ y, height: h },
+{ type: 'spring', stiffness: 560, damping: 38, mass: 0.7 }
+);
+}
+targetRow.scrollIntoView({ block: 'nearest' });
+}
 function isEditableElement(el: HTMLElement | null): boolean {
 if (!el) return false;
 if (el.tagName === 'TEXTAREA') return true;
@@ -207,11 +267,11 @@ if (el.offsetParent !== null) return el;
 return null;
 }
 function findInputPlate(input: HTMLElement): HTMLElement {
-const plate =
-input.closest<HTMLElement>('[data-xid="aim-mars-input-plate"], .AgWCw') ||
+return (
+input.closest('[data-xid="aim-mars-input-plate"], .AgWCw') ||
 input.parentElement ||
-input;
-return plate;
+input
+);
 }
 let observedPlate: HTMLElement | null = null;
 const plateObserver = new ResizeObserver(() => {
@@ -227,7 +287,6 @@ plateObserver.disconnect();
 plateObserver.observe(plate);
 observedPlate = plate;
 }
-// Insertion native dans la barre d'actions interne de l'input Google (.o8Wipc)
 const toolbarRow = plate.querySelector('.o8Wipc');
 if (toolbarRow) {
 if (dockHost.parentElement !== toolbarRow) {
@@ -240,10 +299,10 @@ toolbarRow.insertBefore(dockHost, chipsContainer);
 } else {
 toolbarRow.appendChild(dockHost);
 }
+animate(dockBtn, { opacity: 1, scale: 1 }, { type: 'spring', stiffness: 460, damping: 32 });
 }
 return;
 }
-// Fallback si Google affiche une barre simplifiee (page d'accueil avant premier message)
 if (dockHost.parentElement !== document.body) {
 document.body.appendChild(dockHost);
 }
@@ -274,10 +333,12 @@ popover.style.top = Math.round(finalTop) + 'px';
 popover.style.left = Math.round(finalLeft) + 'px';
 }
 function setEmptyMessage(msg: string): void {
+rowElements = [];
+rowHighlight.style.opacity = '0';
 const empty = document.createElement('div');
 empty.className = 'empty';
 empty.textContent = msg;
-listEl.replaceChildren(empty);
+listEl.replaceChildren(rowHighlight, empty);
 }
 function renderBreadcrumbs(): void {
 if (mode !== 'files') {
@@ -367,11 +428,12 @@ renderList();
 query ? 90 : 0
 );
 }
-function switchMode(newMode: MenuMode, initialQuery = ''): void {
+function switchMode(newMode: MenuMode, initialQuery = '', instantPill = false): void {
 mode = newMode;
 activeSkill = null;
 tabSkills.classList.toggle('active', mode === 'skills' || mode === 'refs');
 tabFiles.classList.toggle('active', mode === 'files');
+syncSegmentedPill(instantPill);
 filterInput.value = initialQuery;
 renderBreadcrumbs();
 if (mode === 'skills') {
@@ -385,24 +447,42 @@ browseDir(currentDir, initialQuery);
 window.requestAnimationFrame(positionPopover);
 }
 function openMenu(initialMode: MenuMode, initialQuery = '', tokenLen = 0): void {
+const wasClosed = !isOpen;
 hasInlineTrigger = tokenLen > 0;
 triggerTextLength = tokenLen;
 isOpen = true;
 dockBtn.classList.add('active');
-popover.classList.add('open');
-switchMode(initialMode, initialQuery);
+popover.style.opacity = '0'; popover.style.transform = 'translateY(8px) scale(0.975)'; popover.classList.add('open');
+animate(zapIcon, { rotate: [0, -14, 10, 0] }, { duration: 0.32 });
+switchMode(initialMode, initialQuery, wasClosed);
 positionPopover();
+if (wasClosed) {
+animate(
+popover,
+{ opacity: 1, y: 0, scale: 1 },
+{ type: 'spring', stiffness: 520, damping: 35, mass: 0.75 }
+);
+}
 if (!hasInlineTrigger) {
 filterInput.focus();
 }
 }
 function closeMenu(): void {
+if (!isOpen) return;
 isOpen = false;
 hasInlineTrigger = false;
 triggerTextLength = 0;
 activeSkill = null;
 dockBtn.classList.remove('active');
-popover.classList.remove('open');
+kSlash.classList.remove('lit');
+kAt.classList.remove('lit');
+animate(
+popover,
+{ opacity: 0, y: 6, scale: 0.98 },
+{ duration: 0.14, ease: [0.4, 0, 1, 1] }
+).finished.then(() => {
+if (!isOpen) popover.classList.remove('open');
+});
 }
 function applyFilter(qRaw: string): void {
 const q = qRaw.toLowerCase().trim();
@@ -454,14 +534,23 @@ sub.className = 'item-sub';
 sub.textContent = subText;
 item.appendChild(sub);
 }
+item.addEventListener('pointerenter', () => {
+if (selectedIndex !== index) {
+selectedIndex = index;
+syncActiveRowHighlight(false);
+}
+});
 item.addEventListener('mousedown', (e) => {
 e.preventDefault();
+animate(item, { scale: 0.99 }, { duration: 0.08 });
 selectCurrentItem(index, (e as MouseEvent).metaKey || (e as MouseEvent).ctrlKey);
 });
 return item;
 }
 function renderList(): void {
-listEl.replaceChildren();
+rowElements = [];
+const frag = document.createDocumentFragment();
+frag.appendChild(rowHighlight);
 if (mode === 'refs' && activeSkill) {
 statusText.textContent = filteredRefs.length + ' ref(s) — ' + activeSkill.name;
 if (filteredRefs.length === 0) {
@@ -471,9 +560,9 @@ return;
 for (let i = 0; i < filteredRefs.length; i++) {
 const r = filteredRefs.slice(i, i + 1).find(() => true);
 if (r) {
-listEl.appendChild(
-createRow(i, createFileOrFolderIcon(r.relPath, false, 14), r.relPath, formatChars(r.length), false)
-);
+const row = createRow(i, createFileOrFolderIcon(r.relPath, false, 14), r.relPath, formatChars(r.length), false);
+rowElements.push(row);
+frag.appendChild(row);
 }
 }
 } else if (mode === 'skills') {
@@ -486,9 +575,9 @@ for (let i = 0; i < filteredSkills.length; i++) {
 const s = filteredSkills.slice(i, i + 1).find(() => true);
 if (s) {
 const badge = (s.refCount > 0 ? s.refCount + ' refs • ' : '') + formatChars(s.smartLength);
-listEl.appendChild(
-createRow(i, createLucideIcon('sparkles', 13, '#1a73e8'), s.name, badge, false, s.description)
-);
+const row = createRow(i, createLucideIcon('sparkles', 13, '#1a73e8'), s.name, badge, false, s.description);
+rowElements.push(row);
+frag.appendChild(row);
 }
 }
 } else if (mode === 'files') {
@@ -502,14 +591,16 @@ const entry = browseEntries.slice(i, i + 1).find(() => true);
 if (!entry) continue;
 const badge = entry.isDir ? 'Dossier' : 'Fichier';
 const showSub = filterInput.value.trim().length > 0 ? entry.relPath : undefined;
-listEl.appendChild(
-createRow(i, createFileOrFolderIcon(entry.name, entry.isDir, 14), entry.name, badge, entry.isDir, showSub)
-);
+const row = createRow(i, createFileOrFolderIcon(entry.name, entry.isDir, 14), entry.name, badge, entry.isDir, showSub);
+rowElements.push(row);
+frag.appendChild(row);
 }
 }
-const active = listEl.querySelector('.item.active');
-if (active) active.scrollIntoView({ block: 'nearest' });
-window.requestAnimationFrame(positionPopover);
+listEl.replaceChildren(frag);
+window.requestAnimationFrame(() => {
+syncActiveRowHighlight(true);
+positionPopover();
+});
 }
 function getTextBeforeCursor(editable: HTMLElement): string {
 if (editable.tagName === 'TEXTAREA') {
@@ -697,12 +788,12 @@ else closeMenu();
 e.preventDefault();
 e.stopPropagation();
 selectedIndex = (selectedIndex + 1) % Math.max(1, len);
-renderList();
+syncActiveRowHighlight(false);
 } else if (e.key === 'ArrowUp') {
 e.preventDefault();
 e.stopPropagation();
 selectedIndex = (selectedIndex - 1 + len) % Math.max(1, len);
-renderList();
+syncActiveRowHighlight(false);
 } else if (e.key === 'ArrowLeft' && mode === 'files' && filterInput.value === '' && currentDir) {
 e.preventDefault();
 e.stopPropagation();
@@ -739,9 +830,15 @@ else openMenu('skills', '', 0);
 });
 tabSkills.addEventListener('click', () => switchMode('skills', filterInput.value));
 tabFiles.addEventListener('click', () => switchMode('files', filterInput.value));
+// Micro-interaction bouton Export style interior.dev ("The label changes. The button stays put.")
 btnExport.addEventListener('click', () => {
-closeMenu();
+animate(btnExport, { scale: [0.95, 1] }, { type: 'spring', stiffness: 550, damping: 28 });
 exportConversationMarkdown(showToast);
+btnExport.classList.add('done');
+btnExport.replaceChildren(createLucideIcon('check', 12, '#137333'), document.createTextNode('Exporté'));
+window.setTimeout(() => {
+setExportIdle();
+}, 1600);
 });
 filterInput.addEventListener('input', () => applyFilter(filterInput.value));
 document.addEventListener('mousedown', (e) => {
