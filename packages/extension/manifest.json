@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Vexel — Google AI Mode Power Tools",
-  "version": "0.2.1",
-  "description": "Local skills (/), workspace files (@), untruncated paste, code repair, and thread navigation for Google AI Mode.",
+  "name": "Vexel",
+  "version": "0.2.2",
+  "description": "Command Palette locale (~/.agents/skills), anti-troncation et acceleration DOM.",
   "permissions": ["clipboardWrite", "storage"],
   "host_permissions": ["http://127.0.0.1:49152/*", "http://localhost:49152/*"],
   "background": {
@@ -11,9 +11,14 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://www.google.com/*", "https://www.google.fr/*", "https://google.com/*"],
-      "js": ["content.js"],
-      "run_at": "document_idle"
+      "matches": [
+        "https://*.google.com/*",
+        "https://*.google.fr/*",
+        "https://google.com/*",
+        "https://google.fr/*"
+      ],
+      "all_frames": true,
+      "js": ["content.js"]
     }
   ]
 }
