@@ -1,4 +1,26 @@
+let isUserSubmitting = false;
+let submitPauseTimer: number | undefined;
+
+function pauseRepairBriefly(): void {
+  isUserSubmitting = true;
+  if (submitPauseTimer !== undefined) {
+    window.clearTimeout(submitPauseTimer);
+  }
+  submitPauseTimer = window.setTimeout(() => {
+    isUserSubmitting = false;
+  }, 1500);
+}
+
 export function initCodeRepair(showToast: (msg: string) => void): void {
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) pauseRepairBriefly();
+  }, { capture: true, passive: true });
+
+  window.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement | null;
+    if (target?.closest('button')) pauseRepairBriefly();
+  }, { capture: true, passive: true });
+
   const parseWizCodeComment = (rawComment: string): string | null => {
     const sepIdx = rawComment.indexOf('|||[[');
     if (sepIdx === -1) return null;
@@ -6,9 +28,9 @@ export function initCodeRepair(showToast: (msg: string) => void): void {
       const jsonStr = rawComment.slice(sepIdx + 3);
       const parsed = JSON.parse(jsonStr);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const firstEntry = parsed.slice(0, 1).find(() => true);
+        const firstEntry = parsed[0];
         if (Array.isArray(firstEntry) && firstEntry.length > 1) {
-          const codeText = firstEntry.slice(1, 2).find(() => true);
+          const codeText = firstEntry[1];
           if (typeof codeText === 'string') {
             return codeText;
           }
@@ -41,7 +63,6 @@ export function initCodeRepair(showToast: (msg: string) => void): void {
   };
 
   const collectSpilledCodeAfterBlock = (codeBlock: Element, initialCode: string): string => {
-    // Remonter au wrapper direct du bloc de code dans le flux de la reponse
     let blockWrapper: Element = codeBlock;
     while (
       blockWrapper.parentElement &&
@@ -58,16 +79,15 @@ export function initCodeRepair(showToast: (msg: string) => void): void {
     const startIdx = siblings.indexOf(blockWrapper);
     if (startIdx === -1) return initialCode;
 
-    // Verifier s'il y a un debordement de code apres le bloc (ex: lignes avec { } ; const EOF)
     const spilledChunks: string[] = [];
     let foundOverflow = false;
 
     for (let i = startIdx + 1; i < siblings.length; i++) {
       const el = siblings[i] as HTMLElement;
-      const text = (el.innerText || el.textContent || '').trim();
+      // Utiliser textContent en priorite pour eviter un forced synchronous layout (innerText)
+      const text = (el.textContent || '').trim();
       if (!text) continue;
 
-      // Ignorer la banniere "Utilisez ce code avec precaution"
       if (
         text.startsWith('Utilisez ce code avec pr') ||
         text.startsWith('Use code with caution')
@@ -75,7 +95,6 @@ export function initCodeRepair(showToast: (msg: string) => void): void {
         continue;
       }
 
-      // Stopper si on atteint un autre vrai bloc de code (sauf si c'est un faux bloc FollowUp)
       if (el.querySelector('.aiModeUiCodeBlock__Container')) {
         const innerCode = el.querySelector('code')?.textContent || '';
         if (innerCode.trim().startsWith('<FollowUp>')) {
@@ -85,13 +104,11 @@ export function initCodeRepair(showToast: (msg: string) => void): void {
         break;
       }
 
-      // Stopper si on atteint le tag FollowUp brut
       if (text.startsWith('<FollowUp>') || text.includes('</FollowUp>')) {
         el.style.display = 'none';
         break;
       }
 
-      // Detecter si ce paragraphe/liste est la suite du code casse
       const looksLikeCode =
         text.includes('EOF') ||
         text.includes('pnpm ') ||
@@ -106,7 +123,6 @@ export function initCodeRepair(showToast: (msg: string) => void): void {
 
       if (looksLikeCode || foundOverflow) {
         foundOverflow = true;
-        // Nettoyer les marqueurs de fin de bloc markdown ```
         const cleaned = text
           .replace(/^```[a-z]*\s*/i, '')
           .replace(/\s*```$/g, '');
@@ -124,9 +140,13 @@ export function initCodeRepair(showToast: (msg: string) => void): void {
   };
 
   const scanAll = () => {
-    const containers = document.querySelectorAll('.aiModeUiCodeBlock__Container');
+    if (isUserSubmitting) {
+      scheduleScan();
+      return;
+    }
+
+    const containers = document.querySelectorAll('.aiModeUiCodeBlock__Container:not([data-vexel-repaired="true"])');
     containers.forEach((codeBlock) => {
-      if (codeBlock.getAttribute('data-vexel-repaired') === 'true') return;
       codeBlock.setAttribute('data-vexel-repaired', 'true');
 
       const baseCode = findRawCode(codeBlock) || codeBlock.querySelector('code')?.textContent || '';
@@ -176,11 +196,26 @@ export function initCodeRepair(showToast: (msg: string) => void): void {
   };
 
   let timer: number | undefined;
-  const observer = new MutationObserver(() => {
+  const scheduleScan = () => {
     if (timer) window.clearTimeout(timer);
-    timer = window.setTimeout(scanAll, 350);
+    timer = window.setTimeout(() => {
+      if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(() => scanAll(), { timeout: 1200 });
+      } else {
+        scanAll();
+      }
+    }, 650);
+  };
+
+  const observer = new MutationObserver((mutations) => {
+    for (let i = 0; i < mutations.length; i++) {
+      if (mutations[i].addedNodes.length > 0) {
+        scheduleScan();
+        return;
+      }
+    }
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
-  scanAll();
+  scheduleScan();
 }
