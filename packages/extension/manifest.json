@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Vexel",
+  "version": "0.1.0",
+  "description": "Command Palette locale (~/.agents/skills), anti-troncation et acceleration DOM.",
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "host_permissions": [
+    "http://127.0.0.1:49152/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.google.com/*",
+        "https://www.google.fr/*",
+        "https://google.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
