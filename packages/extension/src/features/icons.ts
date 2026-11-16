@@ -3,7 +3,7 @@ export type LucideIconName = 'zap' | 'sparkles' | 'folder' | 'file-text' | 'down
 const SVG_NS = 'http://w3.org'
 
 interface ShapeSpec {
-  tag: 'path' | 'polyline' | 'line' | 'polygon'
+  tag: 'path' | 'polyline' | 'line'
   attrs: Record<string, string>
 }
 
@@ -51,7 +51,7 @@ const LUCIDE_SHAPES: Record<LucideIconName, ShapeSpec[]> = {
   ],
 }
 
-export function createLucideIcon(name: LucideIconName, size = 14): SVGSVGElement {
+export function createLucideIcon(name: LucideIconName, size = 13): SVGSVGElement {
   const svg = document.createElementNS(SVG_NS, 'svg') as SVGSVGElement
   svg.setAttribute('width', String(size))
   svg.setAttribute('height', String(size))

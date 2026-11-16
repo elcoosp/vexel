@@ -1,13 +1,11 @@
+import { createLucideIcon } from './icons'
 import { MAX_SAFE_LENGTH, uploadAsTextFile } from './untruncate'
 import { exportConversationMarkdown } from './thread-tools'
-import { createMenuRow, createPaletteDom } from './palette-ui'
-
 interface RefFile {
   relPath: string
   content: string
   length: number
 }
-
 interface SkillItem {
   id: string
   name: string
@@ -19,161 +17,193 @@ interface SkillItem {
   refCount: number
   refs: RefFile[]
 }
-
 interface BrowseEntry {
   name: string
   relPath: string
   isDir: boolean
 }
-
 type MenuMode = 'skills' | 'refs' | 'files'
-
-const BT1 = String.fromCodePoint(96)
-const BT3 = String.fromCodePoint(96, 96, 96)
-
+const BT1 = String.fromCharCode(96)
+const BT3 = String.fromCharCode(96, 96, 96)
 function formatChars(len: number): string {
   return len >= 1000 ? (len / 1000).toFixed(1) + 'k car.' : len + ' car.'
 }
-
-function resolveEditable(target: EventTarget | null): HTMLElement | null {
-  const node = target as HTMLElement | null
-  if (!node) return null
-  if (node.tagName === 'TEXTAREA') return node
-  const ce = node.closest('[contenteditable="true"]') as HTMLElement | null
-  if (ce) return ce
-  return node.isContentEditable ? node : null
-}
-
-function findVisibleInput(): HTMLElement | null {
-  const inputs = document.querySelectorAll('textarea, [contenteditable="true"]')
-  for (const el of inputs) {
-    if ((el as HTMLElement).offsetParent !== null) return el as HTMLElement
-  }
-  return null
-}
-
-function getTextBeforeCursor(editable: HTMLElement): string {
-  if (editable.tagName === 'TEXTAREA') {
-    const ta = editable as HTMLTextAreaElement
-    return ta.value.slice(0, ta.selectionStart ?? ta.value.length)
-  }
-  const sel = globalThis.getSelection()
-  if (!sel || sel.rangeCount === 0) return editable.textContent || ''
-  const range = sel.getRangeAt(0).cloneRange()
-  range.selectNodeContents(editable)
-  range.setEnd(sel.getRangeAt(0).endContainer, sel.getRangeAt(0).endOffset)
-  return range.toString()
-}
-
-function removeTriggerChars(editable: HTMLElement, count: number): void {
-  if (count <= 0) return
-  if (editable.tagName === 'TEXTAREA') {
-    const ta = editable as HTMLTextAreaElement
-    const pos = ta.selectionStart ?? ta.value.length
-    const start = Math.max(0, pos - count)
-    ta.value = ta.value.slice(0, start) + ta.value.slice(pos)
-    ta.selectionStart = start
-    ta.selectionEnd = start
-    ta.dispatchEvent(new Event('input', { bubbles: true }))
-    return
-  }
-
-  editable.focus()
-  const sel = globalThis.getSelection()
-  if (!sel || sel.rangeCount === 0) return
-  const range = sel.getRangeAt(0)
-  if (range.endContainer.nodeType === Node.TEXT_NODE) {
-    const textNode = range.endContainer as Text
-    const start = Math.max(0, range.endOffset - count)
-    textNode.deleteData(start, range.endOffset - start)
-    const newRange = document.createRange()
-    newRange.setStart(textNode, start)
-    newRange.collapse(true)
-    sel.removeAllRanges()
-    sel.addRange(newRange)
-    editable.dispatchEvent(new Event('input', { bubbles: true }))
-  }
-}
-
+const MENU_CSS = [
+  ':host { all: initial; color-scheme: dark; }',
+  '.trigger-pill { position: fixed; z-index: 2147483645; display: none; align-items: center; gap: 6px; background: rgba(24, 24, 27, 0.92); color: #e4e4e7; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 999px; padding: 4px 10px; font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif; font-size: 11.5px; font-weight: 500; cursor: pointer; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); backdrop-filter: blur(6px); transition: background 0.15s ease, border-color 0.15s ease; }',
+  '.trigger-pill:hover { background: rgba(39, 39, 42, 0.98); border-color: rgba(96, 165, 250, 0.5); color: #ffffff; }',
+  '.trigger-pill kbd { font-family: ui-monospace, monospace; font-size: 10px; background: rgba(255, 255, 255, 0.08); padding: 1px 4px; border-radius: 4px; color: #a1a1aa; }',
+  '.popover { position: fixed; width: 540px; max-width: 92vw; background: rgba(20, 20, 23, 0.98); border: 1px solid rgba(255, 255, 255, 0.13); border-radius: 12px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75); z-index: 2147483646; display: none; flex-direction: column; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif; color: #f4f4f5; }',
+  '.popover.open { display: flex; }',
+  '.top-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.02); gap: 8px; }',
+  '.tabs { display: flex; align-items: center; gap: 6px; }',
+  '.tab { font-size: 11.5px; font-weight: 500; padding: 3px 8px; border-radius: 6px; cursor: pointer; color: #a1a1aa; background: transparent; border: 1px solid transparent; }',
+  '.tab.active { color: #ffffff; background: rgba(59, 130, 246, 0.18); border-color: rgba(59, 130, 246, 0.35); }',
+  '.export-btn { font-size: 11px; font-weight: 500; color: #d4d4d8; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; padding: 3px 8px; cursor: pointer; }',
+  '.export-btn:hover { background: rgba(255, 255, 255, 0.12); color: #ffffff; }',
+  '.breadcrumbs { display: none; align-items: center; flex-wrap: wrap; gap: 4px; padding: 6px 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); background: rgba(255, 255, 255, 0.015); font-size: 11.5px; color: #a1a1aa; }',
+  '.breadcrumbs.visible { display: flex; }',
+  '.crumb { cursor: pointer; padding: 2px 5px; border-radius: 4px; color: #d4d4d8; }',
+  '.crumb:hover { background: rgba(255, 255, 255, 0.09); color: #ffffff; }',
+  '.crumb-sep { color: #52525b; }',
+  '.filter-box { padding: 8px 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); display: flex; align-items: center; gap: 8px; }',
+  '.filter-box input { flex: 1; background: transparent; border: none; outline: none; color: #fafafa; font-size: 13px; }',
+  '.list { max-height: 290px; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 2px; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.18) transparent; }',
+  '.list::-webkit-scrollbar { width: 6px; height: 6px; }',
+  '.list::-webkit-scrollbar-track { background: transparent; }',
+  '.list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.16); border-radius: 999px; }',
+  '.list::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.28); }',
+  '.item { padding: 8px 10px; border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; border: 1px solid transparent; }',
+  '.item.active { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.1); }',
+  '.item-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }',
+  '.item-title { font-size: 13px; font-weight: 500; color: #f4f4f5; }',
+  '.item-sub { font-size: 11.5px; color: #71717a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
+  '.badge { font-size: 10.5px; padding: 2px 6px; border-radius: 5px; background: rgba(255, 255, 255, 0.06); color: #a1a1aa; flex-shrink: 0; }',
+  '.badge.dir { color: #fcd34d; background: rgba(245, 158, 11, 0.14); }',
+  '.footer { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; border-top: 1px solid rgba(255, 255, 255, 0.08); background: rgba(14, 14, 17, 0.9); font-size: 11px; color: #71717a; }',
+  '.empty { padding: 20px; text-align: center; color: #71717a; font-size: 12.5px; }',
+].join('\n')
 export function initCommandPalette(showToast: (msg: string) => void): void {
-  const ui = createPaletteDom()
   let isOpen = false
   let mode: MenuMode = 'skills'
   let triggerTextLength = 0
   let hasInlineTrigger = false
   let activeInput: HTMLElement | null = null
-
   let skills: SkillItem[] = []
   let filteredSkills: SkillItem[] = []
   let activeSkill: SkillItem | null = null
   let filteredRefs: RefFile[] = []
-
   let currentDir = ''
   let rootLabel = '~'
   let browseEntries: BrowseEntry[] = []
   let selectedIndex = 0
   let fileFetchTimer: number | undefined
-
-  const setEmptyMessage = (msg: string) => {
-    const empty = document.createElement('div')
-    empty.className = 'empty'
-    empty.textContent = msg
-    ui.listEl.replaceChildren(empty)
+  const host = document.createElement('div')
+  host.id = 'vexel-inline-menu-host'
+  const shadow = host.attachShadow({ mode: 'open' })
+  const styleEl = document.createElement('style')
+  styleEl.textContent = MENU_CSS
+  shadow.appendChild(styleEl)
+  const triggerPill = document.createElement('button')
+  triggerPill.type = 'button'
+  triggerPill.className = 'trigger-pill'
+  triggerPill.title = 'Menu Vexel (/ skills, @ fichiers)'
+  triggerPill.append(createLucideIcon('zap', 12), ' Vexel ')
+  const kbdSlash = document.createElement('kbd')
+  kbdSlash.textContent = '/'
+  const kbdAt = document.createElement('kbd')
+  kbdAt.textContent = '@'
+  triggerPill.appendChild(kbdSlash)
+  triggerPill.appendChild(document.createTextNode(' '))
+  triggerPill.appendChild(kbdAt)
+  shadow.appendChild(triggerPill)
+  const popover = document.createElement('div')
+  popover.className = 'popover'
+  const topBar = document.createElement('div')
+  topBar.className = 'top-bar'
+  const tabs = document.createElement('div')
+  tabs.className = 'tabs'
+  const tabSkills = document.createElement('button')
+  tabSkills.type = 'button'
+  tabSkills.className = 'tab active'
+  tabSkills.textContent = '/ Skills'
+  const tabFiles = document.createElement('button')
+  tabFiles.type = 'button'
+  tabFiles.className = 'tab'
+  tabFiles.textContent = '@ Fichiers'
+  tabs.appendChild(tabSkills)
+  tabs.appendChild(tabFiles)
+  const btnExport = document.createElement('button')
+  btnExport.type = 'button'
+  btnExport.className = 'export-btn'
+  btnExport.textContent = 'Exporter .md (⌘⇧E)'
+  topBar.appendChild(tabs)
+  topBar.appendChild(btnExport)
+  popover.appendChild(topBar)
+  const breadcrumbsEl = document.createElement('div')
+  breadcrumbsEl.className = 'breadcrumbs'
+  popover.appendChild(breadcrumbsEl)
+  const filterBox = document.createElement('div')
+  filterBox.className = 'filter-box'
+  const filterInput = document.createElement('input')
+  filterInput.type = 'text'
+  filterInput.placeholder = 'Filtrer...'
+  filterInput.autocomplete = 'off'
+  filterBox.appendChild(filterInput)
+  popover.appendChild(filterBox)
+  const listEl = document.createElement('div')
+  listEl.className = 'list'
+  popover.appendChild(listEl)
+  const footer = document.createElement('div')
+  footer.className = 'footer'
+  const statusText = document.createElement('span')
+  statusText.textContent = '0 element'
+  const hints = document.createElement('span')
+  hints.textContent = '↑↓ naviguer • ↵ ouvrir/inserer • ← dossier parent'
+  footer.appendChild(statusText)
+  footer.appendChild(hints)
+  popover.appendChild(footer)
+  shadow.appendChild(popover)
+  document.body.appendChild(host)
+  function isEditableElement(el: HTMLElement | null): boolean {
+    if (!el) return false
+    if (el.tagName === 'TEXTAREA') return true
+    if (el.isContentEditable || el.getAttribute('contenteditable') === 'true') return true
+    return false
   }
-
-  const positionElements = () => {
+  function resolveEditable(target: EventTarget | null): HTMLElement | null {
+    const node = target as HTMLElement | null
+    if (!node) return null
+    if (node.tagName === 'TEXTAREA') return node
+    const ce = node.closest('[contenteditable="true"]') as HTMLElement | null
+    if (ce) return ce
+    return isEditableElement(node) ? node : null
+  }
+  function findVisibleInput(): HTMLElement | null {
+    const inputs = document.querySelectorAll('textarea, [contenteditable="true"]')
+    for (let i = 0; i < inputs.length; i++) {
+      const el = inputs.item(i) as HTMLElement
+      if (el.offsetParent !== null) return el
+    }
+    return null
+  }
+  function positionElements(): void {
     const input = activeInput && document.contains(activeInput) ? activeInput : findVisibleInput()
     if (!input) {
-      ui.triggerPill.style.display = 'inline-flex'
-      ui.triggerPill.style.bottom = '18px'
-      ui.triggerPill.style.right = '24px'
-      ui.triggerPill.style.top = 'auto'
-      ui.triggerPill.style.left = 'auto'
-      if (isOpen) {
-        ui.popover.style.bottom = '56px'
-        ui.popover.style.right = '24px'
-        ui.popover.style.top = 'auto'
-        ui.popover.style.left = 'auto'
-      }
+      triggerPill.style.display = 'none'
       return
     }
     activeInput = input
     const rect = input.getBoundingClientRect()
     if (rect.width === 0 || rect.height === 0) {
-      ui.triggerPill.style.display = 'inline-flex'
-      ui.triggerPill.style.bottom = '18px'
-      ui.triggerPill.style.right = '24px'
-      ui.triggerPill.style.top = 'auto'
-      ui.triggerPill.style.left = 'auto'
+      triggerPill.style.display = 'none'
       return
     }
-
-    ui.triggerPill.style.display = 'inline-flex'
-    ui.triggerPill.style.bottom = 'auto'
-    ui.triggerPill.style.right = 'auto'
-    ui.triggerPill.style.top = Math.max(8, rect.top - 32) + 'px'
-    ui.triggerPill.style.left = Math.max(12, rect.right - 118) + 'px'
-
+    triggerPill.style.display = 'inline-flex'
+    triggerPill.style.top = Math.max(8, rect.top - 32) + 'px'
+    triggerPill.style.left = Math.max(12, rect.right - 118) + 'px'
     if (isOpen) {
-      const popHeight = ui.popover.offsetHeight || 340
+      const popHeight = popover.offsetHeight || 340
       const topPos = rect.top - popHeight - 8
-      const resolvedTop =
-        topPos > 10 ? topPos : Math.min(globalThis.innerHeight - popHeight - 12, rect.bottom + 8)
-      ui.popover.style.bottom = 'auto'
-      ui.popover.style.right = 'auto'
-      ui.popover.style.top = resolvedTop + 'px'
-      ui.popover.style.left = Math.max(12, Math.min(globalThis.innerWidth - 552, rect.left)) + 'px'
+      popover.style.top =
+        (topPos > 10 ? topPos : Math.min(window.innerHeight - popHeight - 12, rect.bottom + 8)) +
+        'px'
+      popover.style.left = Math.max(12, Math.min(window.innerWidth - 552, rect.left)) + 'px'
     }
   }
-
-  const renderBreadcrumbs = () => {
+  function setEmptyMessage(msg: string): void {
+    const empty = document.createElement('div')
+    empty.className = 'empty'
+    empty.textContent = msg
+    listEl.replaceChildren(empty)
+  }
+  function renderBreadcrumbs(): void {
     if (mode !== 'files') {
-      ui.breadcrumbsEl.classList.remove('visible')
+      breadcrumbsEl.classList.remove('visible')
       return
     }
-    ui.breadcrumbsEl.classList.add('visible')
-    ui.breadcrumbsEl.replaceChildren()
-
+    breadcrumbsEl.classList.add('visible')
+    breadcrumbsEl.replaceChildren()
     const rootBtn = document.createElement('span')
     rootBtn.className = 'crumb'
     rootBtn.textContent = rootLabel
@@ -181,17 +211,18 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
       e.preventDefault()
       navigateToDir('')
     })
-    ui.breadcrumbsEl.append(rootBtn)
-
+    breadcrumbsEl.appendChild(rootBtn)
     if (!currentDir) return
     const parts = currentDir.split('/')
     let acc = ''
-    for (const part of parts) {
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts.slice(i, i + 1).find(() => true) || ''
       acc = acc ? acc + '/' + part : part
       const targetPath = acc
       const sep = document.createElement('span')
       sep.className = 'crumb-sep'
       sep.textContent = '/'
+      breadcrumbsEl.appendChild(sep)
       const crumb = document.createElement('span')
       crumb.className = 'crumb'
       crumb.textContent = part
@@ -199,23 +230,21 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
         e.preventDefault()
         navigateToDir(targetPath)
       })
-      ui.breadcrumbsEl.append(sep, crumb)
+      breadcrumbsEl.appendChild(crumb)
     }
   }
-
-  const navigateToDir = (dirPath: string) => {
+  function navigateToDir(dirPath: string): void {
     currentDir = dirPath
-    ui.filterInput.value = ''
+    filterInput.value = ''
     browseDir(currentDir, '')
   }
-
-  const navigateUp = () => {
+  function navigateUp(): void {
     if (!currentDir) return
     const idx = currentDir.lastIndexOf('/')
-    navigateToDir(idx === -1 ? '' : currentDir.slice(0, idx))
+    const parent = idx === -1 ? '' : currentDir.slice(0, idx)
+    navigateToDir(parent)
   }
-
-  const fetchSkills = () => {
+  function fetchSkills(): void {
     setEmptyMessage('Chargement des skills...')
     chrome.runtime.sendMessage({ type: 'FETCH_SKILLS' }, (res) => {
       if (chrome.runtime.lastError || !res?.ok) {
@@ -223,13 +252,12 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
         return
       }
       skills = res.data?.skills || []
-      applyFilter(ui.filterInput.value)
+      applyFilter(filterInput.value)
     })
   }
-
-  const browseDir = (dir: string, query: string) => {
-    if (fileFetchTimer) globalThis.clearTimeout(fileFetchTimer)
-    fileFetchTimer = globalThis.setTimeout(
+  function browseDir(dir: string, query: string): void {
+    if (fileFetchTimer) window.clearTimeout(fileFetchTimer)
+    fileFetchTimer = window.setTimeout(
       () => {
         chrome.runtime.sendMessage({ type: 'BROWSE_DIR', dir, query }, (res) => {
           if (chrome.runtime.lastError || !res?.ok) {
@@ -239,7 +267,6 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
           rootLabel = res.data?.rootLabel || '~'
           currentDir = res.data?.dir || ''
           const rawEntries: BrowseEntry[] = res.data?.entries || []
-
           if (!query && currentDir) {
             const idx = currentDir.lastIndexOf('/')
             const parentPath = idx === -1 ? '' : currentDir.slice(0, idx)
@@ -250,7 +277,6 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
           } else {
             browseEntries = rawEntries
           }
-
           selectedIndex = 0
           renderBreadcrumbs()
           renderList()
@@ -259,44 +285,44 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
       query ? 90 : 0
     )
   }
-
-  const switchMode = (newMode: MenuMode, initialQuery = '') => {
+  function switchMode(newMode: MenuMode, initialQuery = ''): void {
     mode = newMode
     activeSkill = null
-    ui.tabSkills.classList.toggle('active', mode === 'skills' || mode === 'refs')
-    ui.tabFiles.classList.toggle('active', mode === 'files')
-    ui.filterInput.value = initialQuery
+    tabSkills.classList.toggle('active', mode === 'skills' || mode === 'refs')
+    tabFiles.classList.toggle('active', mode === 'files')
+    filterInput.value = initialQuery
     renderBreadcrumbs()
-
     if (mode === 'skills') {
-      ui.filterInput.placeholder = 'Filtrer les skills...'
-      if (skills.length === 0) fetchSkills()
-      else applyFilter(initialQuery)
+      filterInput.placeholder = 'Filtrer les skills...'
+      if (skills.length === 0) {
+        fetchSkills()
+      } else {
+        applyFilter(initialQuery)
+      }
     } else if (mode === 'files') {
-      ui.filterInput.placeholder = 'Filtrer ce dossier ou rechercher un fichier...'
+      filterInput.placeholder = 'Filtrer ce dossier ou rechercher un fichier...'
       browseDir(currentDir, initialQuery)
     }
   }
-
-  const openMenu = (initialMode: MenuMode, initialQuery = '', tokenLen = 0) => {
+  function openMenu(initialMode: MenuMode, initialQuery = '', tokenLen = 0): void {
     hasInlineTrigger = tokenLen > 0
     triggerTextLength = tokenLen
     isOpen = true
-    ui.popover.classList.add('open')
+    popover.classList.add('open')
     switchMode(initialMode, initialQuery)
     positionElements()
-    if (!hasInlineTrigger) ui.filterInput.focus()
+    if (!hasInlineTrigger) {
+      filterInput.focus()
+    }
   }
-
-  const closeMenu = () => {
+  function closeMenu(): void {
     isOpen = false
     hasInlineTrigger = false
     triggerTextLength = 0
     activeSkill = null
-    ui.popover.classList.remove('open')
+    popover.classList.remove('open')
   }
-
-  const applyFilter = (qRaw: string) => {
+  function applyFilter(qRaw: string): void {
     const q = qRaw.toLowerCase().trim()
     if (mode === 'refs' && activeSkill) {
       filteredRefs = q
@@ -316,85 +342,135 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
       renderList()
       return
     }
-    if (mode === 'files') browseDir(currentDir, q)
+    if (mode === 'files') {
+      browseDir(currentDir, q)
+    }
   }
-  const renderList = () => {
-    ui.listEl.replaceChildren()
+  function createRow(
+    index: number,
+    title: string,
+    badgeText: string,
+    isDirBadge: boolean,
+    subText?: string
+  ): HTMLDivElement {
+    const item = document.createElement('div')
+    item.className = index === selectedIndex ? 'item active' : 'item'
+    const row = document.createElement('div')
+    row.className = 'item-row'
+    const titleEl = document.createElement('span')
+    titleEl.className = 'item-title'
+    titleEl.textContent = title
+    const badge = document.createElement('span')
+    badge.className = isDirBadge ? 'badge dir' : 'badge'
+    badge.textContent = badgeText
+    row.appendChild(titleEl)
+    row.appendChild(badge)
+    item.appendChild(row)
+    if (subText) {
+      const sub = document.createElement('div')
+      sub.className = 'item-sub'
+      sub.textContent = subText
+      item.appendChild(sub)
+    }
+    item.addEventListener('mousedown', (e) => {
+      e.preventDefault()
+      selectCurrentItem(index, (e as MouseEvent).metaKey || (e as MouseEvent).ctrlKey)
+    })
+    return item
+  }
+  function renderList(): void {
+    listEl.replaceChildren()
     if (mode === 'refs' && activeSkill) {
-      ui.statusText.textContent = filteredRefs.length + ' reference(s) — ' + activeSkill.name
+      statusText.textContent = filteredRefs.length + ' reference(s) — ' + activeSkill.name
       if (filteredRefs.length === 0) {
         setEmptyMessage('Aucune reference correspondante.')
         return
       }
-      filteredRefs.forEach((r, i) => {
-        ui.listEl.append(
-          createMenuRow({
-            icon: 'file-text',
-            title: r.relPath,
-            badgeText: formatChars(r.length),
-            isDirBadge: false,
-            isSelected: i === selectedIndex,
-            onSelect: (full) => selectCurrentItem(i, full),
-          })
-        )
-      })
+      for (let i = 0; i < filteredRefs.length; i++) {
+        const r = filteredRefs.slice(i, i + 1).find(() => true)
+        if (r) listEl.appendChild(createRow(i, '📄 ' + r.relPath, formatChars(r.length), false))
+      }
     } else if (mode === 'skills') {
-      ui.statusText.textContent = filteredSkills.length + ' skill(s)'
+      statusText.textContent = filteredSkills.length + ' skill(s)'
       if (filteredSkills.length === 0) {
         setEmptyMessage('Aucun skill correspondant.')
         return
       }
-      filteredSkills.forEach((s, i) => {
-        const prefix = s.refCount > 0 ? s.refCount + ' refs • ' : ''
-        ui.listEl.append(
-          createMenuRow({
-            icon: 'sparkles',
-            title: s.name,
-            badgeText: prefix + formatChars(s.smartLength),
-            isDirBadge: false,
-            isSelected: i === selectedIndex,
-            subText: s.description,
-            onSelect: (full) => selectCurrentItem(i, full),
-          })
-        )
-      })
+      for (let i = 0; i < filteredSkills.length; i++) {
+        const s = filteredSkills.slice(i, i + 1).find(() => true)
+        if (s) {
+          const badge = (s.refCount > 0 ? s.refCount + ' refs • ' : '') + formatChars(s.smartLength)
+          listEl.appendChild(createRow(i, '✦ ' + s.name, badge, false, s.description))
+        }
+      }
     } else if (mode === 'files') {
-      ui.statusText.textContent = browseEntries.length + ' element(s)'
+      statusText.textContent = browseEntries.length + ' element(s)'
       if (browseEntries.length === 0) {
         setEmptyMessage('Dossier vide ou aucun fichier correspondant.')
         return
       }
-      const hasQuery = ui.filterInput.value.trim().length > 0
-      browseEntries.forEach((entry, i) => {
-        ui.listEl.append(
-          createMenuRow({
-            icon: entry.isDir ? 'folder' : 'file-text',
-            title: entry.name,
-            badgeText: entry.isDir ? 'Dossier' : 'Fichier',
-            isDirBadge: entry.isDir,
-            isSelected: i === selectedIndex,
-            subText: hasQuery ? entry.relPath : undefined,
-            onSelect: (full) => selectCurrentItem(i, full),
-          })
-        )
-      })
+      for (let i = 0; i < browseEntries.length; i++) {
+        const entry = browseEntries.slice(i, i + 1).find(() => true)
+        if (!entry) continue
+        const icon = ''
+        const badge = entry.isDir ? 'Dossier' : 'Fichier'
+        const showSub = filterInput.value.trim().length > 0 ? entry.relPath : undefined
+        listEl.appendChild(createRow(i, icon + entry.name, badge, entry.isDir, showSub))
+      }
     }
-    const active = ui.listEl.querySelector('.item.active')
+    const active = listEl.querySelector('.item.active')
     if (active) active.scrollIntoView({ block: 'nearest' })
   }
-  const injectContent = (
-    content: string,
-    fileName: string,
-    toastMsg: string,
-    charsToStrip: number
-  ) => {
+  function getTextBeforeCursor(editable: HTMLElement): string {
+    if (editable.tagName === 'TEXTAREA') {
+      const ta = editable as HTMLTextAreaElement
+      return ta.value.slice(0, ta.selectionStart ?? ta.value.length)
+    }
+    const sel = window.getSelection()
+    if (!sel || sel.rangeCount === 0) return editable.textContent || ''
+    const range = sel.getRangeAt(0).cloneRange()
+    range.selectNodeContents(editable)
+    range.setEnd(sel.getRangeAt(0).endContainer, sel.getRangeAt(0).endOffset)
+    return range.toString()
+  }
+  function removeTriggerChars(editable: HTMLElement, count: number): void {
+    if (count <= 0) return
+    if (editable.tagName === 'TEXTAREA') {
+      const ta = editable as HTMLTextAreaElement
+      const pos = ta.selectionStart ?? ta.value.length
+      const start = Math.max(0, pos - count)
+      ta.value = ta.value.slice(0, start) + ta.value.slice(pos)
+      ta.selectionStart = ta.selectionEnd = start
+      ta.dispatchEvent(new Event('input', { bubbles: true }))
+      return
+    }
+    editable.focus()
+    const sel = window.getSelection()
+    if (!sel || sel.rangeCount === 0) return
+    const range = sel.getRangeAt(0)
+    if (range.endContainer.nodeType === Node.TEXT_NODE) {
+      const textNode = range.endContainer as Text
+      const start = Math.max(0, range.endOffset - count)
+      textNode.deleteData(start, range.endOffset - start)
+      const newRange = document.createRange()
+      newRange.setStart(textNode, start)
+      newRange.collapse(true)
+      sel.removeAllRanges()
+      sel.addRange(newRange)
+      editable.dispatchEvent(new Event('input', { bubbles: true }))
+    }
+  }
+  function injectContent(content: string, fileName: string, toastMsg: string): void {
     const target = activeInput || findVisibleInput()
+    const charsToStrip = hasInlineTrigger ? triggerTextLength : 0
     if (!target) {
       navigator.clipboard.writeText(content)
       showToast(toastMsg + ' (copie)')
       return
     }
-    if (charsToStrip > 0) removeTriggerChars(target, charsToStrip)
+    if (charsToStrip > 0) {
+      removeTriggerChars(target, charsToStrip)
+    }
     target.focus()
     if (
       content.length > MAX_SAFE_LENGTH ||
@@ -407,34 +483,42 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
     }
     if (target.tagName === 'TEXTAREA') {
       const ta = target as HTMLTextAreaElement
-      ta.value = ta.value ? ta.value + '\n\n' + content : content
+      const prefix = ta.value ? ta.value + '\n\n' : ''
+      ta.value = prefix + content
       ta.dispatchEvent(new Event('input', { bubbles: true }))
     } else {
       document.execCommand('insertText', false, content)
     }
     showToast(toastMsg)
   }
-  const selectCurrentItem = (idx = selectedIndex, fullBundle = false) => {
+  function selectCurrentItem(idx = selectedIndex, fullBundle = false): void {
     const charsToStrip = hasInlineTrigger ? triggerTextLength : 0
     if (mode === 'refs' && activeSkill) {
       const ref = filteredRefs.slice(idx, idx + 1).find(() => true)
       if (!ref) return
       const skillName = activeSkill.name
       closeMenu()
+      hasInlineTrigger = charsToStrip > 0
+      triggerTextLength = charsToStrip
       injectContent(
         '## Reference (' + skillName + ') : ' + ref.relPath + '\n\n' + ref.content,
         ref.relPath.split('/').join('-'),
-        'Reference "' + ref.relPath + '" ajoutee',
-        charsToStrip
+        'Reference "' + ref.relPath + '" ajoutee'
       )
+      hasInlineTrigger = false
+      triggerTextLength = 0
       return
     }
     if (mode === 'skills') {
       const skill = filteredSkills.slice(idx, idx + 1).find(() => true)
       if (!skill) return
       closeMenu()
+      hasInlineTrigger = charsToStrip > 0
+      triggerTextLength = charsToStrip
       const payload = fullBundle ? skill.fullContent : skill.smartContent
-      injectContent(payload, skill.id + '.md', 'Skill "' + skill.name + '" ajoute', charsToStrip)
+      injectContent(payload, skill.id + '.md', 'Skill "' + skill.name + '" ajoute')
+      hasInlineTrigger = false
+      triggerTextLength = 0
       return
     }
     if (mode === 'files') {
@@ -474,15 +558,14 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
     if (!editable) return
     activeInput = editable
     const textBeforeCursor = getTextBeforeCursor(editable)
-    const triggerPos = Math.max(
-      textBeforeCursor.lastIndexOf('/'),
-      textBeforeCursor.lastIndexOf('@')
-    )
+    const lastSlash = textBeforeCursor.lastIndexOf('/')
+    const lastAt = textBeforeCursor.lastIndexOf('@')
+    const triggerPos = Math.max(lastSlash, lastAt)
     let match: { symbol: string; query: string; len: number } | null = null
     if (triggerPos !== -1) {
       const prevChar = triggerPos === 0 ? ' ' : textBeforeCursor.charAt(triggerPos - 1)
       const afterTrigger = textBeforeCursor.slice(triggerPos + 1)
-      if (/\s/u.test(prevChar) && !/\s/u.test(afterTrigger)) {
+      if (/\s/.test(prevChar) && !/\s/.test(afterTrigger)) {
         match = {
           symbol: textBeforeCursor.charAt(triggerPos),
           query: afterTrigger,
@@ -497,7 +580,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
       } else {
         hasInlineTrigger = true
         triggerTextLength = match.len
-        ui.filterInput.value = match.query
+        filterInput.value = match.query
         applyFilter(match.query)
         positionElements()
       }
@@ -505,16 +588,13 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
       closeMenu()
     }
   }
-  const getCurrentListLength = (): number => {
-    if (mode === 'refs') return filteredRefs.length
-    if (mode === 'skills') return filteredSkills.length
-    return browseEntries.length
-  }
   document.addEventListener('input', handleEditableInput, true)
   document.addEventListener(
     'keyup',
     (e: KeyboardEvent) => {
-      if (e.key === '/' || e.key === '@' || e.key === 'Backspace') handleEditableInput(e)
+      if (e.key === '/' || e.key === '@' || e.key === 'Backspace') {
+        handleEditableInput(e)
+      }
     },
     true
   )
@@ -522,12 +602,20 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
     'keydown',
     (e: KeyboardEvent) => {
       if (!isOpen) return
-      const len = getCurrentListLength()
+      const len =
+        mode === 'refs'
+          ? filteredRefs.length
+          : mode === 'skills'
+            ? filteredSkills.length
+            : browseEntries.length
       if (e.key === 'Escape') {
         e.preventDefault()
         e.stopPropagation()
-        if (mode === 'refs') switchMode('skills', ui.filterInput.value)
-        else closeMenu()
+        if (mode === 'refs') {
+          switchMode('skills', filterInput.value)
+        } else {
+          closeMenu()
+        }
       } else if (e.key === 'ArrowDown') {
         e.preventDefault()
         e.stopPropagation()
@@ -541,7 +629,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
       } else if (
         e.key === 'ArrowLeft' &&
         mode === 'files' &&
-        ui.filterInput.value === '' &&
+        filterInput.value === '' &&
         currentDir
       ) {
         e.preventDefault()
@@ -549,7 +637,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
         navigateUp()
       } else if (e.key === 'ArrowRight' && mode === 'files') {
         const entry = browseEntries.slice(selectedIndex, selectedIndex + 1).find(() => true)
-        if (entry?.isDir) {
+        if (entry && entry.isDir) {
           e.preventDefault()
           e.stopPropagation()
           navigateToDir(entry.relPath)
@@ -564,7 +652,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
           e.preventDefault()
           activeSkill = s
           mode = 'refs'
-          ui.filterInput.value = ''
+          filterInput.value = ''
           applyFilter('')
         }
       } else if (e.key === 'Enter' && !e.shiftKey) {
@@ -575,30 +663,25 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
     },
     true
   )
-  ui.triggerPill.addEventListener('click', () => {
+  triggerPill.addEventListener('click', () => {
     if (isOpen) closeMenu()
     else openMenu('skills', '', 0)
   })
-  ui.tabSkills.addEventListener('click', () => switchMode('skills', ui.filterInput.value))
-  ui.tabFiles.addEventListener('click', () => switchMode('files', ui.filterInput.value))
-  ui.btnExport.addEventListener('click', () => {
+  tabSkills.addEventListener('click', () => switchMode('skills', filterInput.value))
+  tabFiles.addEventListener('click', () => switchMode('files', filterInput.value))
+  btnExport.addEventListener('click', () => {
     closeMenu()
     exportConversationMarkdown(showToast)
   })
-  ui.filterInput.addEventListener('input', () => applyFilter(ui.filterInput.value))
+  filterInput.addEventListener('input', () => applyFilter(filterInput.value))
   document.addEventListener('mousedown', (e) => {
     if (!isOpen) return
     const path = e.composedPath()
-    if (
-      !path.includes(ui.popover) &&
-      !path.includes(ui.triggerPill) &&
-      !resolveEditable(e.target)
-    ) {
+    if (!path.includes(popover) && !path.includes(triggerPill) && !resolveEditable(e.target)) {
       closeMenu()
     }
   })
-  globalThis.addEventListener('resize', positionElements, { passive: true })
+  window.addEventListener('resize', positionElements, { passive: true })
+  window.addEventListener('scroll', positionElements, { passive: true })
   document.addEventListener('focusin', positionElements, true)
-  positionElements()
-  globalThis.setTimeout(positionElements, 800)
 }
