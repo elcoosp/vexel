@@ -5,20 +5,33 @@ import os from 'node:os';
 
 const PORT = 49152;
 const SKILLS_DIR = path.join(os.homedir(), '.agents', 'skills');
+const REPOS_DIR = path.join(os.homedir(), 'Documents', 'Repos');
 
-const IGNORED_DIRS = new Set(['node_modules', '.git', 'tests', 'evals', '__pycache__']);
-const IGNORED_FILES = new Set(['.DS_Store', 'package.json', 'package-lock.json', 'pnpm-lock.yaml', 'README.md', 'CLAUDE.md']);
-const ALLOWED_EXT = new Set(['.md', '.txt', '.yaml', '.yml', '.toml', '.json']);
+const IGNORED_DIRS = new Set([
+  'node_modules', '.git', 'tests', 'evals', '__pycache__',
+  'target', 'dist', 'build', '.next', '.astro', '.svelte-kit', 'coverage'
+]);
+const IGNORED_SKILL_FILES = new Set(['.DS_Store', 'package.json', 'package-lock.json', 'pnpm-lock.yaml', 'README.md', 'CLAUDE.md']);
+const ALLOWED_SKILL_EXT = new Set(['.md', '.txt', '.yaml', '.yml', '.toml', '.json']);
+const ALLOWED_CODE_EXT = new Set([
+  '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
+  '.rs', '.go', '.py', '.zig', '.c', '.cpp', '.h', '.hpp',
+  '.md', '.mdx', '.json', '.toml', '.yaml', '.yml',
+  '.html', '.css', '.scss', '.sql', '.sh', '.astro', '.svelte', '.vue'
+]);
+
+let cachedRepoFiles = [];
+let lastRepoScan = 0;
 
 function parseSkillMarkdown(raw, fallbackName) {
   const lines = raw.split(/\r?\n/);
-  if (lines.find(() => true) !== '---') {
+  if (lines.at(0) !== '---') {
     return { name: fallbackName, description: '', body: raw.trim() };
   }
 
   let endIdx = -1;
   for (let i = 1; i < lines.length; i++) {
-    if (lines.slice(i, i + 1).find(() => true) === '---') {
+    if (lines.at(i) === '---') {
       endIdx = i;
       break;
     }
@@ -57,9 +70,9 @@ async function collectReferenceFiles(dirPath, baseSkillDir) {
       const nested = await collectReferenceFiles(fullPath, baseSkillDir);
       results.push(...nested);
     } else if (entry.isFile()) {
-      if (entry.name === 'SKILL.md' || IGNORED_FILES.has(entry.name)) continue;
+      if (entry.name === 'SKILL.md' || IGNORED_SKILL_FILES.has(entry.name)) continue;
       const ext = path.extname(entry.name).toLowerCase();
-      if (!ALLOWED_EXT.has(ext)) continue;
+      if (!ALLOWED_SKILL_EXT.has(ext)) continue;
 
       const relPath = path.relative(baseSkillDir, fullPath);
       const content = (await fs.readFile(fullPath, 'utf8')).trim();
@@ -68,6 +81,43 @@ async function collectReferenceFiles(dirPath, baseSkillDir) {
   }
 
   return results;
+}
+
+async function scanRepoFiles(dirPath, depth = 0, out = []) {
+  if (depth > 6 || out.length >= 4000) return out;
+  let entries;
+  try {
+    entries = await fs.readdir(dirPath, { withFileTypes: true });
+  } catch {
+    return out;
+  }
+
+  for (const entry of entries) {
+    if (IGNORED_DIRS.has(entry.name) || entry.name.startsWith('.')) continue;
+    const fullPath = path.join(dirPath, entry.name);
+    if (entry.isDirectory()) {
+      await scanRepoFiles(fullPath, depth + 1, out);
+    } else if (entry.isFile()) {
+      const ext = path.extname(entry.name).toLowerCase();
+      if (!ALLOWED_CODE_EXT.has(ext)) continue;
+      const relPath = path.relative(REPOS_DIR, fullPath);
+      out.push({
+        name: entry.name,
+        relPath,
+        repo: relPath.split(path.sep).at(0) || ''
+      });
+    }
+  }
+  return out;
+}
+
+async function getRepoFilesIndex() {
+  const now = Date.now();
+  if (now - lastRepoScan > 15000 || cachedRepoFiles.length === 0) {
+    cachedRepoFiles = await scanRepoFiles(REPOS_DIR);
+    lastRepoScan = now;
+  }
+  return cachedRepoFiles;
 }
 
 const server = http.createServer(async (req, res) => {
@@ -81,7 +131,9 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (req.url === '/skills') {
+  const parsedUrl = new URL(req.url || '/', 'http://127.0.0.1');
+
+  if (parsedUrl.pathname === '/skills') {
     try {
       const topEntries = await fs.readdir(SKILLS_DIR, { withFileTypes: true });
       const skillFolders = topEntries.filter((e) => e.isDirectory() && !e.name.startsWith('.'));
@@ -137,14 +189,52 @@ const server = http.createServer(async (req, res) => {
       }
 
       skills.sort((a, b) => a.name.localeCompare(b.name));
-      console.log('[Vexel Bridge] ' + skills.length + ' skills indexes.');
-
       res.writeHead(200);
       res.end(JSON.stringify({ skillsDir: SKILLS_DIR, count: skills.length, skills }));
     } catch (err) {
-      console.error('[Vexel Bridge] Erreur :', err);
       res.writeHead(500);
       res.end(JSON.stringify({ error: String(err), skillsDir: SKILLS_DIR }));
+    }
+    return;
+  }
+
+  if (parsedUrl.pathname === '/files') {
+    try {
+      const q = (parsedUrl.searchParams.get('q') || '').toLowerCase().trim();
+      const allFiles = await getRepoFilesIndex();
+      const matched = q
+        ? allFiles.filter((f) => f.relPath.toLowerCase().includes(q))
+        : allFiles;
+      res.writeHead(200);
+      res.end(JSON.stringify({ reposDir: REPOS_DIR, count: matched.length, files: matched.slice(0, 40) }));
+    } catch (err) {
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: String(err) }));
+    }
+    return;
+  }
+
+  if (parsedUrl.pathname === '/file') {
+    try {
+      const relPath = parsedUrl.searchParams.get('path') || '';
+      const resolved = path.resolve(REPOS_DIR, relPath);
+      if (!resolved.startsWith(REPOS_DIR + path.sep)) {
+        res.writeHead(403);
+        res.end(JSON.stringify({ error: 'Path traversal forbidden' }));
+        return;
+      }
+      const stat = await fs.stat(resolved);
+      if (stat.size > 512 * 1024) {
+        res.writeHead(413);
+        res.end(JSON.stringify({ error: 'Fichier trop volumineux (> 512 Ko)' }));
+        return;
+      }
+      const content = await fs.readFile(resolved, 'utf8');
+      res.writeHead(200);
+      res.end(JSON.stringify({ relPath, name: path.basename(resolved), content, length: content.length }));
+    } catch (err) {
+      res.writeHead(404);
+      res.end(JSON.stringify({ error: String(err) }));
     }
     return;
   }
@@ -154,5 +244,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log('[Vexel Bridge] Pret sur http://127.0.0.1:' + PORT + '/skills');
+  console.log('[Vexel Bridge] Pret sur http://127.0.0.1:' + PORT + ' (/skills, /files, /file)');
 });

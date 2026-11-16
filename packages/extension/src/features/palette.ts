@@ -1,467 +1,450 @@
 import { MAX_SAFE_LENGTH, uploadAsTextFile } from './untruncate';
-
+import { exportConversationMarkdown } from './thread-tools';
 interface RefFile {
-  relPath: string;
-  content: string;
-  length: number;
+relPath: string;
+content: string;
+length: number;
 }
-
 interface SkillItem {
-  id: string;
-  name: string;
-  description: string;
-  smartContent: string;
-  smartLength: number;
-  fullContent: string;
-  fullLength: number;
-  refCount: number;
-  refs: RefFile[];
+id: string;
+name: string;
+description: string;
+smartContent: string;
+smartLength: number;
+fullContent: string;
+fullLength: number;
+refCount: number;
+refs: RefFile[];
 }
-
-const LT = String.fromCharCode(60);
-const GT = String.fromCharCode(62);
-
-function el(tagName: string, attrs: string, inner: string): string {
-  const space = attrs ? ' ' + attrs : '';
-  return LT + tagName + space + GT + inner + LT + '/' + tagName + GT;
+interface RepoFileItem {
+name: string;
+relPath: string;
+repo: string;
 }
-
-function voidEl(tagName: string, attrs: string): string {
-  const space = attrs ? ' ' + attrs : '';
-  return LT + tagName + space + '/' + GT;
+type MenuMode = 'skills' | 'refs' | 'files';
+const BT1 = String.fromCharCode(96);
+const BT3 = String.fromCharCode(96, 96, 96);
+function formatChars(len: number): string {
+return len >= 1000 ? (len / 1000).toFixed(1) + 'k car.' : len + ' car.';
 }
-
-const ICONS = {
-  search: el('svg', 'width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"',
-    voidEl('circle', 'cx="11" cy="11" r="8"') + voidEl('path', 'd="m21 21-4.3-4.3"')
-  ),
-  sparkles: el('svg', 'width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"',
-    voidEl('path', 'd="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"')
-  ),
-  fileText: el('svg', 'width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"',
-    voidEl('path', 'd="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"') +
-    voidEl('path', 'd="M14 2v4a2 2 0 0 0 2 2h4"') +
-    voidEl('path', 'd="M10 9H8"') +
-    voidEl('path', 'd="M16 13H8"') +
-    voidEl('path', 'd="M16 17H8"')
-  ),
-  paperclip: el('svg', 'width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"',
-    voidEl('path', 'd="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"')
-  ),
-  folderTree: el('svg', 'width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"',
-    voidEl('path', 'd="M20 10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2.5a1 1 0 0 1-.8-.4l-.9-1.2A1 1 0 0 0 15 3h-2a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1Z"') +
-    voidEl('path', 'd="M20 21a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1h-2.9a1 1 0 0 1-.88-.55l-.42-.85a1 1 0 0 0-.92-.6H13a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1Z"') +
-    voidEl('path', 'd="M3 5a2 2 0 0 0 2 2h3"') +
-    voidEl('path', 'd="M3 3v13a2 2 0 0 0 2 2h3"')
-  ),
-  chevronRight: el('svg', 'width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"',
-    voidEl('path', 'd="m9 18 6-6-6-6"')
-  ),
-  arrowLeft: el('svg', 'width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"',
-    voidEl('path', 'd="m12 19-7-7 7-7"') + voidEl('path', 'd="M19 12H5"')
-  ),
-  alertCircle: el('svg', 'width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"',
-    voidEl('circle', 'cx="12" cy="12" r="10"') +
-    voidEl('line', 'x1="12" x2="12" y1="8" y2="12"') +
-    voidEl('line', 'x1="12" x2="12.01" y1="16" y2="16"')
-  )
-};
-
-const CSS_RULES = [
-  ':host { all: initial; }',
-  '.backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.58); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 2147483646; display: none; align-items: flex-start; justify-content: center; padding-top: 11vh; font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }',
-  '.backdrop.open { display: flex; }',
-  '.modal { width: 650px; max-width: 94vw; background: rgba(20, 20, 23, 0.97); border: 1px solid rgba(255, 255, 255, 0.11); border-radius: 14px; box-shadow: 0 24px 64px rgba(0, 0, 0, 0.78); overflow: hidden; color: #f4f4f5; display: flex; flex-direction: column; }',
-  '.header { display: flex; align-items: center; padding: 14px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); gap: 10px; }',
-  '.search-icon { color: #71717a; display: flex; align-items: center; }',
-  '.back-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; color: #e4e4e7; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.12); padding: 3px 8px; border-radius: 6px; cursor: pointer; }',
-  'input { flex: 1; background: transparent; border: none; outline: none; color: #fafafa; font-size: 15px; font-weight: 400; letter-spacing: -0.01em; }',
-  'input::placeholder { color: #52525b; }',
-  '.brand { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; color: #a1a1aa; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); padding: 3px 8px; border-radius: 6px; }',
-  '.list { max-height: 380px; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 2px; }',
-  '.list::-webkit-scrollbar { width: 6px; }',
-  '.list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.14); border-radius: 3px; }',
-  '.item { padding: 10px 12px; border-radius: 9px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; border: 1px solid transparent; }',
-  '.item.active { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.09); }',
-  '.item-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }',
-  '.item-title-wrap { display: flex; align-items: center; gap: 8px; min-width: 0; }',
-  '.item-icon { color: #a1a1aa; display: flex; align-items: center; flex-shrink: 0; }',
-  '.item.active .item-icon { color: #60a5fa; }',
-  '.item-name { font-weight: 500; font-size: 14px; color: #f4f4f5; letter-spacing: -0.01em; }',
-  '.badges { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }',
-  '.pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; padding: 2px 7px; border-radius: 5px; background: rgba(255, 255, 255, 0.05); color: #a1a1aa; border: 1px solid rgba(255, 255, 255, 0.06); }',
-  '.pill.file { color: #93c5fd; background: rgba(59, 130, 246, 0.12); border-color: rgba(59, 130, 246, 0.25); }',
-  '.pill.refs { color: #c4b5fd; background: rgba(139, 92, 246, 0.12); border-color: rgba(139, 92, 246, 0.25); }',
-  '.item-desc { font-size: 12.5px; color: #71717a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 22px; }',
-  '.item.active .item-desc { color: #a1a1aa; }',
-  '.footer { display: flex; align-items: center; justify-content: space-between; padding: 9px 16px; border-top: 1px solid rgba(255, 255, 255, 0.08); background: rgba(14, 14, 17, 0.85); font-size: 11.5px; color: #71717a; }',
-  '.shortcuts { display: flex; align-items: center; gap: 12px; }',
-  '.sc { display: inline-flex; align-items: center; gap: 4px; }',
-  'kbd { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px; color: #a1a1aa; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 4px; padding: 1px 5px; }',
-  '.empty { padding: 32px 20px; text-align: center; color: #71717a; font-size: 13px; display: flex; flex-direction: column; align-items: center; gap: 8px; }',
-  '.err { color: #fca5a5; font-family: ui-monospace, monospace; font-size: 11.5px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); padding: 6px 10px; border-radius: 6px; }'
+function escapeHtml(str: string): string {
+return str.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
+}
+const MENU_HTML = [
+'',
+':host { all: initial; }',
+'.trigger-pill { position: fixed; z-index: 2147483645; display: none; align-items: center; gap: 6px; background: rgba(24, 24, 27, 0.92); color: #e4e4e7; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 999px; padding: 4px 10px; font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif; font-size: 11.5px; font-weight: 500; cursor: pointer; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); backdrop-filter: blur(6px); transition: background 0.15s ease, border-color 0.15s ease; }',
+'.trigger-pill:hover { background: rgba(39, 39, 42, 0.98); border-color: rgba(96, 165, 250, 0.5); color: #ffffff; }',
+'.trigger-pill kbd { font-family: ui-monospace, monospace; font-size: 10px; background: rgba(255, 255, 255, 0.08); padding: 1px 4px; border-radius: 4px; color: #a1a1aa; }',
+'.popover { position: fixed; width: 540px; max-width: 92vw; background: rgba(20, 20, 23, 0.98); border: 1px solid rgba(255, 255, 255, 0.13); border-radius: 12px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75); z-index: 2147483646; display: none; flex-direction: column; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif; color: #f4f4f5; }',
+'.popover.open { display: flex; }',
+'.top-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.02); gap: 8px; }',
+'.tabs { display: flex; align-items: center; gap: 6px; }',
+'.tab { font-size: 11.5px; font-weight: 500; padding: 3px 8px; border-radius: 6px; cursor: pointer; color: #a1a1aa; background: transparent; border: 1px solid transparent; }',
+'.tab.active { color: #ffffff; background: rgba(59, 130, 246, 0.18); border-color: rgba(59, 130, 246, 0.35); }',
+'.export-btn { font-size: 11px; font-weight: 500; color: #d4d4d8; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; padding: 3px 8px; cursor: pointer; }',
+'.export-btn:hover { background: rgba(255, 255, 255, 0.12); color: #ffffff; }',
+'.filter-box { padding: 8px 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); display: flex; align-items: center; gap: 8px; }',
+'.filter-box input { flex: 1; background: transparent; border: none; outline: none; color: #fafafa; font-size: 13px; }',
+'.list { max-height: 290px; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 2px; }',
+'.item { padding: 8px 10px; border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; border: 1px solid transparent; }',
+'.item.active { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.1); }',
+'.item-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }',
+'.item-title { font-size: 13px; font-weight: 500; color: #f4f4f5; }',
+'.item-sub { font-size: 11.5px; color: #71717a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
+'.badge { font-size: 10.5px; padding: 2px 6px; border-radius: 5px; background: rgba(255, 255, 255, 0.06); color: #a1a1aa; flex-shrink: 0; }',
+'.badge.repo { color: #93c5fd; background: rgba(59, 130, 246, 0.14); }',
+'.footer { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; border-top: 1px solid rgba(255, 255, 255, 0.08); background: rgba(14, 14, 17, 0.9); font-size: 11px; color: #71717a; }',
+'.empty { padding: 20px; text-align: center; color: #71717a; font-size: 12.5px; }',
+'',
+'⚡ Vexel / @',
+'',
+'  ',
+'    ',
+'      / Skills',
+'      @ Fichiers Repos',
+'    ',
+'    Exporter .md (⌘⇧E)',
+'  ',
+'  ',
+'    ',
+'  ',
+'  ',
+'  ',
+'    0 element',
+'    ↑↓ naviguer • ↵ inserer • Esc fermer',
+'  ',
+''
 ].join('\n');
-
-const PALETTE_HTML =
-  el('style', '', CSS_RULES) +
-  el('div', 'class="backdrop" id="backdrop"',
-    el('div', 'class="modal"',
-      el('div', 'class="header"',
-        el('span', 'class="search-icon" id="search-icon"', ICONS.search) +
-        el('span', 'class="back-pill" id="back-pill" style="display:none"', ICONS.arrowLeft + ' ' + el('span', 'id="active-skill-title"', '')) +
-        voidEl('input', 'id="search" type="text" placeholder="Rechercher un skill..." autocomplete="off"') +
-        el('span', 'class="brand"', ICONS.sparkles + ' VEXEL')
-      ) +
-      el('div', 'class="list" id="list"', '') +
-      el('div', 'class="footer"',
-        el('span', 'id="count-label"', '0 skill') +
-        el('div', 'class="shortcuts" id="footer-shortcuts"', '')
-      )
-    )
-  );
-
 export function initCommandPalette(showToast: (msg: string) => void): void {
-  let isOpen = false;
-  let skills: SkillItem[] = [];
-  let filteredSkills: SkillItem[] = [];
-  let activeSkill: SkillItem | null = null;
-  let filteredRefs: RefFile[] = [];
-  let selectedIndex = 0;
-  let lastActiveInput: HTMLElement | null = null;
-
-  const host = document.createElement('div');
-  host.id = 'vexel-palette-host';
-  const shadow = host.attachShadow({ mode: 'open' });
-  shadow.innerHTML = PALETTE_HTML;
-  document.body.appendChild(host);
-
-  const backdrop = shadow.getElementById('backdrop') as HTMLDivElement;
-  const searchInput = shadow.getElementById('search') as HTMLInputElement;
-  const listEl = shadow.getElementById('list') as HTMLDivElement;
-  const countLabel = shadow.getElementById('count-label') as HTMLSpanElement;
-  const footerShortcuts = shadow.getElementById('footer-shortcuts') as HTMLDivElement;
-  const backPill = shadow.getElementById('back-pill') as HTMLSpanElement;
-  const activeSkillTitle = shadow.getElementById('active-skill-title') as HTMLSpanElement;
-
-  function updateHeaderAndFooter(): void {
-    if (activeSkill) {
-backPill.style.display = 'inline-flex';
-activeSkillTitle.textContent = activeSkill.name;
-searchInput.placeholder = 'Filtrer les references de ' + activeSkill.name + '...';
-countLabel.textContent = filteredRefs.length + (filteredRefs.length > 1 ? ' references' : ' reference');
-footerShortcuts.innerHTML =
-el('span', 'class="sc"', el('kbd', '', '←') + ' Retour') +
-el('span', 'class="sc"', el('kbd', '', '↵') + ' Injecter cette ref');
-} else {
-backPill.style.display = 'none';
-searchInput.placeholder = 'Rechercher un skill...';
-countLabel.textContent = filteredSkills.length + (filteredSkills.length > 1 ? ' skills' : ' skill');
-footerShortcuts.innerHTML =
-el('span', 'class="sc"', el('kbd', '', '↵') + ' SKILL + index refs') +
-el('span', 'class="sc"', el('kbd', '', '→') + ' Ouvrir refs') +
-el('span', 'class="sc"', el('kbd', '', '⌘') + el('kbd', '', '↵') + ' Tout joindre');
+let isOpen = false;
+let mode: MenuMode = 'skills';
+let triggerRange: { start: number; end: number } | null = null;
+let activeInput: HTMLElement | null = null;
+let skills: SkillItem[] = [];
+let filteredSkills: SkillItem[] = [];
+let activeSkill: SkillItem | null = null;
+let filteredRefs: RefFile[] = [];
+let repoFiles: RepoFileItem[] = [];
+let selectedIndex = 0;
+let fileFetchTimer: number | undefined;
+const host = document.createElement('div');
+host.id = 'vexel-inline-menu-host';
+const shadow = host.attachShadow({ mode: 'open' });
+shadow.innerHTML = MENU_HTML;
+document.body.appendChild(host);
+const triggerPill = shadow.getElementById('trigger-pill') as HTMLButtonElement;
+const popover = shadow.getElementById('popover') as HTMLDivElement;
+const tabSkills = shadow.getElementById('tab-skills') as HTMLButtonElement;
+const tabFiles = shadow.getElementById('tab-files') as HTMLButtonElement;
+const btnExport = shadow.getElementById('btn-export') as HTMLButtonElement;
+const filterInput = shadow.getElementById('filter-input') as HTMLInputElement;
+const listEl = shadow.getElementById('list') as HTMLDivElement;
+const statusText = shadow.getElementById('status-text') as HTMLSpanElement;
+function findVisibleInput(): HTMLElement | null {
+const inputs = document.querySelectorAll('textarea, [contenteditable="true"]');
+for (let i = 0; i < inputs.length; i++) {
+const el = inputs.item(i) as HTMLElement;
+if (el.offsetParent !== null) return el;
 }
+return null;
 }
-function enterSkillRefs(skill?: SkillItem): void {
-if (!skill || skill.refs.length === 0) return;
-activeSkill = skill;
-searchInput.value = '';
-filterItems('');
-}
-function exitSkillRefs(): void {
-if (!activeSkill) return;
-activeSkill = null;
-searchInput.value = '';
-filterItems('');
-}
-backPill.addEventListener('click', exitSkillRefs);
-function loadSkills(): void {
-listEl.innerHTML = el('div', 'class="empty"', 'Indexation des skills...');
-let settled = false;
-const timeoutId = window.setTimeout(() => {
-if (settled) return;
-settled = true;
-listEl.innerHTML = el('div', 'class="empty"',
-ICONS.alertCircle +
-el('span', '', 'Timeout du Service Worker.') +
-el('div', 'class="err"', 'Rechargez Vexel dans chrome://extensions/ puis actualisez la page.')
-);
-}, 3000);
-try {
-chrome.runtime.sendMessage({ type: 'FETCH_SKILLS' }, (response) => {
-if (settled) return;
-settled = true;
-window.clearTimeout(timeoutId);
-if (chrome.runtime.lastError || !response || !response.ok) {
-const errMsg = chrome.runtime.lastError?.message || response?.error || 'Bridge hors ligne';
-listEl.innerHTML = el('div', 'class="empty"',
-ICONS.alertCircle +
-el('span', '', 'Bridge local injoignable') +
-el('div', 'class="err"', escapeHtml(errMsg))
-);
+function positionElements(): void {
+const input = activeInput && document.contains(activeInput) ? activeInput : findVisibleInput();
+if (!input) {
+triggerPill.style.display = 'none';
 return;
 }
-skills = response.data?.skills || [];
-filterItems(searchInput.value);
+activeInput = input;
+const rect = input.getBoundingClientRect();
+if (rect.width === 0 || rect.height === 0) {
+triggerPill.style.display = 'none';
+return;
+}
+triggerPill.style.display = 'inline-flex';
+triggerPill.style.top = Math.max(8, rect.top - 30) + 'px';
+triggerPill.style.left = Math.max(12, rect.right - 118) + 'px';
+if (isOpen) {
+const popHeight = popover.offsetHeight || 340;
+const topPos = rect.top - popHeight - 8;
+popover.style.top = (topPos > 10 ? topPos : Math.min(window.innerHeight - popHeight - 12, rect.bottom + 8)) + 'px';
+popover.style.left = Math.max(12, Math.min(window.innerWidth - 552, rect.left)) + 'px';
+}
+}
+function fetchSkills(): void {
+listEl.innerHTML = 'Chargement des skills...';
+chrome.runtime.sendMessage({ type: 'FETCH_SKILLS' }, (res) => {
+if (chrome.runtime.lastError || !res?.ok) {
+listEl.innerHTML = 'Bridge local injoignable (127.0.0.1:49152)';
+return;
+}
+skills = res.data?.skills || [];
+applyFilter(filterInput.value);
 });
-} catch {
-if (!settled) {
-settled = true;
-window.clearTimeout(timeoutId);
-listEl.innerHTML = el('div', 'class="empty"',
-ICONS.alertCircle +
-el('span', '', 'Extension mise a jour. Actualisez la page (Cmd+R).')
-);
 }
+function fetchFiles(query: string): void {
+if (fileFetchTimer) window.clearTimeout(fileFetchTimer);
+fileFetchTimer = window.setTimeout(() => {
+listEl.innerHTML = 'Recherche dans ~/Documents/Repos...';
+chrome.runtime.sendMessage({ type: 'FETCH_FILES', query }, (res) => {
+if (chrome.runtime.lastError || !res?.ok) {
+listEl.innerHTML = 'Bridge local injoignable (127.0.0.1:49152)';
+return;
 }
-}
-function filterItems(query: string): void {
-const q = query.toLowerCase().trim();
-if (activeSkill) {
-filteredRefs = q
-? activeSkill.refs.filter((r) => r.relPath.toLowerCase().includes(q))
-: activeSkill.refs;
-} else {
-filteredSkills = q
-? skills.filter(
-(s) =>
-s.name.toLowerCase().includes(q) ||
-s.description.toLowerCase().includes(q) ||
-s.refs.some((r) => r.relPath.toLowerCase().includes(q))
-)
-: skills;
-}
+repoFiles = res.data?.files || [];
 selectedIndex = 0;
-updateHeaderAndFooter();
 renderList();
+});
+}, 120);
+}
+function switchMode(newMode: MenuMode, initialQuery = ''): void {
+mode = newMode;
+activeSkill = null;
+tabSkills.classList.toggle('active', mode === 'skills' || mode === 'refs');
+tabFiles.classList.toggle('active', mode === 'files');
+filterInput.value = initialQuery;
+if (mode === 'skills') {
+filterInput.placeholder = 'Filtrer les skills (~/.agents/skills)...';
+if (skills.length === 0) {
+fetchSkills();
+} else {
+applyFilter(initialQuery);
+}
+} else if (mode === 'files') {
+filterInput.placeholder = 'Nom ou chemin de fichier dans ~/Documents/Repos...';
+fetchFiles(initialQuery);
+}
+}
+function openMenu(initialMode: MenuMode, initialQuery = '', range: { start: number; end: number } | null = null): void {
+triggerRange = range;
+isOpen = true;
+popover.classList.add('open');
+switchMode(initialMode, initialQuery);
+positionElements();
+if (!range) {
+filterInput.focus();
+}
+}
+function closeMenu(): void {
+isOpen = false;
+triggerRange = null;
+activeSkill = null;
+popover.classList.remove('open');
+}
+function applyFilter(qRaw: string): void {
+const q = qRaw.toLowerCase().trim();
+if (mode === 'refs' && activeSkill) {
+filteredRefs = q ? activeSkill.refs.filter((r) => r.relPath.toLowerCase().includes(q)) : activeSkill.refs;
+selectedIndex = 0;
+renderList();
+return;
+}
+if (mode === 'skills') {
+filteredSkills = q
+? skills.filter((s) => s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q))
+: skills;
+selectedIndex = 0;
+renderList();
+return;
+}
+if (mode === 'files') {
+fetchFiles(q);
+}
 }
 function renderList(): void {
-if (activeSkill) {
+if (mode === 'refs' && activeSkill) {
+statusText.textContent = filteredRefs.length + ' reference(s) — ' + activeSkill.name;
 if (filteredRefs.length === 0) {
-listEl.innerHTML = el('div', 'class="empty"', 'Aucune reference correspondante.');
+listEl.innerHTML = 'Aucune reference correspondante.';
 return;
 }
-const rows: string[] = [];
-for (let i = 0; i < filteredRefs.length; i++) {
-const ref = filteredRefs.slice(i, i + 1).find(() => true);
-if (!ref) continue;
-const cls = i === selectedIndex ? 'item active' : 'item';
-const isFile = ref.length > MAX_SAFE_LENGTH;
-const badge = isFile
-? el('span', 'class="pill file"', ICONS.paperclip + ' ' + formatChars(ref.length))
-: el('span', 'class="pill"', ICONS.fileText + ' ' + formatChars(ref.length));
-rows.push(
-el('div', 'class="' + cls + '" data-idx="' + i + '"',
-el('div', 'class="item-top"',
-el('div', 'class="item-title-wrap"',
-el('span', 'class="item-icon"', ICONS.fileText) +
-el('span', 'class="item-name"', escapeHtml(ref.relPath))
-) +
-el('div', 'class="badges"', badge)
-)
-)
-);
-}
-listEl.innerHTML = rows.join('');
-listEl.querySelectorAll('.item').forEach((node) => {
-const htmlEl = node as HTMLElement;
-htmlEl.addEventListener('click', () => {
-const idx = Number(htmlEl.getAttribute('data-idx'));
-const ref = filteredRefs.slice(idx, idx + 1).find(() => true);
-applyRef(ref);
-});
-});
-scrollActive();
+listEl.innerHTML = filteredRefs
+.map((r) => [
+'',
+'  ',
+'    📄 ' + escapeHtml(r.relPath) + '',
+'    ' + formatChars(r.length) + '',
+'  ',
+''
+].join(''))
+.join('');
+bindRowClicks();
 return;
 }
+if (mode === 'skills') {
+statusText.textContent = filteredSkills.length + ' skill(s)';
 if (filteredSkills.length === 0) {
-listEl.innerHTML = el('div', 'class="empty"', 'Aucun skill correspondant.');
+listEl.innerHTML = 'Aucun skill correspondant.';
 return;
 }
-const rows: string[] = [];
-for (let i = 0; i < filteredSkills.length; i++) {
-const s = filteredSkills.slice(i, i + 1).find(() => true);
-if (!s) continue;
-const isFileMode = s.smartLength > MAX_SAFE_LENGTH;
-const cls = i === selectedIndex ? 'item active' : 'item';
-const refsBadge = s.refCount > 0
-? el('span', 'class="pill refs" data-browse-idx="' + i + '"', ICONS.folderTree + ' ' + s.refCount + ' ref' + (s.refCount > 1 ? 's' : '') + ' ' + ICONS.chevronRight)
-: '';
-const modeBadge = isFileMode
-? el('span', 'class="pill file"', ICONS.paperclip + ' ' + formatChars(s.smartLength))
-: el('span', 'class="pill"', ICONS.fileText + ' ' + formatChars(s.smartLength));
-const descHtml = s.description
-? el('div', 'class="item-desc"', escapeHtml(s.description))
-: '';
-rows.push(
-el('div', 'class="' + cls + '" data-idx="' + i + '"',
-el('div', 'class="item-top"',
-el('div', 'class="item-title-wrap"',
-el('span', 'class="item-icon"', ICONS.sparkles) +
-el('span', 'class="item-name"', escapeHtml(s.name))
-) +
-el('div', 'class="badges"', refsBadge + modeBadge)
-) +
-descHtml
-)
-);
+listEl.innerHTML = filteredSkills
+.map((s) => [
+'',
+'  ',
+'    ✦ ' + escapeHtml(s.name) + '',
+'    ' + (s.refCount > 0 ? s.refCount + ' refs • ' : '') + formatChars(s.smartLength) + '',
+'  ',
+s.description ? '  ' + escapeHtml(s.description) + '' : '',
+''
+].join(''))
+.join('');
+bindRowClicks();
+return;
 }
-listEl.innerHTML = rows.join('');
-listEl.querySelectorAll('.pill.refs').forEach((badgeNode) => {
-const bEl = badgeNode as HTMLElement;
-bEl.addEventListener('click', (e) => {
-e.stopPropagation();
-const idx = Number(bEl.getAttribute('data-browse-idx'));
-const item = filteredSkills.slice(idx, idx + 1).find(() => true);
-enterSkillRefs(item);
-});
-});
+if (mode === 'files') {
+statusText.textContent = repoFiles.length + ' fichier(s)';
+if (repoFiles.length === 0) {
+listEl.innerHTML = 'Aucun fichier trouve dans ~/Documents/Repos.';
+return;
+}
+listEl.innerHTML = repoFiles
+.map((f) => [
+'',
+'  ',
+'    ' + escapeHtml(f.name) + '',
+'    ' + escapeHtml(f.repo) + '',
+'  ',
+'  ' + escapeHtml(f.relPath) + '',
+''
+].join(''))
+.join('');
+bindRowClicks();
+}
+}
+function bindRowClicks(): void {
 listEl.querySelectorAll('.item').forEach((node) => {
-const htmlEl = node as HTMLElement;
-htmlEl.addEventListener('click', (e) => {
-const idx = Number(htmlEl.getAttribute('data-idx'));
-const item = filteredSkills.slice(idx, idx + 1).find(() => true);
-const fullBundle = (e as MouseEvent).metaKey || (e as MouseEvent).ctrlKey;
-applySkill(item, fullBundle);
+node.addEventListener('mousedown', (e) => {
+e.preventDefault();
+const idx = Number((node as HTMLElement).getAttribute('data-idx'));
+selectCurrentItem(idx, (e as MouseEvent).metaKey || (e as MouseEvent).ctrlKey);
 });
 });
-scrollActive();
+const active = listEl.querySelector('.item.active');
+if (active) active.scrollIntoView({ block: 'nearest' });
 }
-function scrollActive(): void {
-const activeEl = listEl.querySelector('.item.active');
-if (activeEl) {
-activeEl.scrollIntoView({ block: 'nearest' });
+function stripTriggerToken(ta: HTMLTextAreaElement): void {
+if (!triggerRange) return;
+const before = ta.value.slice(0, triggerRange.start);
+const after = ta.value.slice(triggerRange.end);
+ta.value = before + after;
+ta.selectionStart = ta.selectionEnd = before.length;
+ta.dispatchEvent(new Event('input', { bubbles: true }));
 }
-}
-function injectPayload(payload: string, fileName: string, toastLabel: string): void {
-const target =
-lastActiveInput ||
-(document.querySelector('textarea, [contenteditable="true"]') as HTMLElement | null);
+function injectContent(content: string, fileName: string, toastMsg: string): void {
+const target = activeInput || findVisibleInput();
 if (!target) {
-navigator.clipboard.writeText(payload);
-showToast(toastLabel + ' copie');
+navigator.clipboard.writeText(content);
+showToast(toastMsg + ' (copie)');
 return;
+}
+if (target.tagName === 'TEXTAREA') {
+stripTriggerToken(target as HTMLTextAreaElement);
 }
 target.focus();
-if (payload.length > MAX_SAFE_LENGTH) {
-uploadAsTextFile(payload, target, showToast, fileName);
+if (content.length > MAX_SAFE_LENGTH || fileName.endsWith('.ts') || fileName.endsWith('.rs') || fileName.endsWith('.mjs')) {
+uploadAsTextFile(content, target, showToast, fileName);
 return;
 }
 if (target.tagName === 'TEXTAREA') {
 const ta = target as HTMLTextAreaElement;
 const prefix = ta.value ? ta.value + '\n\n' : '';
-ta.value = prefix + payload;
+ta.value = prefix + content;
 ta.dispatchEvent(new Event('input', { bubbles: true }));
 } else {
-document.execCommand('insertText', false, payload);
+document.execCommand('insertText', false, content);
 }
-showToast(toastLabel + ' insere');
+showToast(toastMsg);
 }
-function applySkill(skill?: SkillItem, fullBundle = false): void {
-if (!skill) return;
-closePalette();
-if (fullBundle) {
-injectPayload(
-skill.fullContent,
-skill.id + '-full.md',
-'Skill "' + skill.name + '" complet (+' + skill.refCount + ' refs)'
-);
-} else {
-injectPayload(
-skill.smartContent,
-skill.id + '.md',
-'Skill "' + skill.name + '" (+ index refs)'
-);
-}
-}
-function applyRef(ref?: RefFile): void {
-if (!ref || !activeSkill) return;
+function selectCurrentItem(idx = selectedIndex, fullBundle = false): void {
+if (mode === 'refs' && activeSkill) {
+const ref = filteredRefs.slice(idx, (idx) + 1).find(() => true);
+if (!ref) return;
 const skillName = activeSkill.name;
-closePalette();
-const header = '## Reference demandee (' + skillName + ') : ' + ref.relPath + '\n\n';
-const safeFile = ref.relPath.split('/').join('-');
-injectPayload(header + ref.content, safeFile, 'Reference "' + ref.relPath + '"');
-}
-function openPalette(): void {
-const active = document.activeElement as HTMLElement | null;
-if (active && (active.tagName === 'TEXTAREA' || active.isContentEditable)) {
-lastActiveInput = active;
-}
-activeSkill = null;
-isOpen = true;
-backdrop.classList.add('open');
-searchInput.value = '';
-searchInput.focus();
-loadSkills();
-}
-function closePalette(): void {
-isOpen = false;
-activeSkill = null;
-backdrop.classList.remove('open');
-}
-document.addEventListener('keydown', (e: KeyboardEvent) => {
-if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-e.preventDefault();
-e.stopPropagation();
-if (isOpen) {
-closePalette();
-} else {
-openPalette();
-}
+closeMenu();
+injectContent(
+'## Reference (' + skillName + ') : ' + ref.relPath + '\n\n' + ref.content,
+ref.relPath.split('/').join('-'),
+'Reference "' + ref.relPath + '" ajoutee'
+);
 return;
 }
+if (mode === 'skills') {
+const skill = filteredSkills.slice(idx, (idx) + 1).find(() => true);
+if (!skill) return;
+closeMenu();
+const payload = fullBundle ? skill.fullContent : skill.smartContent;
+injectContent(payload, skill.id + '.md', 'Skill "' + skill.name + '" ajoute');
+return;
+}
+if (mode === 'files') {
+const file = repoFiles.slice(idx, (idx) + 1).find(() => true);
+if (!file) return;
+closeMenu();
+chrome.runtime.sendMessage({ type: 'FETCH_FILE_CONTENT', relPath: file.relPath }, (res) => {
+if (!res?.ok || !res.data) {
+showToast('Impossible de lire ' + file.relPath);
+return;
+}
+const wrapped = '### Fichier : ' + BT1 + file.relPath + BT1 + '\n\n' + BT3 + '\n' + res.data.content + '\n' + BT3;
+const target = activeInput || findVisibleInput();
+if (target) {
+if (target.tagName === 'TEXTAREA') stripTriggerToken(target as HTMLTextAreaElement);
+uploadAsTextFile(wrapped, target, showToast, file.name + '.txt');
+}
+});
+}
+}
+document.addEventListener('input', (e: Event) => {
+    const target = e.target as HTMLElement | null;
+    if (!target || target.tagName !== 'TEXTAREA') return;
+    const ta = target as HTMLTextAreaElement;
+    activeInput = ta;
+
+    const cursor = ta.selectionStart ?? ta.value.length;
+    const textBeforeCursor = ta.value.slice(0, cursor);
+    const lastSlash = textBeforeCursor.lastIndexOf('/');
+    const lastAt = textBeforeCursor.lastIndexOf('@');
+    const triggerPos = Math.max(lastSlash, lastAt);
+    let match: { symbol: string; query: string; start: number } | null = null;
+
+    if (triggerPos !== -1) {
+      const prevChar = triggerPos === 0 ? ' ' : textBeforeCursor.charAt(triggerPos - 1);
+      const afterTrigger = textBeforeCursor.slice(triggerPos + 1);
+      if (/\s/.test(prevChar) && !/\s/.test(afterTrigger)) {
+        match = { symbol: textBeforeCursor.charAt(triggerPos), query: afterTrigger, start: triggerPos };
+      }
+    }
+
+    if (match) {
+      const targetMode: MenuMode = match.symbol === '/' ? 'skills' : 'files';
+      if (!isOpen || mode !== targetMode) {
+        openMenu(targetMode, match.query, { start: match.start, end: cursor });
+      } else {
+        triggerRange = { start: match.start, end: cursor };
+        filterInput.value = match.query;
+        applyFilter(match.query);
+        positionElements();
+      }
+    } else if (isOpen && triggerRange) {
+      closeMenu();
+    }
+  }, true);
+
+  document.addEventListener('keydown', (e: KeyboardEvent) => {
 if (!isOpen) return;
-const listLen = activeSkill ? filteredRefs.length : filteredSkills.length;
+const len = mode === 'refs' ? filteredRefs.length : mode === 'skills' ? filteredSkills.length : repoFiles.length;
 if (e.key === 'Escape') {
 e.preventDefault();
-if (activeSkill) {
-exitSkillRefs();
+e.stopPropagation();
+if (mode === 'refs') {
+switchMode('skills', filterInput.value);
 } else {
-closePalette();
+closeMenu();
 }
 } else if (e.key === 'ArrowDown') {
 e.preventDefault();
-selectedIndex = (selectedIndex + 1) % Math.max(1, listLen);
+e.stopPropagation();
+selectedIndex = (selectedIndex + 1) % Math.max(1, len);
 renderList();
 } else if (e.key === 'ArrowUp') {
 e.preventDefault();
-selectedIndex = (selectedIndex - 1 + listLen) % Math.max(1, listLen);
+e.stopPropagation();
+selectedIndex = (selectedIndex - 1 + len) % Math.max(1, len);
 renderList();
-} else if (e.key === 'ArrowRight' && !activeSkill) {
-const current = filteredSkills.slice(selectedIndex, selectedIndex + 1).find(() => true);
-if (current && current.refs.length > 0) {
+} else if (e.key === 'ArrowRight' && mode === 'skills' && document.activeElement !== activeInput) {
+const s = filteredSkills.slice(selectedIndex, (selectedIndex) + 1).find(() => true);
+if (s && s.refs.length > 0) {
 e.preventDefault();
-enterSkillRefs(current);
+activeSkill = s;
+mode = 'refs';
+filterInput.value = '';
+applyFilter('');
 }
-} else if (e.key === 'ArrowLeft' && activeSkill && searchInput.value === '') {
+} else if (e.key === 'Enter' && !e.shiftKey) {
 e.preventDefault();
-exitSkillRefs();
-} else if (e.key === 'Enter') {
-e.preventDefault();
-if (activeSkill) {
-const ref = filteredRefs.slice(selectedIndex, selectedIndex + 1).find(() => true);
-applyRef(ref);
-} else {
-const skill = filteredSkills.slice(selectedIndex, selectedIndex + 1).find(() => true);
-const fullBundle = e.metaKey || e.ctrlKey;
-applySkill(skill, fullBundle);
-}
+e.stopPropagation();
+selectCurrentItem(selectedIndex, e.metaKey || e.ctrlKey);
 }
 }, true);
-searchInput.addEventListener('input', () => filterItems(searchInput.value));
-backdrop.addEventListener('click', (e) => {
-if (e.target === backdrop) closePalette();
+triggerPill.addEventListener('click', () => {
+if (isOpen) closeMenu();
+else openMenu('skills', '', null);
 });
+tabSkills.addEventListener('click', () => switchMode('skills', filterInput.value));
+tabFiles.addEventListener('click', () => switchMode('files', filterInput.value));
+btnExport.addEventListener('click', () => {
+closeMenu();
+exportConversationMarkdown(showToast);
+});
+filterInput.addEventListener('input', () => applyFilter(filterInput.value));
+document.addEventListener('mousedown', (e) => {
+if (!isOpen) return;
+const path = e.composedPath();
+if (!path.includes(popover) && !path.includes(triggerPill) && e.target !== activeInput) {
+closeMenu();
 }
-function formatChars(len: number): string {
-if (len >= 1000) {
-return (len / 1000).toFixed(1) + 'k car.';
-}
-return len + ' car.';
-}
-function escapeHtml(str: string): string {
-return str
-.replace(/&/g, '&')
-.replace(/</g, '<')
-.replace(/>/g, '>');
+});
+window.addEventListener('resize', positionElements, { passive: true });
+window.addEventListener('scroll', positionElements, { passive: true });
+setInterval(positionElements, 1200);
 }
