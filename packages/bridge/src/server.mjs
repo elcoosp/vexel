@@ -145,6 +145,10 @@ async function collectReferenceFiles(dirPath, baseSkillDir) {
 
 function resolveSafePath(relDir = '') {
   const cleaned = String(relDir || '').replace(/^\/+/, '')
+  const segments = cleaned.split(/[/\\]+/).filter(Boolean)
+  if (segments.some((seg) => seg.startsWith('.'))) {
+    return null
+  }
   const resolved = path.resolve(ROOT_DIR, cleaned)
   if (resolved !== ROOT_DIR && !resolved.startsWith(ROOT_DIR + path.sep)) {
     return null
@@ -212,7 +216,8 @@ const server = http.createServer(async (req, res) => {
   const reqOrigin = req.headers.origin || ''
   const bridgeToken = process.env.VEXEL_BRIDGE_TOKEN || ''
   const reqToken = req.headers['x-vexel-token'] || ''
-  const isAllowedOrigin = !reqOrigin || reqOrigin.startsWith('chrome-extension://')
+  const allowedPrefix = process.env.VEXEL_EXT_ORIGIN || 'chrome-extension://'
+  const isAllowedOrigin = !reqOrigin || reqOrigin.startsWith(allowedPrefix)
   const isTokenValid = Boolean(bridgeToken && reqToken === bridgeToken)
   if (isAllowedOrigin) {
     res.setHeader('Access-Control-Allow-Origin', reqOrigin)
@@ -223,7 +228,7 @@ const server = http.createServer(async (req, res) => {
     return
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Vexel-Token')
   res.setHeader('Content-Type', 'application/json; charset=utf-8')
 
   if (req.method === 'OPTIONS') {
@@ -474,10 +479,14 @@ const server = http.createServer(async (req, res) => {
         try {
           const full = path.join(resolved, rel)
           const st = await fs.stat(full)
-          if (!st.isFile() || st.size > 96 * 1024) continue
-          const raw = await fs.readFile(full, 'utf8')
-          if (raw.includes('\u0000')) continue
-          totalBytes += raw.length
+          if (!st.isFile()) continue
+          const rawFull = await fs.readFile(full, 'utf8')
+          if (rawFull.includes('\u0000')) continue
+          const MAX_FILE_CHARS = 96 * 1024
+          const raw = rawFull.length > MAX_FILE_CHARS
+            ? rawFull.slice(0, MAX_FILE_CHARS) + '\n\n[... truncated at 96 KB ...]'
+            : rawFull
+          totalBytes += Buffer.byteLength(raw, 'utf8')
           files.push({ rel, ext: ext.replace(/^\./, '') || 'txt', content: raw })
         } catch {}
       }

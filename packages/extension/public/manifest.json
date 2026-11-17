@@ -23,7 +23,7 @@
         "https://google.com/*",
         "https://google.fr/*"
       ],
-      "all_frames": true,
+      "all_frames": false,
       "js": [
         "content.js"
       ],

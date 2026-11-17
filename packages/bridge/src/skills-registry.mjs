@@ -18,10 +18,10 @@ function loadMetaCache() {
   }
 }
 
-function saveMetaCache(cache) {
+async function saveMetaCache(cache) {
   try {
-    fs.mkdirSync(path.dirname(META_CACHE_FILE), { recursive: true })
-    fs.writeFileSync(META_CACHE_FILE, JSON.stringify(cache, null, 2))
+    await fs.promises.mkdir(CACHE_DIR, { recursive: true })
+    await fs.promises.writeFile(META_CACHE_FILE, JSON.stringify(metaCache, null, 2), "utf8")
   } catch {}
 }
 
