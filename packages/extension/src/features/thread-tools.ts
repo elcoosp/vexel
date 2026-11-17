@@ -158,7 +158,7 @@ function elementToMarkdown(root: HTMLElement, role: 'user' | 'assistant'): strin
     if (block.tagName === 'PRE' && block.closest('.aiModeUiCodeBlock__Container')) return;
     const langEl = block.querySelector<HTMLElement>('.GlO4G');
     const langLabel = (langEl?.textContent || '').trim().toLowerCase();
-    block.querySelectorAll('.rq1a2, .a2TNg').forEach((hdr) => hdr.remove());
+    block.querySelectorAll('.a2TNg').forEach((hdr) => hdr.remove());
     const codeEl = block.querySelector('code');
     const langMatch = (codeEl?.className || '').match(/language-([a-zA-Z0-9_-]+)/);
     const lang = langLabel || (langMatch ? langMatch.slice(1, 2).find(() => true) || '' : '');
