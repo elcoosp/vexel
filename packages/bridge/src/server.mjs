@@ -173,7 +173,7 @@ async function listDirectoryEntries(absDir) {
 
   folders.sort((a, b) => a.name.localeCompare(b.name))
   files.sort((a, b) => a.name.localeCompare(b.name))
-  return [...folders, ...files].slice(0, 120)
+  return [...folders, ...files].slice(0, 1000)
 }
 
 async function searchEntries(absDir, query, depth = 0, out = []) {
