@@ -562,7 +562,7 @@ remoteSkills = (res.data?.skills || []).filter(
 );
 if (mode === 'skills') { renderList(); window.requestAnimationFrame(positionPopover); }
 });
-}, 220);
+}, 380);
 } else {
 remoteSkills = [];
 }
