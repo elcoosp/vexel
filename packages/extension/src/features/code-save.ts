@@ -512,16 +512,8 @@ if (dir === lastQueriedDir) {
 filterAndShowAc(cachedDirEntries, partial);
 return;
 }
-console.log('[Vexel Save AC] query dir=', JSON.stringify(dir), 'partial=', JSON.stringify(partial));
-            acList.style.display = 'flex';
-            acList.replaceChildren();
-            const loadingRow = document.createElement('div');
-            loadingRow.textContent = 'Searching ' + (dir || '~') + '/ ...';
-            Object.assign(loadingRow.style, { padding: '4px 8px', fontSize: '11.5px', color: '#80868b', fontFamily: 'ui-monospace, monospace' });
-            acList.appendChild(loadingRow);
-            chrome.runtime.sendMessage({ type: 'BROWSE_DIR', dir, query: '' }, (res) => {
+chrome.runtime.sendMessage({ type: 'BROWSE_DIR', dir, query: '' }, (res) => {
               const lastErr = chrome.runtime.lastError?.message;
-              console.log('[Vexel Save AC] response=', { lastErr, ok: res?.ok, error: res?.error, count: res?.data?.entries?.length });
               if (lastErr || !res?.ok) {
                 acList.style.display = 'flex';
                 acList.replaceChildren();

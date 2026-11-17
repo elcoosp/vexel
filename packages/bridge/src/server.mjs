@@ -212,7 +212,7 @@ const server = http.createServer(async (req, res) => {
   const reqOrigin = req.headers.origin || ''
   const bridgeToken = process.env.VEXEL_BRIDGE_TOKEN || ''
   const reqToken = req.headers['x-vexel-token'] || ''
-  const isAllowedOrigin = reqOrigin.startsWith('chrome-extension://')
+  const isAllowedOrigin = !reqOrigin || reqOrigin.startsWith('chrome-extension://')
   const isTokenValid = Boolean(bridgeToken && reqToken === bridgeToken)
   if (isAllowedOrigin) {
     res.setHeader('Access-Control-Allow-Origin', reqOrigin)
