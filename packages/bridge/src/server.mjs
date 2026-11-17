@@ -524,9 +524,9 @@ const server = http.createServer(async (req, res) => {
       const body = JSON.parse(rawBody || '{}')
       const relPath = String(body.relPath || '').trim()
       const content = typeof body.content === 'string' ? body.content : ''
-      if (!relPath) {
+      if (!relPath || relPath.endsWith('/') || !path.extname(path.basename(relPath))) {
         res.writeHead(400)
-        res.end(JSON.stringify({ ok: false, error: 'Missing file path' }))
+        res.end(JSON.stringify({ ok: false, error: 'File path must include a file extension (e.g. .ts, .py)' }))
         return
       }
       if (Buffer.byteLength(content, 'utf8') > 512 * 1024) {
