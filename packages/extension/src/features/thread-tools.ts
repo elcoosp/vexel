@@ -115,20 +115,17 @@ export function exportConversationMarkdown(showToast: (msg: string) => void): vo
 
 const TOC_CSS = [
   ':host { all: initial; color-scheme: light; }',
-  '.rail { box-sizing: border-box; position: fixed; right: 16px; top: 50%; transform: translateY(-50%); z-index: 2147483640; display: none; flex-direction: column; align-items: center; width: 28px; max-height: min(62vh, 420px); padding: 6px 3px; border-radius: 999px; background: rgba(255, 255, 255, 0.88); backdrop-filter: blur(16px); border: 1px solid rgba(0, 0, 0, 0.08); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif; transition: width 0.22s cubic-bezier(0.2, 0, 0, 1), background-color 0.2s ease, box-shadow 0.2s ease; }',
+  '.rail { box-sizing: border-box; position: fixed; right: 16px; top: 50%; transform: translateY(-50%); z-index: 2147483640; display: none; flex-direction: column; align-items: center; width: 28px; max-height: min(62vh, 420px); padding: 6px 0; border-radius: 999px; background: rgba(255, 255, 255, 0.88); backdrop-filter: blur(16px); border: 1px solid rgba(0, 0, 0, 0.08); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif; transition: width 0.2s cubic-bezier(0.2, 0, 0, 1), background-color 0.2s ease, box-shadow 0.2s ease; }',
   '.rail.overflowing:hover { width: 32px; }',
   '.rail.visible { display: flex; }',
   '.rail:hover { background: rgba(255, 255, 255, 0.98); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05); }',
-  '.rail-scroll { box-sizing: border-box; position: relative; width: 100%; max-height: calc(min(62vh, 420px) - 12px); overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: transparent transparent; padding: 0 0 0 4px; transition: scrollbar-color 0.22s ease; }',
-  '.rail.overflowing:hover .rail-scroll { scrollbar-color: rgba(60, 64, 67, 0.26) transparent; }',
-  '.rail-scroll::-webkit-scrollbar { width: 4px; }',
-  '.rail-scroll::-webkit-scrollbar-track { background: transparent; margin: 6px 0; }',
-  '.rail-scroll::-webkit-scrollbar-thumb { background: transparent; border-radius: 999px; transition: background-color 0.22s ease; }',
-  '.rail.overflowing:hover .rail-scroll::-webkit-scrollbar-thumb { background: rgba(60, 64, 67, 0.24); }',
-  '.rail.overflowing:hover .rail-scroll::-webkit-scrollbar-thumb:hover { background: rgba(26, 115, 232, 0.55); }',
+  '.rail-scroll { box-sizing: border-box; position: relative; width: 100%; max-height: calc(min(62vh, 420px) - 12px); overflow-y: auto; overflow-x: visible; overscroll-behavior: contain; scrollbar-width: none; }',
+  '.rail-scroll::-webkit-scrollbar { display: none; }',
   '.rail-scroll.overflowing { mask-image: linear-gradient(to bottom, transparent 0%, #000 10px, #000 calc(100% - 10px), transparent 100%); -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 10px, #000 calc(100% - 10px), transparent 100%); }',
-  '.rail-inner { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; }',
-  '.active-pill { position: absolute; left: 50%; margin-left: -9px; top: 0; width: 18px; height: 18px; border-radius: 999px; background: #e8f0fe; pointer-events: none; will-change: transform; }',
+  '.rail-inner { position: relative; width: 18px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 2px; }',
+  '.active-pill { position: absolute; left: 0; top: 0; width: 18px; height: 18px; border-radius: 999px; background: #e8f0fe; pointer-events: none; will-change: transform; }',
+  '.custom-thumb { position: absolute; right: 3px; top: 8px; width: 3px; height: 24px; border-radius: 999px; background: rgba(60, 64, 67, 0.28); opacity: 0; pointer-events: none; transition: opacity 0.18s ease, background-color 0.18s ease; }',
+  '.rail.overflowing:hover .custom-thumb { opacity: 1; }',
   '.tick-wrap { position: relative; z-index: 1; width: 18px; height: 18px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 999px; }',
   '.tick { width: 5px; height: 5px; border-radius: 50%; background: #c4c7c5; transition: background-color 0.18s ease, transform 0.18s ease; }',
   '.tick-wrap:hover .tick { background: #5f6368; transform: scale(1.25); }',
@@ -155,8 +152,10 @@ export function initThreadTools(_showToast?: (msg: string) => void): void {
   railInner.className = 'rail-inner';
   const activePill = document.createElement('div');
   activePill.className = 'active-pill';
+  const customThumb = document.createElement('div');
+  customThumb.className = 'custom-thumb';
   railScroll.appendChild(railInner);
-  rail.appendChild(railScroll);
+  rail.append(railScroll, customThumb);
 
   const sharedTip = document.createElement('div');
   sharedTip.className = 'shared-tip';
@@ -208,7 +207,19 @@ export function initThreadTools(_showToast?: (msg: string) => void): void {
     hideTimer = window.setTimeout(hideTooltip, 80);
   });
 
-  railScroll.addEventListener('scroll', hideTooltip, { passive: true });
+  const syncThumb = () => {
+    const sh = railScroll.scrollHeight;
+    const ch = railScroll.clientHeight;
+    if (sh <= ch) return;
+    const trackH = ch - 4;
+    const thumbH = Math.max(20, Math.round((ch / sh) * trackH));
+    const maxScroll = sh - ch;
+    const maxTop = trackH - thumbH;
+    const top = 8 + (maxScroll > 0 ? Math.round((railScroll.scrollTop / maxScroll) * maxTop) : 0);
+    customThumb.style.height = thumbH + 'px';
+    customThumb.style.top = top + 'px';
+  };
+  railScroll.addEventListener('scroll', () => { hideTooltip(); syncThumb(); }, { passive: true });
 
 const moveActivePill = (idx: number, instant = false) => {
 if (idx < 0 || idx >= turnEntries.length) return;
@@ -286,13 +297,13 @@ turnRoot.scrollIntoView({ behavior: 'smooth', block: 'start' });
 railInner.appendChild(wrap);
 }
 window.requestAnimationFrame(() => {
-const isOverflow = railScroll.scrollHeight > railScroll.clientHeight; rail.classList.toggle('overflowing', isOverflow); railScroll.classList.toggle('overflowing', isOverflow);
+const isOverflow = railScroll.scrollHeight > railScroll.clientHeight; rail.classList.toggle('overflowing', isOverflow); railScroll.classList.toggle('overflowing', isOverflow); syncThumb();
 updateCurrentTurn(true);
 });
 };
 window.addEventListener('scroll', () => updateCurrentTurn(false), { passive: true });
 window.addEventListener('resize', () => {
-const isOverflow = railScroll.scrollHeight > railScroll.clientHeight; rail.classList.toggle('overflowing', isOverflow); railScroll.classList.toggle('overflowing', isOverflow);
+const isOverflow = railScroll.scrollHeight > railScroll.clientHeight; rail.classList.toggle('overflowing', isOverflow); railScroll.classList.toggle('overflowing', isOverflow); syncThumb();
 }, { passive: true });
 let tocTimer: number | undefined;
 const scheduleToc = () => {
