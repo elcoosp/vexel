@@ -15,10 +15,13 @@ describe('@vexel/bridge HTTP API', () => {
     fs.mkdirSync(path.join(tmpDir, 'project', 'src'), { recursive: true });
     fs.mkdirSync(path.join(tmpDir, 'project', 'node_modules'), { recursive: true });
     execFileSync('git', ['init'], { cwd: path.join(tmpDir, 'project'), stdio: 'ignore' });
+    execFileSync('git', ['config', 'user.email', 'test@vexel.dev'], { cwd: path.join(tmpDir, 'project') });
+    execFileSync('git', ['config', 'user.name', 'Vexel'], { cwd: path.join(tmpDir, 'project') });
     fs.writeFileSync(path.join(tmpDir, 'project', '.gitignore'), 'ignored.log\n');
     fs.writeFileSync(path.join(tmpDir, 'project', 'ignored.log'), 'secret log');
     fs.writeFileSync(path.join(tmpDir, 'project', 'node_modules', 'dep.js'), 'module.exports = 1;');
     fs.writeFileSync(path.join(tmpDir, 'project', 'src', 'index.ts'), 'export const hello = "vexel";\n');
+    execFileSync('git', ['add', 'src/index.ts'], { cwd: path.join(tmpDir, 'project') });
 
     port = 49200 + Math.floor(Math.random() * 500);
     proc = spawn('node', ['packages/bridge/src/server.mjs'], {
@@ -75,6 +78,29 @@ describe('@vexel/bridge HTTP API', () => {
     expect(data.content).toContain('export const hello = "vexel";');
     expect(data.content).not.toContain('ignored.log');
     expect(data.content).toContain('````');
+  });
+
+  it('reads single file on /file and rejects >512KB with 413', async () => {
+    const headers = token ? { 'X-Vexel-Token': token } : {};
+    const okRes = await fetch(`http://127.0.0.1:${port}/file?path=project/src/index.ts`, { headers });
+    expect(okRes.status).toBe(200);
+    const okData = await okRes.json();
+    expect(okData.content).toContain('export const hello = "vexel";');
+
+    fs.writeFileSync(path.join(tmpDir, 'project', 'huge.txt'), 'x'.repeat(600 * 1024));
+    const bigRes = await fetch(`http://127.0.0.1:${port}/file?path=project/huge.txt`, { headers });
+    expect(bigRes.status).toBe(413);
+  });
+
+  it('returns working tree diff on /git-diff', async () => {
+    const headers = token ? { 'X-Vexel-Token': token } : {};
+    const res = await fetch(`http://127.0.0.1:${port}/git-diff?dir=project`, { headers });
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.ok).toBe(true);
+    expect(typeof data.content).toBe('string');
+    expect(data.content).toContain('### Git Working Tree Diff');
+    expect(data.content).toContain('src/index.ts');
   });
 
   it('writes nested files safely and blocks path traversal', async () => {

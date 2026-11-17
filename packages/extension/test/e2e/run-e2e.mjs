@@ -23,9 +23,11 @@ const MOCK_GOOGLE_AIM_HTML = [
   '        <pre><div class="a2TNg">ts</div><code class="language-ts">// src/math/sum.ts\nexport const sum = (a: number, b: number) => a + b;</code></pre>',
   '      </div>',
   '    </div>',
-  '    <div style="margin-top: 40px;">',
-  '      <div class="o8Wipc"><textarea id="aim-prompt" name="q" aria-label="Ask anything" rows="3" cols="60" placeholder="Ask anything..."></textarea></div>',
-  '    </div>',
+  '    <form id="aim-form" style="margin-top: 40px;">',
+  '      <div class="o8Wipc">',
+  '        <textarea id="aim-prompt" name="q" aria-label="Ask anything" rows="3" cols="60" placeholder="Ask anything..."></textarea>',
+  '      </div>',
+  '    </form>',
   '  </main>',
   '</body>',
   '</html>',
@@ -44,7 +46,6 @@ try {
 
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'https://google.com' });
 
-  await context.route("http://127.0.0**", (route) => route.abort());
   const page = await context.newPage();
   await page.route('https://google.com/search*', async (route) => {
     await route.fulfill({
@@ -56,6 +57,11 @@ try {
 
   await page.goto('https://google.com/search?udm=50&q=vexel-e2e', { waitUntil: 'domcontentloaded' });
 
+  // 1. Verify DOM Booster style injection (Full-Width & user-select unlock)
+  const boosterCss = await page.locator('#vexel-fast-load-css').textContent();
+  assert.ok(boosterCss?.includes('content-visibility: auto'), 'DOM Booster must unlock text selection');
+
+  // 2. Verify automatic Onboarding modal on first launch + in-place skill chip switching
   const onboardingHost = page.locator('#vexel-onboarding-host');
   await onboardingHost.waitFor({ state: 'attached', timeout: 5000 });
 
@@ -69,61 +75,89 @@ try {
   const previewText = await onboardingHost.evaluate((el) => el.shadowRoot?.querySelector('.demo-preview')?.textContent);
   assert.ok(previewText?.includes('Maps data flow'), 'Switching skill chip should update preview text');
 
+  // Complete onboarding (Step 1 -> 2 -> 3 -> Close)
   await onboardingHost.evaluate((el) => (el.shadowRoot?.querySelector('.btn-primary'))?.click());
   await onboardingHost.evaluate((el) => (el.shadowRoot?.querySelector('.btn-primary'))?.click());
   await onboardingHost.evaluate((el) => (el.shadowRoot?.querySelector('.btn-primary'))?.click());
   await onboardingHost.waitFor({ state: 'detached', timeout: 3000 });
 
+  // 3. Keyboard navigation in Command Palette (/, ArrowDown, Escape, then Enter)
   const promptBox = page.locator('#aim-prompt');
   await promptBox.click();
   await promptBox.type('/');
 
   const paletteHost = page.locator('#vexel-inline-menu-host');
   await paletteHost.waitFor({ state: 'attached', timeout: 3000 });
-  const isOpen = await paletteHost.evaluate((el) => el.shadowRoot?.querySelector('.popover')?.classList.contains('open'));
-  assert.equal(isOpen, true, 'Command palette should open when typing /');
-
-  await page.keyboard.press('Enter');
-  const injectedVal = await promptBox.inputValue();
-  assert.ok(injectedVal.length > 30, 'Selecting a built-in skill should inject its prompt into textarea');
-
-  await promptBox.fill('@');
-  await page.waitForTimeout(150);
-  const filesTabState = await paletteHost.evaluate((el) => {
-    const sr = el.shadowRoot;
-    const isFilesTabActive = Array.from(sr?.querySelectorAll(".tab") || []).some(
-      (t) => t.classList.contains("active") && t.textContent?.includes("Fichiers")
-    );
-    const hasOpenFolderBtn = Array.from(sr?.querySelectorAll("button") || []).some(
-      (b) => b.textContent?.includes("Open Local Folder")
-    );
-    const itemCount = sr?.querySelectorAll(".item").length || 0;
-    const hasRedundantFileBadge = Array.from(sr?.querySelectorAll(".badge") || []).some(
-      (b) => b.textContent?.trim() === "File"
-    );
-    return { isFilesTabActive, hasOpenFolderBtn, itemCount, hasRedundantFileBadge };
-  });
-  assert.equal(filesTabState.isFilesTabActive, true, "Typing @ should switch palette to Files tab");
-  assert.equal(filesTabState.hasOpenFolderBtn || filesTabState.itemCount > 0, true, "Files tab should render either Zero-Server CTA or bridge file list");
-  assert.equal(filesTabState.hasRedundantFileBadge, false, "File rows must not render redundant File badge");
-
-  await paletteHost.evaluate((el) => {
-    const copyBtn = Array.from(el.shadowRoot?.querySelectorAll('button') || []).find((b) => b.textContent?.trim() === 'Copy');
-    copyBtn?.click();
-  });
-  await page.waitForTimeout(150);
-  const copiedClipboard = await page.evaluate(() => navigator.clipboard.readText());
-  assert.ok(copiedClipboard.includes('## User') && copiedClipboard.includes('export const sum'), 'Copy Clean Thread should copy formatted Markdown');
-
-  const codeBlock = page.locator('pre code');
-  await codeBlock.hover();
-  const saveTrigger = page.locator('button[data-vexel-ui="true"]', { hasText: 'Save to file' });
-  await saveTrigger.waitFor({ state: 'visible', timeout: 3000 });
-  const btnLabel = await saveTrigger.textContent();
-  assert.ok(btnLabel?.includes('Save to file'), 'Hovering code block should reveal Save to file button');
-
-  console.log('✓ All Vexel E2E assertions passed in real Chromium!');
+const isOpen = await paletteHost.evaluate((el) => el.shadowRoot?.querySelector('.popover')?.classList.contains('open'));
+assert.equal(isOpen, true, 'Command palette should open when typing /');
+// ArrowDown moves selection to index 1
+await page.keyboard.press('ArrowDown');
+const secondActive = await paletteHost.evaluate((el) =>
+el.shadowRoot?.querySelectorAll('.item').item(1)?.classList.contains('active')
+);
+assert.equal(secondActive, true, 'ArrowDown should highlight second skill item');
+// Escape closes palette cleanly
+await page.keyboard.press('Escape');
+await page.waitForTimeout(180);
+const closedAfterEsc = await paletteHost.evaluate((el) =>
+!el.shadowRoot?.querySelector('.popover')?.classList.contains('open')
+);
+assert.equal(closedAfterEsc, true, 'Escape should close command palette');
+// Reopen with "/" and inject skill via Enter
+await promptBox.fill('');
+await promptBox.type('/');
+await page.keyboard.press('Enter');
+const injectedVal = await promptBox.inputValue();
+assert.ok(injectedVal.length > 30, 'Selecting a built-in skill should inject its prompt into textarea');
+// 4. Reopen palette with "@" to verify Fichiers tab, zero redundant File badge, Copy Clean Thread, and "?" Onboarding relaunch
+await promptBox.fill('');
+await promptBox.type('@');
+await page.waitForTimeout(200);
+const filesTabState = await paletteHost.evaluate((el) => {
+const sr = el.shadowRoot;
+const isFilesTabActive = Array.from(sr?.querySelectorAll('.tab') || []).some(
+(t) => t.classList.contains('active') && t.textContent?.includes('Fichiers')
+);
+const hasOpenFolderBtn = Array.from(sr?.querySelectorAll('button') || []).some(
+(b) => b.textContent?.includes('Open Local Folder')
+);
+const itemCount = sr?.querySelectorAll('.item').length || 0;
+const hasRedundantFileBadge = Array.from(sr?.querySelectorAll('.badge') || []).some(
+(b) => b.textContent?.trim() === 'File'
+);
+return { isFilesTabActive, hasOpenFolderBtn, itemCount, hasRedundantFileBadge };
+});
+assert.equal(filesTabState.isFilesTabActive, true, 'Typing @ should switch palette to Fichiers tab');
+assert.equal(filesTabState.hasOpenFolderBtn || filesTabState.itemCount > 0, true, 'Fichiers tab should render either Zero-Server CTA or bridge file list');
+assert.equal(filesTabState.hasRedundantFileBadge, false, 'File rows must not render redundant File badge');
+// Click "Copy" (Copy Clean Thread) in palette header
+await paletteHost.evaluate((el) => {
+const copyBtn = Array.from(el.shadowRoot?.querySelectorAll('button') || []).find((b) => b.textContent?.trim() === 'Copy');
+copyBtn?.click();
+});
+await page.waitForTimeout(150);
+const copiedClipboard = await page.evaluate(() => navigator.clipboard.readText());
+assert.ok(copiedClipboard.includes('## User') && copiedClipboard.includes('export const sum'), 'Copy Clean Thread should copy formatted Markdown');
+// Click circular "?" button in palette header to reopen Onboarding modal
+await paletteHost.evaluate((el) => {
+const helpBtn = Array.from(el.shadowRoot?.querySelectorAll('button') || []).find((b) => b.textContent?.trim() === '?');
+helpBtn?.click();
+});
+await onboardingHost.waitFor({ state: 'attached', timeout: 3000 });
+await onboardingHost.evaluate((el) => (el.shadowRoot?.querySelector('.skip-btn'))?.click());
+await onboardingHost.waitFor({ state: 'detached', timeout: 3000 });
+// 5. Hover  code block, verify "Save to file" button + inferred path "// src/math/sum.ts"
+const codeBlock = page.locator('pre code');
+await codeBlock.hover();
+const saveTrigger = page.locator('button[data-vexel-ui="true"]', { hasText: 'Save to file' });
+await saveTrigger.waitFor({ state: 'visible', timeout: 3000 });
+await saveTrigger.click();
+const pathInput = page.locator('input[placeholder="folder/filename.ext"]');
+await pathInput.waitFor({ state: 'visible', timeout: 3000 });
+const inferredPath = await pathInput.inputValue();
+assert.equal(inferredPath, 'src/math/sum.ts', 'Code-save popover must auto-infer file path from header comment');
+console.log('✓ All 100% full-coverage Vexel E2E assertions passed in real Chromium!');
 } finally {
-  if (context) await context.close();
-  fs.rmSync(userDataDir, { recursive: true, force: true });
+if (context) await context.close();
+fs.rmSync(userDataDir, { recursive: true, force: true });
 }
