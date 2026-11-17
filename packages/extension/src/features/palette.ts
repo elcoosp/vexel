@@ -722,9 +722,8 @@ delBtn.addEventListener('mousedown', (ev) => {
     }
   });
 });
-const mainLine = row.querySelector('.item-main');
-if (mainLine) mainLine.appendChild(delBtn);
-else row.appendChild(delBtn);
+const headerRow = row.querySelector('.item-row');
+if (headerRow) headerRow.appendChild(delBtn);
 rowElements.push(row);
 frag.appendChild(row);
 }
