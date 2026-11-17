@@ -118,11 +118,14 @@ const TOC_CSS = [
   '.rail { position: fixed; right: 16px; top: 50%; transform: translateY(-50%); z-index: 2147483640; display: none; flex-direction: column; align-items: center; max-height: min(62vh, 420px); padding: 6px 4px; border-radius: 999px; background: rgba(255, 255, 255, 0.88); backdrop-filter: blur(16px); border: 1px solid rgba(0, 0, 0, 0.08); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif; transition: background-color 0.2s ease, box-shadow 0.2s ease; }',
   '.rail.visible { display: flex; }',
   '.rail:hover { background: rgba(255, 255, 255, 0.98); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05); }',
-  '.rail-scroll { position: relative; width: 100%; max-height: calc(min(62vh, 420px) - 12px); overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(60, 64, 67, 0.22) transparent; padding: 0 1px; }',
-  '.rail-scroll::-webkit-scrollbar { width: 3px; }',
-  '.rail-scroll::-webkit-scrollbar-track { background: transparent; margin: 4px 0; }',
-  '.rail-scroll::-webkit-scrollbar-thumb { background: rgba(60, 64, 67, 0.2); border-radius: 999px; }',
-  '.rail-scroll:hover::-webkit-scrollbar-thumb { background: rgba(26, 115, 232, 0.45); }',
+  '.rail-scroll { position: relative; width: 100%; max-height: calc(min(62vh, 420px) - 12px); overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: none; scrollbar-color: transparent transparent; padding: 0 1px; }',
+  '.rail.overflowing:hover .rail-scroll { scrollbar-width: thin; scrollbar-color: rgba(60, 64, 67, 0.28) transparent; }',
+  '.rail-scroll::-webkit-scrollbar { width: 0px; transition: width 0.2s cubic-bezier(0.2, 0, 0, 1); }',
+  '.rail.overflowing:hover .rail-scroll::-webkit-scrollbar { width: 4px; }',
+  '.rail-scroll::-webkit-scrollbar-track { background: transparent; margin: 6px 0; }',
+  '.rail-scroll::-webkit-scrollbar-thumb { background: rgba(60, 64, 67, 0); border-radius: 999px; transition: background-color 0.2s ease; }',
+  '.rail.overflowing:hover .rail-scroll::-webkit-scrollbar-thumb { background: rgba(60, 64, 67, 0.24); }',
+  '.rail.overflowing:hover .rail-scroll::-webkit-scrollbar-thumb:hover { background: rgba(26, 115, 232, 0.55); }',
   '.rail-scroll.overflowing { mask-image: linear-gradient(to bottom, transparent 0%, #000 10px, #000 calc(100% - 10px), transparent 100%); -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 10px, #000 calc(100% - 10px), transparent 100%); }',
   '.rail-inner { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; }',
   '.active-pill { position: absolute; left: 0; top: 0; width: 18px; height: 18px; border-radius: 999px; background: #e8f0fe; pointer-events: none; will-change: transform; }',
@@ -283,13 +286,13 @@ turnRoot.scrollIntoView({ behavior: 'smooth', block: 'start' });
 railInner.appendChild(wrap);
 }
 window.requestAnimationFrame(() => {
-railScroll.classList.toggle('overflowing', railScroll.scrollHeight > railScroll.clientHeight);
+const isOverflow = railScroll.scrollHeight > railScroll.clientHeight; rail.classList.toggle('overflowing', isOverflow); railScroll.classList.toggle('overflowing', isOverflow);
 updateCurrentTurn(true);
 });
 };
 window.addEventListener('scroll', () => updateCurrentTurn(false), { passive: true });
 window.addEventListener('resize', () => {
-railScroll.classList.toggle('overflowing', railScroll.scrollHeight > railScroll.clientHeight);
+const isOverflow = railScroll.scrollHeight > railScroll.clientHeight; rail.classList.toggle('overflowing', isOverflow); railScroll.classList.toggle('overflowing', isOverflow);
 }, { passive: true });
 let tocTimer: number | undefined;
 const scheduleToc = () => {
