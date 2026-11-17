@@ -855,7 +855,7 @@ return;
 
 const buildFileEntryRow = (entry: { name: string; relPath: string; isDir: boolean }, rowIndex: number, subLabel?: string) => {
 const isGitDiff = entry.relPath === '__git_diff__';
-const badge = isGitDiff ? 'Git' : entry.isDir ? 'Folder' : 'File';
+const badge = isGitDiff ? 'Git' : '';
 const row = createRow(
 rowIndex,
 isGitDiff ? createLucideIcon('sparkles', 14, '#1a73e8') : createFileOrFolderIcon(entry.name, entry.isDir, 14),
