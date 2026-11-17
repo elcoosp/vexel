@@ -93,12 +93,12 @@ const POPOVER_CSS = [
   '.badge.dir { font-family: inherit; font-weight: 500; color: #1967d2; background: #e8f0fe; }',
   '.badge.install { font-family: inherit; font-weight: 600; color: #ffffff; background: #1a73e8; border: none; cursor: pointer; padding: 3px 9px; }',
   '.badge.install:hover { background: #1557b0; }',
-  '.del-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 22px; padding: 0 6px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: #80868b; font-size: 11px; font-weight: 600; cursor: pointer; opacity: 0; transition: opacity 0.14s ease, background-color 0.14s ease, color 0.14s ease, border-color 0.14s ease; flex-shrink: 0; }',
+  '.del-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; width: 20px; height: 20px; padding: 0; margin-left: 4px; border-radius: 999px; border: 1px solid transparent; background: transparent; color: #9aa0a6; font-size: 10px; font-weight: 600; line-height: 1; cursor: pointer; opacity: 0; transition: opacity 0.14s ease, background-color 0.14s ease, color 0.14s ease, border-color 0.14s ease; flex-shrink: 0; }',
   '.item:hover .del-btn, .item.active .del-btn, .del-btn.confirm, .del-btn.removing { opacity: 1; }',
-  '.del-btn:hover { background: #fce8e6; color: #c5221f; }',
-  '.del-btn.confirm { background: #fce8e6; color: #c5221f; border-color: #f6aea9; padding: 0 8px; }',
-  '.del-btn.removing { background: #fce8e6; color: #c5221f; border-color: #f6aea9; padding: 0 8px; cursor: default; }',
-  '.vexel-spinner.danger { border-color: rgba(197, 34, 31, 0.25); border-top-color: #c5221f; }',
+  '.del-btn:hover { background: rgba(197, 34, 31, 0.08); color: #c5221f; }',
+  '.del-btn.confirm { width: auto; padding: 0 7px; background: #fce8e6; color: #c5221f; border-color: rgba(197, 34, 31, 0.24); }',
+  '.del-btn.removing { width: auto; padding: 0 8px; background: #fce8e6; color: #c5221f; border-color: rgba(197, 34, 31, 0.24); cursor: default; }',
+  '.vexel-spinner.danger { width: 9px; height: 9px; border-width: 1.5px; border-color: rgba(197, 34, 31, 0.25); border-top-color: #c5221f; }',
   '.badge.installing { font-family: inherit; font-weight: 600; color: #1967d2; background: #e8f0fe; border: 1px solid #d2e3fc; padding: 3px 9px; display: inline-flex; align-items: center; gap: 6px; }',
   '.vexel-spinner { width: 11px; height: 11px; border: 1.8px solid rgba(26, 115, 232, 0.25); border-top-color: #1a73e8; border-radius: 50%; animation: vexelSpin 0.65s linear infinite; flex-shrink: 0; }',
   '@keyframes vexelSpin { to { transform: rotate(360deg); } }',
@@ -696,14 +696,35 @@ delBtn.addEventListener('mousedown', (ev) => {
       return;
     }
     showToast('✓ Skill "' + s.name + '" removed!');
-    statusText.textContent = '✓ "' + s.name + '" removed!';
     skills = skills.filter((x) => x.id !== s.id);
     filteredSkills = filteredSkills.filter((x) => x.id !== s.id);
-    renderList();
-    fetchSkills();
+    statusText.textContent = filteredSkills.length + ' local' + (remoteSkills.length ? ' • ' + remoteSkills.length + ' on skills.sh' : '');
+    const currentRow = delBtn.closest('.item') as HTMLElement | null;
+    if (currentRow) {
+      const h = currentRow.offsetHeight;
+      currentRow.style.overflow = 'hidden';
+      currentRow.style.height = h + 'px';
+      currentRow.style.boxSizing = 'border-box';
+      currentRow.style.transition = 'height 0.18s cubic-bezier(0.2, 0, 0, 1), opacity 0.14s ease, padding 0.18s cubic-bezier(0.2, 0, 0, 1), margin 0.18s cubic-bezier(0.2, 0, 0, 1)';
+      window.requestAnimationFrame(() => {
+        currentRow.style.opacity = '0';
+        currentRow.style.height = '0px';
+        currentRow.style.paddingTop = '0px';
+        currentRow.style.paddingBottom = '0px';
+        currentRow.style.marginTop = '0px';
+        currentRow.style.marginBottom = '0px';
+      });
+      window.setTimeout(() => {
+        if (mode === 'skills') renderList();
+      }, 190);
+    } else if (mode === 'skills') {
+      renderList();
+    }
   });
 });
-row.appendChild(delBtn);
+const mainLine = row.querySelector('.item-main');
+if (mainLine) mainLine.appendChild(delBtn);
+else row.appendChild(delBtn);
 rowElements.push(row);
 frag.appendChild(row);
 }
