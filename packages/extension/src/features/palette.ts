@@ -1,3 +1,5 @@
+import { browseLocalFs, packLocalFsFolder, pickLocalFolder, readLocalFsFile } from './local-fs';
+import { openOnboardingModal } from './onboarding';
 import { animate } from 'motion';
 import { createLucideIcon, createFileOrFolderIcon } from './icons';
 import { MAX_SAFE_LENGTH, uploadAsTextFile } from './file-upload';
@@ -132,7 +134,22 @@ btnExport.classList.remove('done');
 btnExport.replaceChildren(createLucideIcon('download', 12), document.createTextNode('Exporter .md'));
 };
 setExportIdle();
-header.append(tabs, btnExport);
+const headerRight = document.createElement('div');
+  headerRight.style.display = 'inline-flex';
+  headerRight.style.alignItems = 'center';
+  headerRight.style.gap = '6px';
+  const btnTour = document.createElement('button');
+  btnTour.type = 'button';
+  btnTour.className = 'export-btn';
+  btnTour.title = 'Interactive welcome tour & local folder setup';
+  btnTour.textContent = '?';
+  btnTour.style.padding = '4px 8px';
+  btnTour.addEventListener('click', () => {
+    closeMenu();
+    openOnboardingModal(showToast);
+  });
+  headerRight.append(btnExport, btnTour);
+  header.append(tabs, headerRight);
 popover.appendChild(header);
 const breadcrumbsEl = document.createElement('div');
 breadcrumbsEl.className = 'breadcrumbs';
@@ -390,11 +407,49 @@ function browseDir(dir: string, query: string): void {
 if (fileFetchTimer) window.clearTimeout(fileFetchTimer);
 fileFetchTimer = window.setTimeout(
 () => {
-chrome.runtime.sendMessage({ type: 'BROWSE_DIR', dir, query }, (res) => {
-if (chrome.runtime.lastError || !res?.ok) {
-setEmptyMessage('Local bridge unreachable (127.0.0.1:49152)');
-return;
-}
+chrome.runtime.sendMessage({ type: 'BROWSE_DIR', dir, query }, async (res) => {
+        if (chrome.runtime.lastError || !res?.ok) {
+          const local = await browseLocalFs(dir, query, false);
+          if (!local.ok) {
+            listEl.replaceChildren();
+            const wrap = document.createElement('div');
+            Object.assign(wrap.style, { padding: '22px 16px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' });
+            const msg = document.createElement('div');
+            msg.textContent = 'Connect a local project folder to browse, pack & save files—zero server required.';
+            Object.assign(msg.style, { fontSize: '12.5px', color: '#5f6368', maxWidth: '300px', lineHeight: '1.45' });
+            const pickBtn = document.createElement('button');
+            pickBtn.type = 'button';
+            pickBtn.textContent = 'Open Local Folder';
+            Object.assign(pickBtn.style, { padding: '7px 14px', borderRadius: '999px', border: 'none', background: '#1a73e8', color: '#fff', fontSize: '12.5px', fontWeight: '600', cursor: 'pointer' });
+            pickBtn.addEventListener('mousedown', async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const h = await pickLocalFolder();
+              if (h) {
+                showToast('Connected folder: ' + h.name);
+                browseDir('', '');
+              }
+            });
+            wrap.append(msg, pickBtn);
+            listEl.appendChild(wrap);
+            statusText.textContent = 'Zero-server mode';
+            return;
+          }
+          rootLabel = local.rootLabel || 'Folder';
+          currentDir = local.dir || '';
+          const rawEntries: BrowseEntry[] = local.entries || [];
+          if (!query && currentDir) {
+            const idx = currentDir.lastIndexOf('/');
+            const parentPath = idx === -1 ? '' : currentDir.slice(0, idx);
+            browseEntries = [{ name: '.. (Parent folder)', relPath: parentPath, isDir: true }, ...rawEntries];
+          } else {
+            browseEntries = rawEntries;
+          }
+          selectedIndex = 0;
+          animatePanelHeight(() => { renderBreadcrumbs(); });
+          renderList();
+          return;
+        }
 rootLabel = res.data?.rootLabel || '~';
 currentDir = res.data?.dir || '';
 const rawEntries: BrowseEntry[] = res.data?.entries || [];
@@ -773,22 +828,29 @@ const stripNow = hasInlineTrigger ? triggerTextLength : 0;
 recordRecentEntry(entry);
 closeMenu();
 showToast('Packing ' + entry.name + '/...');
-chrome.runtime.sendMessage({ type: 'PACK_FOLDER', relPath: entry.relPath }, (res) => {
-if (!res?.ok || !res.data?.ok) {
-showToast(res?.data?.error || 'Unable to pack folder');
-return;
-}
-const target = activeInput || findVisibleInput();
-if (target) {
-if (stripNow > 0) removeTriggerChars(target, stripNow);
-uploadAsTextFile(
-res.data.content,
-target,
-showToast,
-res.data.folderName + '-pack.md (' + res.data.fileCount + ' files, ~' + res.data.tokensEst + ' tok)'
-);
-}
-});
+chrome.runtime.sendMessage({ type: 'PACK_FOLDER', relPath: entry.relPath }, async (res) => {
+          let packData = res?.ok && res.data?.ok ? res.data : null;
+          if (!packData) {
+            const localPack = await packLocalFsFolder(entry.relPath);
+            if (!localPack.ok) {
+              showToast(localPack.error || res?.data?.error || 'Unable to pack folder');
+              return;
+            }
+            packData = localPack;
+          }
+          if (packData) {
+            const target = activeInput || findVisibleInput();
+            if (target) {
+              if (stripNow > 0) removeTriggerChars(target, stripNow);
+              uploadAsTextFile(
+                packData.content,
+                target,
+                showToast,
+                packData.folderName + '-pack.md (' + packData.fileCount + ' files, ~' + packData.tokensEst + ' tok)'
+              );
+            }
+          }
+        });
 });
 if (headerRow) headerRow.appendChild(packBtn);
 }
@@ -997,13 +1059,18 @@ navigateToDir(entry.relPath);
 return;
 }
 closeMenu();
-chrome.runtime.sendMessage({ type: 'FETCH_FILE_CONTENT', relPath: entry.relPath }, (res) => {
-if (!res?.ok || !res.data) {
-showToast('Unable to read ' + entry.relPath);
-return;
-}
+chrome.runtime.sendMessage({ type: 'FETCH_FILE_CONTENT', relPath: entry.relPath }, async (res) => {
+        let fileText = res?.ok && res.data ? res.data.content : null;
+        if (fileText === null) {
+          const localFile = await readLocalFsFile(entry.relPath);
+          if (!localFile.ok || typeof localFile.content !== 'string') {
+            showToast('Unable to read ' + entry.relPath);
+            return;
+          }
+          fileText = localFile.content;
+        }
 const wrapped =
-'### File: ' + BT1 + entry.relPath + BT1 + '\n\n' + BT3 + '\n' + res.data.content + '\n' + BT3;
+'### File: ' + BT1 + entry.relPath + BT1 + '\n\n' + BT3 + '\n' + fileText + '\n' + BT3;
 const target = activeInput || findVisibleInput();
 if (target) {
 if (charsToStrip > 0) removeTriggerChars(target, charsToStrip);

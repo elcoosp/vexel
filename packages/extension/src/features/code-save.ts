@@ -1,3 +1,4 @@
+import { browseLocalFs, writeLocalFsFile } from './local-fs';
 import { animate } from 'motion';
 import { createLucideIcon, createFileOrFolderIcon } from './icons';
 import { loadRecentFiles } from './palette-files';
@@ -508,15 +509,15 @@ if (dir === lastQueriedDir) {
 filterAndShowAc(cachedDirEntries, partial);
 return;
 }
-chrome.runtime.sendMessage({ type: 'BROWSE_DIR', dir, query: '' }, (res) => {
+chrome.runtime.sendMessage({ type: 'BROWSE_DIR', dir, query: '' }, async (res) => {
               const lastErr = chrome.runtime.lastError?.message;
               if (lastErr || !res?.ok) {
-                acList.style.display = 'flex';
-                acList.replaceChildren();
-                const errRow = document.createElement('div');
-                errRow.textContent = 'Bridge: ' + (lastErr || res?.error || 'unreachable');
-                Object.assign(errRow.style, { padding: '4px 8px', fontSize: '11.5px', color: '#c5221f', fontFamily: 'ui-monospace, monospace' });
-                acList.appendChild(errRow);
+                const local = await browseLocalFs(dir, '', false);
+                if (local.ok && local.entries) {
+                  lastQueriedDir = dir;
+                  cachedDirEntries = local.entries;
+                  filterAndShowAc(cachedDirEntries, partial);
+                }
                 return;
               }
               if (res?.data?.missingDir) {
@@ -640,21 +641,30 @@ const hasValidFileExt = (p: string): boolean => {
           }
 saveBtn.disabled = true;
 saveBtn.textContent = 'Saving...';
-chrome.runtime.sendMessage(
-{ type: 'WRITE_FILE', relPath, content: codeEl.textContent || '' },
-(res) => {
-if (!res?.ok || !res.data?.ok) {
-saveBtn.disabled = false;
-saveBtn.textContent = 'Save';
-showToast(res?.data?.error || 'Failed to write file');
-return;
-}
-saveBtn.style.backgroundColor = '#137333';
-saveBtn.textContent = 'Saved ✓';
-showToast('Saved ' + relPath + ' (' + res.data.bytes + ' B)');
-window.setTimeout(() => closeDrawer(), 420);
-}
-);
+const fileBody = codeEl.textContent || '';
+          chrome.runtime.sendMessage(
+            { type: 'WRITE_FILE', relPath, content: fileBody },
+            async (res) => {
+              if (!res?.ok || !res.data?.ok) {
+                const localRes = await writeLocalFsFile(relPath, fileBody);
+                if (!localRes.ok) {
+                  saveBtn.disabled = false;
+                  saveBtn.textContent = 'Save';
+                  showToast(localRes.error || res?.data?.error || 'Failed to write file');
+                  return;
+                }
+                saveBtn.style.backgroundColor = '#137333';
+                saveBtn.textContent = 'Saved ✓';
+                showToast('Saved locally: ' + relPath + ' (' + localRes.bytes + ' B)');
+                window.setTimeout(() => closeDrawer(), 420);
+                return;
+              }
+              saveBtn.style.backgroundColor = '#137333';
+              saveBtn.textContent = 'Saved ✓';
+              showToast('Saved ' + relPath + ' (' + res.data.bytes + ' B)');
+              window.setTimeout(() => closeDrawer(), 420);
+            }
+          );
 };
 saveBtn.addEventListener('click', (e) => {
 e.preventDefault();

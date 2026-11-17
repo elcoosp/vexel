@@ -1,3 +1,4 @@
+import { initOnboarding } from './features/onboarding'
 import { initCodeSave } from './features/code-save'
 import { initDomBooster } from './features/dom-booster'
 import { MAX_SAFE_LENGTH, uploadAsTextFile } from './features/file-upload'
@@ -62,6 +63,7 @@ if (window === window.top) {
     initCommandPalette(showToast)
     initThreadTools(showToast)
     initCodeSave(showToast)
+    initOnboarding(showToast)
   }
 
   if (document.readyState === 'loading') {
