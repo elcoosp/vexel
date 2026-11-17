@@ -1,4 +1,3 @@
-import { initUntruncate } from './features/untruncate'
 import { initCodeRepair } from './features/code-repair'
 import { initDomBooster } from './features/dom-booster'
 import { initCommandPalette } from './features/palette'
@@ -27,8 +26,9 @@ function showToast(message: string): void {
     setTimeout(() => toast.remove(), 300)
   }, 3000)
 }
-initDomBooster()
-initUntruncate(showToast)
-initCodeRepair(showToast)
-initCommandPalette(showToast)
-initThreadTools(showToast)
+if (window === window.top) {
+  initDomBooster();
+  initCodeRepair(showToast);
+  initCommandPalette(showToast);
+  initThreadTools(showToast);
+}

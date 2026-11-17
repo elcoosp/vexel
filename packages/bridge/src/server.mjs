@@ -210,8 +210,17 @@ async function searchEntries(absDir, query, depth = 0, out = []) {
 const server = http.createServer(async (req, res) => {
   res.setHeader('Vary', 'Origin')
   const reqOrigin = req.headers.origin || ''
-  if (!reqOrigin || reqOrigin.startsWith('chrome-extension://')) {
-    res.setHeader('Access-Control-Allow-Origin', reqOrigin || 'chrome-extension://')
+  const bridgeToken = process.env.VEXEL_BRIDGE_TOKEN || ''
+  const reqToken = req.headers['x-vexel-token'] || ''
+  const isAllowedOrigin = reqOrigin.startsWith('chrome-extension://')
+  const isTokenValid = Boolean(bridgeToken && reqToken === bridgeToken)
+  if (isAllowedOrigin) {
+    res.setHeader('Access-Control-Allow-Origin', reqOrigin)
+  }
+  if (req.method !== 'OPTIONS' && !isAllowedOrigin && !isTokenValid) {
+    res.writeHead(403)
+    res.end(JSON.stringify({ error: 'Forbidden origin' }))
+    return
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
@@ -460,7 +469,7 @@ const server = http.createServer(async (req, res) => {
         try {
           const full = path.join(resolved, rel)
           const st = await fs.stat(full)
-          if (!st.isFile() || st.size > 48 * 1024) continue
+          if (!st.isFile() || st.size > 96 * 1024) continue
           const raw = await fs.readFile(full, 'utf8')
           if (raw.includes('\u0000')) continue
           totalBytes += raw.length
@@ -477,7 +486,7 @@ const server = http.createServer(async (req, res) => {
         '',
       ]
       for (const f of files) {
-        bodySections.push('#### File: `' + f.rel + '`', '```' + f.ext, f.content.trim(), '```', '')
+        bodySections.push('#### File: `' + f.rel + '`', '````' + f.ext, f.content.trim(), '````', '')
       }
       const bodyText = bodySections.join('\n')
       const tokensEst = Math.max(1, Math.round(bodyText.length / 4))

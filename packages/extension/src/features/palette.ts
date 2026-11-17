@@ -1,6 +1,6 @@
 import { animate } from 'motion';
 import { createLucideIcon, createFileOrFolderIcon } from './icons';
-import { MAX_SAFE_LENGTH, uploadAsTextFile } from './untruncate';
+import { MAX_SAFE_LENGTH, uploadAsTextFile } from './file-upload';
 import { exportConversationMarkdown } from './thread-tools';
 import { BUILTIN_SKILLS } from './builtin-skills';
 
