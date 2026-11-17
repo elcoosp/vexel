@@ -69,6 +69,17 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     fetchBridgeEndpoint('/pack-folder?path=' + p).then(sendResponse)
     return true
   }
+  if (message.type === 'WRITE_FILE') {
+    fetch(LOCAL_HOST + '/write-file', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ relPath: message.relPath, content: message.content }),
+    })
+      .then((r) => r.json())
+      .then((data) => sendResponse({ ok: true, data }))
+      .catch((e) => sendResponse({ ok: false, error: String(e) }))
+    return true
+  }
   if (message.type === 'FETCH_FILE_CONTENT') {
     const p = encodeURIComponent(message.relPath || '')
     fetchBridgeEndpoint('/file?path=' + p).then(sendResponse)

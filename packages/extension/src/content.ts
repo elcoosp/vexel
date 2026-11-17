@@ -1,3 +1,4 @@
+import { initCodeSave } from './features/code-save'
 import { initDomBooster } from './features/dom-booster'
 import { initCommandPalette } from './features/palette'
 import { initThreadTools } from './features/thread-tools'
@@ -29,4 +30,5 @@ if (window === window.top) {
   initDomBooster();
   initCommandPalette(showToast);
   initThreadTools(showToast);
+  initCodeSave(showToast);
 }

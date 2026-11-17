@@ -512,6 +512,38 @@ const server = http.createServer(async (req, res) => {
     return
   }
 
+  if (parsedUrl.pathname === '/write-file' && req.method === 'POST') {
+    try {
+      const body = await readJsonBody(req)
+      const relPath = String(body.relPath || '').trim()
+      const content = typeof body.content === 'string' ? body.content : ''
+      if (!relPath) {
+        res.writeHead(400)
+        res.end(JSON.stringify({ ok: false, error: 'Missing file path' }))
+        return
+      }
+      if (Buffer.byteLength(content, 'utf8') > 512 * 1024) {
+        res.writeHead(413)
+        res.end(JSON.stringify({ ok: false, error: 'Content exceeds 512 KB limit' }))
+        return
+      }
+      const resolved = resolveSafePath(relPath)
+      if (!resolved || resolved === ROOT_DIR) {
+        res.writeHead(403)
+        res.end(JSON.stringify({ ok: false, error: 'Forbidden or hidden path' }))
+        return
+      }
+      await fs.mkdir(path.dirname(resolved), { recursive: true })
+      await fs.writeFile(resolved, content, 'utf8')
+      res.writeHead(200)
+      res.end(JSON.stringify({ ok: true, relPath, bytes: Buffer.byteLength(content, 'utf8') }))
+    } catch (err) {
+      res.writeHead(500)
+      res.end(JSON.stringify({ ok: false, error: String(err) }))
+    }
+    return
+  }
+
   if (parsedUrl.pathname === '/file') {
     try {
       const relPath = parsedUrl.searchParams.get('path') || ''
