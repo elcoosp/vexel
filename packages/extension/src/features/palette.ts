@@ -105,7 +105,9 @@ const POPOVER_CSS = [
   '.empty-loading { display: inline-flex; align-items: center; justify-content: center; gap: 8px; color: #5f6368; font-size: 13px; }',
   '.section-loading { display: inline-flex; align-items: center; gap: 6px; }',
   '@keyframes vexelSpin { to { transform: rotate(360deg); } }',
-  '.section-label { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #80868b; padding: 8px 12px 2px 12px; }',
+  '.section-label { display: flex; align-items: center; justify-content: space-between; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #80868b; padding: 8px 12px 2px 12px; }',
+  '.section-clear { font-size: 10px; font-weight: 500; text-transform: none; letter-spacing: 0; color: #80868b; background: none; border: none; padding: 1px 4px; border-radius: 4px; cursor: pointer; }',
+  '.section-clear:hover { color: #1a73e8; background: rgba(26, 115, 232, 0.08); }',
   '.footer { display: flex; justify-content: space-between; align-items: center; padding: 7px 16px; border-top: 1px solid #f1f3f4; background: #fafbfc; font-size: 11px; color: #5f6368; }',
   '.empty { padding: 24px 16px; text-align: center; color: #5f6368; font-size: 12.5px; }',
 ].join('\n');
@@ -121,6 +123,38 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
   let remoteSkills: RemoteSkill[] = [];
   let remoteTimer: number | undefined;
   const installingSkills = new Set<string>();
+  const RECENT_FILES_KEY = 'vexel:recent-files';
+  type RecentEntry = { name: string; relPath: string; isDir: boolean };
+  let recentEntries: RecentEntry[] = (() => {
+    try {
+      const raw = localStorage.getItem(RECENT_FILES_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.slice(0, 5) : [];
+    } catch {
+      return [];
+    }
+  })();
+  let visibleFileItems: RecentEntry[] = [];
+
+  function recordRecentEntry(entry: RecentEntry): void {
+    if (!entry.relPath || entry.name === '.. (Parent folder)') return;
+    recentEntries = [
+      { name: entry.name, relPath: entry.relPath, isDir: entry.isDir },
+      ...recentEntries.filter((x) => x.relPath !== entry.relPath),
+    ].slice(0, 5);
+    try {
+      localStorage.setItem(RECENT_FILES_KEY, JSON.stringify(recentEntries));
+    } catch {}
+  }
+
+  function getActiveRecentEntries(qRaw: string): RecentEntry[] {
+    if (currentDir || recentEntries.length === 0) return [];
+    const q = qRaw.trim().toLowerCase();
+    if (!q) return recentEntries;
+    return recentEntries.filter(
+      (r) => r.name.toLowerCase().includes(q) || r.relPath.toLowerCase().includes(q)
+    );
+  }
   let isLoadingSkills = false;
   let isSearchingRemote = false;
   const removingSkills = new Set<string>();
@@ -800,17 +834,75 @@ frag.appendChild(row);
 }
 }
 } else if (mode === 'files') {
-statusText.textContent = browseEntries.length + ' item(s)';
-if (browseEntries.length === 0) {
+const activeRecents = getActiveRecentEntries(filterInput.value);
+const recentPaths = new Set(activeRecents.map((r) => r.relPath));
+const dirItems = currentDir
+  ? browseEntries
+  : browseEntries.filter((e) => !recentPaths.has(e.relPath));
+
+visibleFileItems = [...activeRecents, ...dirItems];
+statusText.textContent = visibleFileItems.length + ' item(s)';
+
+if (visibleFileItems.length === 0) {
 setEmptyMessage('Empty folder or no matching files.');
 return;
 }
-for (let i = 0; i < browseEntries.length; i++) {
-const entry = browseEntries.slice(i, i + 1).find(() => true);
-if (!entry) continue;
+
+let fileRowIdx = 0;
+if (activeRecents.length > 0) {
+const sec = document.createElement('div');
+sec.className = 'section-label';
+const lbl = document.createElement('span');
+lbl.textContent = 'Recently Used';
+const clearBtn = document.createElement('button');
+clearBtn.type = 'button';
+clearBtn.className = 'section-clear';
+clearBtn.textContent = 'Clear';
+clearBtn.addEventListener('mousedown', (ev) => {
+ev.preventDefault();
+ev.stopPropagation();
+recentEntries = [];
+try { localStorage.removeItem(RECENT_FILES_KEY); } catch {}
+if (mode === 'files') renderList();
+});
+sec.append(lbl, clearBtn);
+frag.appendChild(sec);
+
+for (let i = 0; i < activeRecents.length; i++) {
+const entry = activeRecents[i];
+const badge = entry.isDir ? 'Folder' : 'File';
+const row = createRow(
+fileRowIdx++,
+createFileOrFolderIcon(entry.name, entry.isDir, 14),
+entry.name,
+badge,
+entry.isDir,
+entry.relPath
+);
+rowElements.push(row);
+frag.appendChild(row);
+}
+
+if (dirItems.length > 0) {
+const browseSec = document.createElement('div');
+browseSec.className = 'section-label';
+browseSec.textContent = 'Browse';
+frag.appendChild(browseSec);
+}
+}
+
+for (let i = 0; i < dirItems.length; i++) {
+const entry = dirItems[i];
 const badge = entry.isDir ? 'Folder' : 'File';
 const showSub = filterInput.value.trim().length > 0 ? entry.relPath : undefined;
-const row = createRow(i, createFileOrFolderIcon(entry.name, entry.isDir, 14), entry.name, badge, entry.isDir, showSub);
+const row = createRow(
+fileRowIdx++,
+createFileOrFolderIcon(entry.name, entry.isDir, 14),
+entry.name,
+badge,
+entry.isDir,
+showSub
+);
 rowElements.push(row);
 frag.appendChild(row);
 }
@@ -947,8 +1039,9 @@ triggerTextLength = 0;
 return;
 }
 if (mode === 'files') {
-const entry = browseEntries.slice(idx, idx + 1).find(() => true);
+const entry = visibleFileItems[idx] || browseEntries[idx];
 if (!entry) return;
+recordRecentEntry(entry);
 if (entry.isDir) {
 navigateToDir(entry.relPath);
 return;
@@ -1024,7 +1117,7 @@ mode === 'refs'
 ? filteredRefs.length
 : mode === 'skills'
 ? filteredSkills.length + remoteSkills.length
-: browseEntries.length;
+: (visibleFileItems.length || browseEntries.length);
 if (e.key === 'Escape') {
 e.preventDefault();
 e.stopPropagation();
