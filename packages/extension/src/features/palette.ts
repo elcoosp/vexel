@@ -101,6 +101,8 @@ const POPOVER_CSS = [
   '.vexel-spinner.danger { width: 9px; height: 9px; border-width: 1.5px; border-color: rgba(197, 34, 31, 0.25); border-top-color: #c5221f; }',
   '.badge.installing { margin-left: auto; font-family: inherit; font-weight: 600; color: #1967d2; background: #e8f0fe; border: 1px solid #d2e3fc; padding: 3px 9px; display: inline-flex; align-items: center; gap: 6px; }',
   '.vexel-spinner { width: 11px; height: 11px; border: 1.8px solid rgba(26, 115, 232, 0.25); border-top-color: #1a73e8; border-radius: 50%; animation: vexelSpin 0.65s linear infinite; flex-shrink: 0; }',
+  '.empty-loading { display: inline-flex; align-items: center; justify-content: center; gap: 8px; color: #5f6368; font-size: 13px; }',
+  '.section-loading { display: inline-flex; align-items: center; gap: 6px; }',
   '@keyframes vexelSpin { to { transform: rotate(360deg); } }',
   '.section-label { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #80868b; padding: 8px 12px 2px 12px; }',
   '.footer { display: flex; justify-content: space-between; align-items: center; padding: 7px 16px; border-top: 1px solid #f1f3f4; background: #fafbfc; font-size: 11px; color: #5f6368; }',
@@ -118,6 +120,8 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
   let remoteSkills: RemoteSkill[] = [];
   let remoteTimer: number | undefined;
   const installingSkills = new Set<string>();
+  let isLoadingSkills = false;
+  let isSearchingRemote = false;
   const removingSkills = new Set<string>();
   let confirmDeleteId: string | null = null;
   let confirmDeleteTimer: number | undefined;
@@ -560,9 +564,15 @@ selectedIndex = 0;
 renderList();
 if (remoteTimer) window.clearTimeout(remoteTimer);
 if (q.length >= 2) {
+isSearchingRemote = true;
+renderList();
 remoteTimer = window.setTimeout(() => {
 chrome.runtime.sendMessage({ type: 'SEARCH_REMOTE_SKILLS', query: q }, (res) => {
-if (!res?.ok) return;
+isSearchingRemote = false;
+if (!res?.ok) {
+if (mode === 'skills') renderList();
+return;
+}
 const localNames = new Set(skills.map((x) => x.name.toLowerCase()));
 remoteSkills = (res.data?.skills || []).filter(
 (r: RemoteSkill) => r.repo && !localNames.has(r.name.toLowerCase())
@@ -571,6 +581,7 @@ if (mode === 'skills') { renderList(); window.requestAnimationFrame(positionPopo
 });
 }, 380);
 } else {
+isSearchingRemote = false;
 remoteSkills = [];
 }
 return;
@@ -638,7 +649,20 @@ frag.appendChild(row);
 }
 } else if (mode === 'skills') {
 statusText.textContent = filteredSkills.length + ' local' + (remoteSkills.length ? ' • ' + remoteSkills.length + ' on skills.sh' : '');
-if (filteredSkills.length === 0 && remoteSkills.length === 0) {
+if (isLoadingSkills && filteredSkills.length === 0) {
+listEl.replaceChildren();
+const box = document.createElement('div');
+box.className = 'empty-state';
+const inner = document.createElement('span');
+inner.className = 'empty-loading';
+const sp = document.createElement('span');
+sp.className = 'vexel-spinner';
+inner.append(sp, document.createTextNode('Loading skills...'));
+box.appendChild(inner);
+listEl.appendChild(box);
+return;
+}
+if (filteredSkills.length === 0 && remoteSkills.length === 0 && !isSearchingRemote) {
 setEmptyMessage('No matching skills.');
 return;
 }
@@ -650,7 +674,8 @@ const metaParts: string[] = [];
 if (s.sourceRepo) metaParts.push(s.sourceRepo);
 if (s.refCount > 0) metaParts.push(s.refCount + ' refs');
 metaParts.push(formatChars(s.smartLength));
-const row = createRow(rowIdx++, createLucideIcon('sparkles', 13, '#1a73e8'), s.name, metaParts.join(' • '), false, s.description);
+const cleanDesc = s.description && !/^[>|]-?$/.test(s.description.trim()) ? s.description : '';
+const row = createRow(rowIdx++, createLucideIcon('sparkles', 13, '#1a73e8'), s.name, metaParts.join(' • '), false, cleanDesc);
 const isRemoving = removingSkills.has(s.id);
 const isConfirming = confirmDeleteId === s.id;
 const delBtn = document.createElement('button');
@@ -728,10 +753,19 @@ rowElements.push(row);
 frag.appendChild(row);
 }
 }
-if (remoteSkills.length > 0) {
+if (remoteSkills.length > 0 || isSearchingRemote) {
 const sec = document.createElement('div');
 sec.className = 'section-label';
+if (isSearchingRemote && remoteSkills.length === 0) {
+const wrap = document.createElement('span');
+wrap.className = 'section-loading';
+const sp = document.createElement('span');
+sp.className = 'vexel-spinner';
+wrap.append(sp, document.createTextNode('Searching skills.sh...'));
+sec.appendChild(wrap);
+} else {
 sec.textContent = 'Available on skills.sh (npx skills add)';
+}
 frag.appendChild(sec);
 for (let i = 0; i < remoteSkills.length; i++) {
 const r = remoteSkills.slice(i, i + 1).find(() => true);
