@@ -110,7 +110,7 @@ const BT1 = String.fromCharCode(96);
 
 function extractUserAttachments(turnBlock: HTMLElement): string[] {
   const names: string[] = [];
-  turnBlock.querySelectorAll<HTMLElement>('[role="listitem"]').forEach((item) => {
+  turnBlock.querySelectorAll<HTMLElement>('[data-sn-container] [role="listitem"]').forEach((item) => {
     const leaf = item.firstElementChild as HTMLElement | null;
     const label = (leaf?.textContent || '').trim();
     if (label && label.length < 120 && !names.includes(label)) {
@@ -203,6 +203,11 @@ function elementToMarkdown(root: HTMLElement, role: 'user' | 'assistant'): strin
   clone.querySelectorAll('em, i').forEach((el) => {
     const txt = (el.textContent || '').trim();
     if (txt) el.replaceWith(document.createTextNode('*' + txt + '*'));
+  });
+
+  // Strip Google AI disclaimer footer block
+  clone.querySelectorAll('a[href*="://google.com"], a[href*="://google.com"]').forEach((a) => {
+    a.parentElement?.remove();
   });
 
   // 4. Links

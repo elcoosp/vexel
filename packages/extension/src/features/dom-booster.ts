@@ -193,16 +193,35 @@ export function initDomBooster(): void {
     })
   }
 
+  let isTyping = false
+  let typingTimer: number | undefined
+  window.addEventListener('keydown', (e) => {
+    const t = e.target as HTMLElement | null
+    if (t && (t.tagName === 'TEXTAREA' || t.isContentEditable || t.closest('[data-xid="aim-mars-input-plate"]'))) {
+      isTyping = true
+      if (typingTimer) window.clearTimeout(typingTimer)
+      typingTimer = window.setTimeout(() => { isTyping = false }, 800)
+    }
+  }, { capture: true, passive: true })
+
+  let boostTimer: number | undefined
+  const debouncedBoost = () => {
+    if (boostTimer) window.clearTimeout(boostTimer)
+    boostTimer = window.setTimeout(() => {
+      if (isTyping) { debouncedBoost(); return }
+      scheduleSync()
+    }, 350)
+  }
+
   const observer = new MutationObserver((mutations) => {
+    if (isTyping) return
     for (let i = 0; i < mutations.length; i++) {
       const m = mutations[i]
       if (m.addedNodes.length === 0) continue
       const target = m.target as HTMLElement | null
-      if (target?.closest?.('[data-vexel-ui]')) continue
-      // Apply synchronously in the microtask BEFORE browser layout/paint of newly streamed turns
-      syncVirtualizeTurns()
+      if (target?.closest?.('[data-vexel-ui], [data-xid="aim-mars-input-plate"], form')) continue
       runAutoScroll?.()
-      scheduleSync()
+      debouncedBoost()
       return
     }
   })
