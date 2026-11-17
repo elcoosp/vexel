@@ -1,10 +1,5 @@
 const KEEP_RECENT_TURNS = 3
-const DEBOUNCE_MS = 450
 const DEFAULT_ESTIMATED_HEIGHT = 480
-
-let isUserInteracting = false
-let interactionTimer: number | undefined
-let scheduleTimer: number | undefined
 
 const measuredHeights = new WeakMap<HTMLElement, number>()
 const observedTurns = new WeakSet<HTMLElement>()
@@ -13,9 +8,9 @@ const heightObserver = new ResizeObserver((entries) => {
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i]
     const el = entry.target as HTMLElement
-    // Only record height when the element is actively rendered (not skipped by content-visibility)
     if (el.offsetParent === null) continue
-    const boxHeight = entry.borderBoxSize?.[0]?.blockSize ?? el.offsetHeight
+    const boxSize = Array.isArray(entry.borderBoxSize) ? entry.borderBoxSize[0] : entry.borderBoxSize
+    const boxHeight = boxSize?.blockSize ?? el.offsetHeight
     if (boxHeight > 40) {
       const rounded = Math.round(boxHeight)
       if (measuredHeights.get(el) !== rounded) {
@@ -28,19 +23,31 @@ const heightObserver = new ResizeObserver((entries) => {
   }
 })
 
-function markUserInteracting(): void {
-  isUserInteracting = true
-  if (interactionTimer !== undefined) {
-    window.clearTimeout(interactionTimer)
-  }
-  interactionTimer = window.setTimeout(() => {
-    isUserInteracting = false
-  }, 900)
+function injectInstantVirtualizationCSS(): void {
+  if (document.getElementById('vexel-fast-load-css')) return
+  const style = document.createElement('style')
+  style.id = 'vexel-fast-load-css'
+  // Blink applies this during initial HTML/DOM insertion BEFORE layout/paint runs
+  style.textContent = `
+    .CKgc1d[data-scope-id="turn"]:not(:nth-last-of-type(-n+4)),
+    [data-scope-id="turn"]:not(:nth-last-of-type(-n+4)) {
+      content-visibility: auto;
+      contain-intrinsic-size: auto ${DEFAULT_ESTIMATED_HEIGHT}px;
+      contain: layout style paint;
+    }
+    .CKgc1d[data-scope-id="turn"][data-last-turn="true"],
+    .vexel-active-turn {
+      content-visibility: visible !important;
+      contain: none !important;
+    }
+  `
+  ;(document.head || document.documentElement).appendChild(style)
 }
 
 function findRealTurnElements(): HTMLElement[] {
-  // Primary selector for Google AI Mode conversation turns
-  const primary = document.querySelectorAll<HTMLElement>('.CKgc1d[data-scope-id="turn"], [data-scope-id="turn"]')
+  const primary = document.querySelectorAll<HTMLElement>(
+    '.CKgc1d[data-scope-id="turn"], [data-scope-id="turn"]'
+  )
   const turns: HTMLElement[] = []
 
   for (let i = 0; i < primary.length; i++) {
@@ -59,7 +66,6 @@ function attachTurnTracking(turn: HTMLElement): void {
   observedTurns.add(turn)
   heightObserver.observe(turn)
 
-  // Chrome fires contentvisibilityautostatechange right before skipping/unskipping offscreen subtrees
   turn.addEventListener('contentvisibilityautostatechange', (ev: Event) => {
     const skipped = (ev as Event & { skipped?: boolean }).skipped
     if (!skipped) {
@@ -72,79 +78,55 @@ function attachTurnTracking(turn: HTMLElement): void {
   })
 }
 
-function virtualizeOldTurns(): void {
-  if (isUserInteracting) {
-    scheduleBoost()
-    return
-  }
-
+function syncVirtualizeTurns(): void {
   const turns = findRealTurnElements()
   if (turns.length === 0) return
 
+  const cutoff = Math.max(0, turns.length - KEEP_RECENT_TURNS)
+
   for (let i = 0; i < turns.length; i++) {
-    attachTurnTracking(turns[i])
-  }
-
-  if (turns.length <= KEEP_RECENT_TURNS) return
-
-  const cutoff = turns.length - KEEP_RECENT_TURNS
-  let newlyVirtualized = 0
-
-  for (let i = 0; i < cutoff; i++) {
     const turn = turns[i]
-    if (!turn.classList.contains('vexel-virtualized')) {
-      // Measure real rendered height BEFORE enabling content-visibility: auto to prevent any scroll jump
-      const currentHeight = turn.offsetHeight
-      const exactHeight =
-        currentHeight > 40
-          ? currentHeight
-          : measuredHeights.get(turn) ?? DEFAULT_ESTIMATED_HEIGHT
+    attachTurnTracking(turn)
 
-      measuredHeights.set(turn, exactHeight)
-      turn.classList.add('vexel-virtualized')
-      turn.style.containIntrinsicSize = `auto ${exactHeight}px`
-      turn.style.contentVisibility = 'auto'
-      turn.style.contain = 'layout style paint'
-      newlyVirtualized++
-    }
-  }
+    if (i < cutoff) {
+      turn.classList.remove('vexel-active-turn')
+      if (!turn.classList.contains('vexel-virtualized')) {
+        const currentHeight = turn.offsetHeight
+        const exactHeight =
+          currentHeight > 40
+            ? currentHeight
+            : measuredHeights.get(turn) ?? DEFAULT_ESTIMATED_HEIGHT
 
-  for (let i = cutoff; i < turns.length; i++) {
-    const turn = turns[i]
-    if (turn.classList.contains('vexel-virtualized')) {
-      turn.classList.remove('vexel-virtualized')
-      turn.style.contentVisibility = ''
-      turn.style.containIntrinsicSize = ''
-      turn.style.contain = ''
-    }
-  }
-
-  if (newlyVirtualized > 0) {
-    console.log(
-      `[Vexel DOM Booster] ${newlyVirtualized} tours virtualises avec hauteur exacte (${cutoff}/${turns.length})`
-    )
-  }
-}
-
-function scheduleBoost(): void {
-  if (scheduleTimer !== undefined) {
-    window.clearTimeout(scheduleTimer)
-  }
-  scheduleTimer = window.setTimeout(() => {
-    if ('requestIdleCallback' in window) {
-      window.requestIdleCallback(() => virtualizeOldTurns(), { timeout: 800 })
+        measuredHeights.set(turn, exactHeight)
+        turn.classList.add('vexel-virtualized')
+        turn.style.containIntrinsicSize = `auto ${exactHeight}px`
+        turn.style.contentVisibility = 'auto'
+        turn.style.contain = 'layout style paint'
+      }
     } else {
-      virtualizeOldTurns()
+      turn.classList.add('vexel-active-turn')
+      if (turn.classList.contains('vexel-virtualized')) {
+        turn.classList.remove('vexel-virtualized')
+        turn.style.contentVisibility = ''
+        turn.style.containIntrinsicSize = ''
+        turn.style.contain = ''
+      }
     }
-  }, DEBOUNCE_MS)
+  }
 }
 
 export function initDomBooster(): void {
-  console.log('[Vexel DOM Booster] Demarrage (tours cibles + hauteur exacte anti-jump)')
+  injectInstantVirtualizationCSS()
 
-  window.addEventListener('keydown', markUserInteracting, { capture: true, passive: true })
-  window.addEventListener('paste', markUserInteracting, { capture: true, passive: true })
-  window.addEventListener('pointerdown', markUserInteracting, { capture: true, passive: true })
+  let rafPending = false
+  const scheduleSync = () => {
+    if (rafPending) return
+    rafPending = true
+    window.requestAnimationFrame(() => {
+      rafPending = false
+      syncVirtualizeTurns()
+    })
+  }
 
   const observer = new MutationObserver((mutations) => {
     for (let i = 0; i < mutations.length; i++) {
@@ -152,14 +134,23 @@ export function initDomBooster(): void {
       if (m.addedNodes.length === 0) continue
       const target = m.target as HTMLElement | null
       if (target?.closest?.('[data-vexel-ui]')) continue
-      scheduleBoost()
+      // Apply synchronously in the microtask BEFORE browser layout/paint of newly streamed turns
+      syncVirtualizeTurns()
+      scheduleSync()
       return
     }
   })
 
-  if (document.body) {
-    observer.observe(document.body, { childList: true, subtree: true })
+  const startObserving = () => {
+    if (document.body) {
+      observer.observe(document.body, { childList: true, subtree: true })
+      syncVirtualizeTurns()
+    }
   }
 
-  scheduleBoost()
+  if (document.body) {
+    startObserving()
+  } else {
+    document.addEventListener('DOMContentLoaded', startObserving, { once: true })
+  }
 }
