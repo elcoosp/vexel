@@ -1,6 +1,6 @@
 import { animate } from 'motion';
 import { createLucideIcon } from './icons';
-import { loadDirectoryHandle, pickLocalFolder } from './local-fs';
+import { loadConnectedFolderName, pickLocalFolder } from './local-fs';
 
 const ONBOARDED_KEY = 'vexel_onboarded_v1';
 
@@ -113,9 +113,9 @@ export function openOnboardingModal(showToast: (msg: string) => void): void {
   let connectedFolderName = '';
   let selectedDemoSkill = 'review-pr';
 
-  loadDirectoryHandle().then((h) => {
-    if (h) {
-      connectedFolderName = h.name;
+  loadConnectedFolderName().then((name) => {
+    if (name) {
+      connectedFolderName = name;
       if (step === 1) renderStep();
     }
   });
