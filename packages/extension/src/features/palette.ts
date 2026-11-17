@@ -92,7 +92,10 @@ const POPOVER_CSS = [
   '.item-sub { font-size: 12px; color: #5f6368; line-height: 1.4; padding-left: 21px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
   '.badge { display: inline-flex; align-items: center; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px; font-weight: 500; color: #5f6368; background: rgba(60, 64, 67, 0.055); border: 1px solid rgba(60, 64, 67, 0.08); padding: 1px 7px; border-radius: 6px; white-space: nowrap; flex-shrink: 0; }',
   '.item.active .badge { background: #e8f0fe; color: #1967d2; }',
-  '.badge.dir { font-family: inherit; font-weight: 500; color: #1967d2; background: #e8f0fe; }',
+  '.badge.dir { margin-left: auto; font-family: inherit; font-weight: 500; color: #1967d2; background: #e8f0fe; }',
+  '.pack-btn { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px; font-weight: 600; line-height: 1; color: #1967d2; background: #e8f0fe; border: 1px solid #d2e3fc; padding: 3px 8px; border-radius: 6px; cursor: pointer; opacity: 0; transition: opacity 0.14s ease, background-color 0.14s ease, color 0.14s ease; flex-shrink: 0; appearance: none; -webkit-appearance: none; }',
+  '.item:hover .pack-btn, .item.active .pack-btn { opacity: 1; }',
+  '.pack-btn:hover { background: #d2e3fc; color: #174ea6; }',
   '.install-btn { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-family: inherit; font-size: 11.5px; font-weight: 600; line-height: 1; color: #ffffff; background: #1a73e8; border: none; padding: 5px 11px; border-radius: 7px; cursor: pointer; flex-shrink: 0; transition: background-color 0.14s ease; }',
   '.install-btn:hover { background: #1557b0; color: #ffffff; }',
   '.install-btn svg { stroke: #ffffff; flex-shrink: 0; }',
@@ -852,61 +855,16 @@ setEmptyMessage('Empty folder or no matching files.');
 return;
 }
 
-let fileRowIdx = 0;
-if (activeRecents.length > 0) {
-const sec = document.createElement('div');
-sec.className = 'section-label';
-const lbl = document.createElement('span');
-lbl.textContent = 'Recently Used';
-const clearBtn = document.createElement('button');
-clearBtn.type = 'button';
-clearBtn.className = 'section-clear';
-clearBtn.textContent = 'Clear';
-clearBtn.addEventListener('mousedown', (ev) => {
-ev.preventDefault();
-ev.stopPropagation();
-recentEntries = [];
-try { localStorage.removeItem(RECENT_FILES_KEY); } catch {}
-if (mode === 'files') renderList();
-});
-sec.append(lbl, clearBtn);
-frag.appendChild(sec);
-
-for (let i = 0; i < activeRecents.length; i++) {
-const entry = activeRecents[i];
-const badge = entry.isDir ? 'Folder' : 'File';
-const row = createRow(
-fileRowIdx++,
-createFileOrFolderIcon(entry.name, entry.isDir, 14),
-entry.name,
-badge,
-entry.isDir,
-entry.relPath
-);
-rowElements.push(row);
-frag.appendChild(row);
-}
-
-if (dirItems.length > 0) {
-const browseSec = document.createElement('div');
-browseSec.className = 'section-label';
-browseSec.textContent = 'Browse';
-frag.appendChild(browseSec);
-}
-}
-
-for (let i = 0; i < dirItems.length; i++) {
-const entry = dirItems[i];
-const isGitDiff = entry.relPath === 'git_diff';
+const buildFileEntryRow = (entry: { name: string; relPath: string; isDir: boolean }, rowIndex: number, subLabel?: string) => {
+const isGitDiff = entry.relPath === '__git_diff__';
 const badge = isGitDiff ? 'Git' : entry.isDir ? 'Folder' : 'File';
-const showSub = isGitDiff ? 'Inject staged + unstaged repository changes' : filterInput.value.trim().length > 0 ? entry.relPath : undefined;
 const row = createRow(
-fileRowIdx++,
+rowIndex,
 isGitDiff ? createLucideIcon('sparkles', 14, '#1a73e8') : createFileOrFolderIcon(entry.name, entry.isDir, 14),
 entry.name,
 badge,
 entry.isDir || isGitDiff,
-showSub
+subLabel
 );
 if (entry.isDir && entry.name !== '.. (Parent folder)') {
 const headerRow = row.querySelector('.item-row');
@@ -915,7 +873,7 @@ if (badgeEl) badgeEl.remove();
 const packBtn = document.createElement('button');
 packBtn.type = 'button';
 packBtn.className = 'pack-btn';
-packBtn.title = 'Pack folder tree & source files into context';
+packBtn.title = 'Recursively pack non-gitignored files into context';
 packBtn.append(createLucideIcon('folder', 11, 'currentColor'), document.createTextNode('Pack'));
 packBtn.addEventListener('mousedown', (ev) => {
 ev.preventDefault();
@@ -943,13 +901,58 @@ res.data.folderName + '-pack.md (' + res.data.fileCount + ' files, ~' + res.data
 });
 if (headerRow) headerRow.appendChild(packBtn);
 }
+return row;
+};
+
+let fileRowIdx = 0;
+if (activeRecents.length > 0) {
+const sec = document.createElement('div');
+sec.className = 'section-label';
+const lbl = document.createElement('span');
+lbl.textContent = 'Recently Used';
+const clearBtn = document.createElement('button');
+clearBtn.type = 'button';
+clearBtn.className = 'section-clear';
+clearBtn.textContent = 'Clear';
+clearBtn.addEventListener('mousedown', (ev) => {
+ev.preventDefault();
+ev.stopPropagation();
+recentEntries = [];
+try { localStorage.removeItem(RECENT_FILES_KEY); } catch {}
+if (mode === 'files') renderList();
+});
+sec.append(lbl, clearBtn);
+frag.appendChild(sec);
+
+for (let i = 0; i < activeRecents.length; i++) {
+const entry = activeRecents[i];
+const row = buildFileEntryRow(entry, fileRowIdx++, entry.relPath);
+rowElements.push(row);
+frag.appendChild(row);
+}
+
+if (dirItems.length > 0) {
+const browseSec = document.createElement('div');
+browseSec.className = 'section-label';
+browseSec.textContent = 'Browse';
+frag.appendChild(browseSec);
+}
+}
+
+for (let i = 0; i < dirItems.length; i++) {
+const entry = dirItems[i];
+const isGitDiff = entry.relPath === '__git_diff__';
+const showSub = isGitDiff
+  ? 'Inject staged + unstaged repository changes'
+  : filterInput.value.trim().length > 0
+  ? entry.relPath
+  : undefined;
+const row = buildFileEntryRow(entry, fileRowIdx++, showSub);
 rowElements.push(row);
 frag.appendChild(row);
 }
 }
-animatePanelHeight(() => {
-      listEl.replaceChildren(frag);
-    });
+listEl.replaceChildren(frag);
 window.requestAnimationFrame(() => {
 syncActiveRowHighlight(true);
 positionPopover();

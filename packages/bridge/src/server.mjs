@@ -412,44 +412,65 @@ const server = http.createServer(async (req, res) => {
       }
       const IGNORED = new Set(['node_modules', '.git', '.next', 'dist', 'build', '.turbo', '.cache', 'coverage', '__pycache__', '.venv', 'vendor'])
       const BINARY_EXT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.pdf', '.zip', '.tar', '.gz', '.woff', '.woff2', '.ttf', '.eot', '.mp4', '.mp3', '.lock'])
+      const LOCKFILES = new Set(['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lockb', 'Cargo.lock'])
+      const candidateRelPaths = []
+
+      let usedGit = false
+      try {
+        const { stdout } = await execFileAsync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { cwd: resolved, timeout: 6000, maxBuffer: 4 * 1024 * 1024 })
+        const gitFiles = stdout.split('\n').map((l) => l.trim()).filter(Boolean)
+        if (gitFiles.length > 0) {
+          usedGit = true
+          gitFiles.sort((a, b) => a.localeCompare(b))
+          for (const rel of gitFiles) candidateRelPaths.push(rel)
+        }
+      } catch {}
+
+      if (!usedGit) {
+        async function walkFallback(dir, depth) {
+          if (depth > 10 || candidateRelPaths.length >= 400) return
+          const entries = await fs.readdir(dir, { withFileTypes: true })
+          entries.sort((a, b) => Number(b.isDirectory()) - Number(a.isDirectory()) || a.name.localeCompare(b.name))
+          for (const ent of entries) {
+            if (ent.name.startsWith('.') && ent.name !== '.env.example') continue
+            if (IGNORED.has(ent.name)) continue
+            const full = path.join(dir, ent.name)
+            if (ent.isDirectory()) await walkFallback(full, depth + 1)
+            else if (ent.isFile()) candidateRelPaths.push(path.relative(resolved, full))
+          }
+        }
+        await walkFallback(resolved, 0)
+      }
+
       const files = []
       const treeLines = []
       let totalBytes = 0
-      const MAX_BYTES = 120 * 1024
-      const MAX_FILES = 35
+      const MAX_BYTES = 180 * 1024
+      const MAX_FILES = 60
 
-      async function walk(dir, depth) {
-        if (depth > 4 || files.length >= MAX_FILES || totalBytes >= MAX_BYTES) return
-        const entries = await fs.readdir(dir, { withFileTypes: true })
-        entries.sort((a, b) => Number(b.isDirectory()) - Number(a.isDirectory()) || a.name.localeCompare(b.name))
-        for (const ent of entries) {
-          if (ent.name.startsWith('.') && ent.name !== '.env.example') continue
-          if (IGNORED.has(ent.name)) continue
-          const full = path.join(dir, ent.name)
-          const rel = path.relative(resolved, full)
-          const indent = '  '.repeat(depth)
-          if (ent.isDirectory()) {
-            treeLines.push(indent + ent.name + '/')
-            await walk(full, depth + 1)
-          } else if (ent.isFile()) {
-            const ext = path.extname(ent.name).toLowerCase()
-            if (BINARY_EXT.has(ext) || ent.name === 'package-lock.json' || ent.name === 'pnpm-lock.yaml' || ent.name === 'yarn.lock') continue
-            treeLines.push(indent + ent.name)
-            if (files.length >= MAX_FILES || totalBytes >= MAX_BYTES) continue
-            const st = await fs.stat(full)
-            if (st.size > 32 * 1024) continue
-            const raw = await fs.readFile(full, 'utf8')
-            if (raw.includes('\u0000')) continue
-            totalBytes += raw.length
-            files.push({ rel, ext: ext.replace(/^\./, '') || 'txt', content: raw })
-          }
-        }
+      for (const rel of candidateRelPaths) {
+        const parts = rel.split('/')
+        if (parts.some((seg) => seg.startsWith('.') && seg !== '.env.example')) continue
+        if (parts.some((seg) => IGNORED.has(seg))) continue
+        const base = path.basename(rel)
+        const ext = path.extname(base).toLowerCase()
+        if (BINARY_EXT.has(ext) || LOCKFILES.has(base)) continue
+        treeLines.push(rel)
+        if (files.length >= MAX_FILES || totalBytes >= MAX_BYTES) continue
+        try {
+          const full = path.join(resolved, rel)
+          const st = await fs.stat(full)
+          if (!st.isFile() || st.size > 48 * 1024) continue
+          const raw = await fs.readFile(full, 'utf8')
+          if (raw.includes('\u0000')) continue
+          totalBytes += raw.length
+          files.push({ rel, ext: ext.replace(/^\./, '') || 'txt', content: raw })
+        } catch {}
       }
 
-      await walk(resolved, 0)
       const folderName = path.basename(resolved)
       const bodySections = [
-        '#### Directory Structure',
+        '#### Included Files (' + treeLines.length + ' total, ' + files.length + ' inlined)',
         '```text',
         treeLines.join('\n') || '(empty)',
         '```',
@@ -461,12 +482,13 @@ const server = http.createServer(async (req, res) => {
       const bodyText = bodySections.join('\n')
       const tokensEst = Math.max(1, Math.round(bodyText.length / 4))
       const packed = [
-        '### Folder Context Pack: `' + (relDir || folderName) + '`',
+        '### Folder Context Pack: ' + (relDir || folderName) + '',
         '',
-        '> ' + files.length + ' file(s) packed (~' + tokensEst + ' tokens)',
+        '> ' + files.length + ' file(s) packed (~' + tokensEst + ' tokens' + (usedGit ? ', .gitignore respected' : '') + ')',
         '',
         bodyText,
-      ].join('\n')
+      ].join('
+')
       res.writeHead(200)
       res.end(JSON.stringify({
         ok: true,
