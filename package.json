@@ -13,7 +13,8 @@
     "test": "pnpm test:unit && pnpm test:dom && pnpm test:e2e",
     "test:unit": "vitest run --project unit",
     "test:dom": "vitest run --project dom",
-    "test:e2e": "pnpm build && node packages/extension/test/e2e/run-e2e.mjs"
+    "test:e2e": "pnpm build && node packages/extension/test/e2e/run-e2e.mjs",
+    "zip:store": "pnpm build && mkdir -p release && rm -f release/vexel-extension-store.zip && (cd packages/extension/dist && zip -r ../../../release/vexel-extension-store.zip .)"
   },
   "devDependencies": {
     "happy-dom": "^21.0.4",
