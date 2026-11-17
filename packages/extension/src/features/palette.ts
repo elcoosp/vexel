@@ -59,6 +59,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
   let activeSkill: SkillItem | null = null;
   let filteredRefs: RefFile[] = [];
   let currentDir = '';
+  let isZeroServerFs = false;
   let rootLabel = '~';
   let browseEntries: BrowseEntry[] = [];
   let selectedIndex = 0;
@@ -293,9 +294,7 @@ dockHost.style.left = Math.max(12, rect.right - 122) + 'px';
 }
 }
 function positionPopover(): void {
-    if (!isOpen) return;
-    if (!isOpen) return;
-if (!isOpen) return;
+  if (!isOpen) return;
 const input = activeInput && document.contains(activeInput) ? activeInput : findVisibleInput();
 if (!input) return;
 const plate = findInputPlate(input);
@@ -360,6 +359,34 @@ e.preventDefault();
 navigateToDir('');
 });
 breadcrumbsEl.appendChild(rootBtn);
+if (isZeroServerFs) {
+  const switchBtn = document.createElement('button');
+  switchBtn.type = 'button';
+  switchBtn.textContent = 'Switch folder';
+  Object.assign(switchBtn.style, {
+    marginLeft: 'auto',
+    border: '1px solid #dadce0',
+    background: '#ffffff',
+    color: '#1967d2',
+    borderRadius: '999px',
+    padding: '2px 8px',
+    fontSize: '11px',
+    fontWeight: '600',
+    cursor: 'pointer',
+  });
+  switchBtn.addEventListener('mousedown', async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const h = await pickLocalFolder();
+    if (h) {
+      recentEntries = [];
+      try { localStorage.removeItem(RECENT_FILES_KEY); } catch {}
+      showToast('Connected folder: ' + h.name);
+      browseDir('', '');
+    }
+  });
+  breadcrumbsEl.appendChild(switchBtn);
+}
 if (!currentDir) return;
 const parts = currentDir.split('/');
 let acc = '';
@@ -409,6 +436,7 @@ fileFetchTimer = window.setTimeout(
 () => {
 chrome.runtime.sendMessage({ type: 'BROWSE_DIR', dir, query }, async (res) => {
         if (chrome.runtime.lastError || !res?.ok) {
+          isZeroServerFs = true;
           const local = await browseLocalFs(dir, query, false);
           if (!local.ok) {
             listEl.replaceChildren();
@@ -426,6 +454,8 @@ chrome.runtime.sendMessage({ type: 'BROWSE_DIR', dir, query }, async (res) => {
               e.stopPropagation();
               const h = await pickLocalFolder();
               if (h) {
+                recentEntries = [];
+                try { localStorage.removeItem(RECENT_FILES_KEY); } catch {}
                 showToast('Connected folder: ' + h.name);
                 browseDir('', '');
               }
@@ -450,7 +480,8 @@ chrome.runtime.sendMessage({ type: 'BROWSE_DIR', dir, query }, async (res) => {
           renderList();
           return;
         }
-rootLabel = res.data?.rootLabel || '~';
+isZeroServerFs = false;
+        rootLabel = res.data?.rootLabel || '~';
 currentDir = res.data?.dir || '';
 const rawEntries: BrowseEntry[] = res.data?.entries || [];
 if (!query && currentDir) {
@@ -793,7 +824,10 @@ const dirItems = currentDir
   ? browseEntries
   : browseEntries.filter((e) => !recentPaths.has(e.relPath));
 
-visibleFileItems = [...activeRecents, ...dirItems];
+const filteredRecents = isZeroServerFs
+  ? activeRecents.filter((r) => browseEntries.some((b) => b.relPath === r.relPath))
+  : activeRecents;
+visibleFileItems = [...filteredRecents, ...dirItems];
 statusText.textContent = visibleFileItems.length + ' item(s)';
 
 if (visibleFileItems.length === 0) {
@@ -858,7 +892,7 @@ return row;
 };
 
 let fileRowIdx = 0;
-if (activeRecents.length > 0) {
+if (filteredRecents.length > 0) {
 const sec = document.createElement('div');
 sec.className = 'section-label';
 const lbl = document.createElement('span');
@@ -877,8 +911,8 @@ if (mode === 'files') renderList();
 sec.append(lbl, clearBtn);
 frag.appendChild(sec);
 
-for (let i = 0; i < activeRecents.length; i++) {
-const entry = activeRecents[i];
+for (let i = 0; i < filteredRecents.length; i++) {
+const entry = filteredRecents[i];
 const row = buildFileEntryRow(entry, fileRowIdx++, entry.relPath);
 rowElements.push(row);
 frag.appendChild(row);
