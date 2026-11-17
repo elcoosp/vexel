@@ -756,43 +756,18 @@ triggerAutocomplete();
 header.appendChild(triggerBtn);
   };
 
-  const io = new IntersectionObserver(
-    (entries) => {
-      for (let i = 0; i < entries.length; i++) {
-        const entry = entries[i];
-        if (entry.isIntersecting) {
-          const el = entry.target as HTMLElement;
-          io.unobserve(el);
-          mountSaveButton(el);
-        }
-      }
-    },
-    { rootMargin: '400px 0px' }
-  );
-
-  const attachSaveButtons = () => {
-    const containers = document.querySelectorAll<HTMLElement>(
-      '.aiModeUiCodeBlock__Container:not([data-vexel-save-observed="true"])'
-    );
-    for (let i = 0; i < containers.length; i++) {
-      const c = containers[i];
-      c.setAttribute('data-vexel-save-observed', 'true');
-      io.observe(c);
+  
+const handleCodeHoverOrFocus = (ev: Event) => {
+    const target = ev.target as HTMLElement | null;
+    if (!target) return;
+    const pre = target.closest('pre');
+    if (!pre) return;
+    const container = pre.closest<HTMLElement>('[data-hveid]') || pre.parentElement;
+    if (container && !container.hasAttribute('data-vexel-save')) {
+      mountSaveButton(container);
     }
   };
-let timer: number | undefined;
-const schedule = () => {
-if (timer) window.clearTimeout(timer);
-timer = window.setTimeout(attachSaveButtons, 260);
-};
-const obs = new MutationObserver((mutations) => {
-for (let i = 0; i < mutations.length; i++) {
-if (mutations[i].addedNodes.length > 0) {
-schedule();
-return;
-}
-}
-});
-obs.observe(document.body, { childList: true, subtree: true });
-schedule();
+
+  document.addEventListener('pointerover', handleCodeHoverOrFocus, { capture: true, passive: true });
+  document.addEventListener('focusin', handleCodeHoverOrFocus, { capture: true, passive: true });
 }

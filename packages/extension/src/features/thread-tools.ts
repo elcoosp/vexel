@@ -579,17 +579,8 @@ window.setTimeout(refreshToc, 550);
 true
 );
 window.addEventListener('popstate', () => scheduleToc(200));
-const obs = new MutationObserver((mutations) => {
-for (let i = 0; i < mutations.length; i++) {
-const added = mutations[i].addedNodes;
-for (let j = 0; j < added.length; j++) {
-if (added[j].nodeType === 1) {
-scheduleToc(180);
-return;
-}
-}
-}
-});
-obs.observe(document.body, { childList: true, subtree: true });
+window.addEventListener('load', () => scheduleToc(200), { once: true });
+  window.setTimeout(() => refreshToc(), 800);
+  window.setTimeout(() => refreshToc(), 2200);
 scheduleToc(100);
 }

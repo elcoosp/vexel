@@ -1144,12 +1144,6 @@ document.addEventListener('focusin', () => {
 mountDockIntoInput();
 positionPopover();
 }, true);
-let mountTimer: number | undefined;
-const domObs = new MutationObserver(() => {
-if (dockHost.isConnected && dockHost.parentElement?.classList.contains('o8Wipc')) return;
-if (mountTimer) window.clearTimeout(mountTimer);
-mountTimer = window.setTimeout(mountDockIntoInput, 150);
-});
-domObs.observe(document.body, { childList: true, subtree: true });
+window.addEventListener('popstate', () => window.setTimeout(mountDockIntoInput, 120));
 mountDockIntoInput();
 }
