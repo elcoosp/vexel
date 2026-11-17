@@ -750,7 +750,7 @@ const target = activeInput || findVisibleInput();
 const charsToStrip = hasInlineTrigger ? triggerTextLength : 0;
 if (!target) {
 navigator.clipboard.writeText(content);
-showToast(toastMsg + ' (copie)');
+showToast(toastMsg + ' (copied)');
 return;
 }
 if (charsToStrip > 0) removeTriggerChars(target, charsToStrip);
@@ -786,7 +786,7 @@ triggerTextLength = charsToStrip;
 injectContent(
 '## Reference (' + skillName + ') : ' + ref.relPath + '\n\n' + ref.content,
 ref.relPath.split('/').join('-'),
-'Reference "' + ref.relPath + '" ajoutee'
+'Reference "' + ref.relPath + '" added'
 );
 hasInlineTrigger = false;
 triggerTextLength = 0;
@@ -796,13 +796,23 @@ if (mode === 'skills') {
 if (idx >= filteredSkills.length) {
 const remote = remoteSkills[idx - filteredSkills.length];
 if (!remote) return;
+const key = remote.repo + '/' + remote.name;
+if (installingSkills.has(key)) return;
+installingSkills.add(key);
+renderList();
+statusText.textContent = 'Installing ' + remote.name + ' via npx...';
 showToast('Installing ' + remote.name + ' (' + remote.repo + ')...');
 chrome.runtime.sendMessage({ type: 'INSTALL_REMOTE_SKILL', repo: remote.repo, name: remote.name }, (res) => {
-if (!res?.ok) {
-showToast('Echec installation npx: ' + (res?.error || 'erreur'));
+installingSkills.delete(key);
+if (!res?.ok || res?.data?.ok === false) {
+renderList();
+const errMsg = res?.data?.error || res?.error || 'npx error';
+statusText.textContent = 'Install failed: ' + errMsg;
+showToast('Install failed: ' + errMsg);
 return;
 }
-showToast('Skill "' + remote.name + '" installe !');
+showToast('✓ Skill "' + remote.name + '" installed!');
+statusText.textContent = '✓ "' + remote.name + '" installed!';
 remoteSkills = remoteSkills.filter((x) => x.name !== remote.name);
 fetchSkills();
 });
@@ -814,7 +824,7 @@ closeMenu();
 hasInlineTrigger = charsToStrip > 0;
 triggerTextLength = charsToStrip;
 const payload = fullBundle ? skill.fullContent : skill.smartContent;
-injectContent(payload, skill.id + '.md', 'Skill "' + skill.name + '" ajoute');
+injectContent(payload, skill.id + '.md', 'Skill "' + skill.name + '" added');
 hasInlineTrigger = false;
 triggerTextLength = 0;
 return;
@@ -829,11 +839,11 @@ return;
 closeMenu();
 chrome.runtime.sendMessage({ type: 'FETCH_FILE_CONTENT', relPath: entry.relPath }, (res) => {
 if (!res?.ok || !res.data) {
-showToast('Impossible de lire ' + entry.relPath);
+showToast('Unable to read ' + entry.relPath);
 return;
 }
 const wrapped =
-'### Fichier : ' + BT1 + entry.relPath + BT1 + '\n\n' + BT3 + '\n' + res.data.content + '\n' + BT3;
+'### File: ' + BT1 + entry.relPath + BT1 + '\n\n' + BT3 + '\n' + res.data.content + '\n' + BT3;
 const target = activeInput || findVisibleInput();
 if (target) {
 if (charsToStrip > 0) removeTriggerChars(target, charsToStrip);
