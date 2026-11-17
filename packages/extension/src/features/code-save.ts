@@ -178,6 +178,7 @@ export function initCodeSave(showToast: (msg: string) => void): void {
 
       let drawerEl: HTMLDivElement | null = null;
       let isOpen = false;
+      let cleanupListeners: (() => void) | null = null;
 
       const setTriggerActiveStyle = (active: boolean) => {
         if (active) {
@@ -209,6 +210,7 @@ export function initCodeSave(showToast: (msg: string) => void): void {
         if (!drawerEl || !isOpen) return;
         isOpen = false;
         setTriggerActiveStyle(false);
+        if (cleanupListeners) { cleanupListeners(); cleanupListeners = null; }
         const closingEl = drawerEl;
         drawerEl = null;
         animate(
@@ -235,10 +237,33 @@ export function initCodeSave(showToast: (msg: string) => void): void {
         const currentCode = codeEl.textContent || '';
         const suggested = inferSuggestedPath(container, currentCode, lang, recentFolders);
 
+        const positionDrawer = () => {
+          if (!drawerEl) return;
+          const btnRect = triggerBtn.getBoundingClientRect();
+          const panelW = Math.min(520, window.innerWidth - 24);
+          const left = Math.max(12, Math.min(btnRect.right - panelW, window.innerWidth - panelW - 12));
+          const top = Math.min(btnRect.bottom + 8, window.innerHeight - 130);
+          drawerEl.style.width = panelW + "px";
+          drawerEl.style.left = left + "px";
+          drawerEl.style.top = top + "px";
+        };
+        const handleOutsideClick = (e: MouseEvent) => {
+          const t = e.target as Node | null;
+          if (drawerEl && t && !drawerEl.contains(t) && !triggerBtn.contains(t)) {
+            closeDrawer();
+          }
+        };
+        cleanupListeners = () => {
+          window.removeEventListener("scroll", positionDrawer, true);
+          window.removeEventListener("resize", positionDrawer);
+          document.removeEventListener("mousedown", handleOutsideClick, true);
+        };
         drawerEl = document.createElement('div');
         drawerEl.setAttribute('data-vexel-ui', 'true');
         Object.assign(drawerEl.style, {
-          margin: '4px 12px 10px 12px',
+          position: 'fixed',
+          zIndex: '2147483645',
+          margin: '0',
           padding: '10px 12px',
           borderRadius: '14px',
           backgroundColor: 'rgba(255, 255, 255, 0.96)',
