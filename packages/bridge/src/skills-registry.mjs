@@ -27,6 +27,71 @@ function saveMetaCache(cache) {
 
 let diskMeta = loadMetaCache()
 
+
+function parseFrontmatterDescription(md) {
+  const match = String(md || '').match(/^---\s*\r?\n([\s\S]*?)\r?\n---/)
+  if (!match) return ''
+  const lines = match[1].split(/\r?\n/)
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^description:\s*(.*)$/)
+    if (m) {
+      let val = m[1].trim()
+      if (val === '>' || val === '|' || val === '>-' || val === '|-') {
+        const folded = []
+        for (let j = i + 1; j < lines.length; j++) {
+          if (/^\s+\S/.test(lines[j])) folded.push(lines[j].trim())
+          else if (lines[j].trim() === '') continue
+          else break
+        }
+        val = folded.join(' ')
+      }
+      return val.replace(/^["']|["']$/g, '').trim()
+    }
+  }
+  return ''
+}
+
+async function fetchRemoteSkillDescription(repo, skillName, skillId) {
+  const key = (repo + '/' + (skillId || skillName)).toLowerCase()
+  if (diskMeta[key]?.description !== undefined) return diskMeta[key].description
+  if (!/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(repo)) return ''
+
+  const names = Array.from(new Set([skillName, skillId, String(skillName || '').replace(/-v\d+$/, '')].filter(Boolean)))
+  const rawHost = ['https://', 'raw.', 'githubusercontent', '.com'].join('')
+  const paths = []
+  for (const n of names) {
+    paths.push('skills/' + n + '/SKILL.md')
+    paths.push('.agents/skills/' + n + '/SKILL.md')
+    paths.push('.claude/skills/' + n + '/SKILL.md')
+  }
+  paths.push('SKILL.md')
+
+  let foundDesc = ''
+  for (const branch of ['main', 'master']) {
+    for (const rel of paths) {
+      try {
+        const res = await fetch(rawHost + '/' + repo + '/' + branch + '/' + rel, {
+          signal: AbortSignal.timeout(1800),
+          headers: { 'User-Agent': 'Vexel-Bridge/1.0' },
+        })
+        if (res.ok) {
+          const text = await res.text()
+          const desc = parseFrontmatterDescription(text)
+          if (desc) {
+            foundDesc = desc
+            break
+          }
+        }
+      } catch {}
+    }
+    if (foundDesc) break
+  }
+
+  diskMeta[key] = { ...(diskMeta[key] || {}), description: foundDesc }
+  saveMetaCache(diskMeta)
+  return foundDesc
+}
+
 function fmtInstalls(n) {
   const num = Number(n)
   if (!Number.isFinite(num) || num <= 0) return ''
@@ -83,6 +148,15 @@ export async function searchRemoteSkills(query = '') {
         }
       })
       if (dirty) saveMetaCache(diskMeta)
+      await Promise.all(
+        items.slice(0, 8).map(async (it) => {
+          if (it.repo) {
+            const desc = await fetchRemoteSkillDescription(it.repo, it.name, it.id)
+            if (desc) it.description = desc
+            else it.description = ''
+          }
+        })
+      )
       searchCache.set(q, { ts: Date.now(), items })
       return items
     } catch {

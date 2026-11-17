@@ -773,12 +773,14 @@ const r = remoteSkills.slice(i, i + 1).find(() => true);
 if (!r) continue;
 const metaLabel = [r.repo, r.installs ? r.installs + ' installs' : ''].filter(Boolean).join(' • ');
 const isInstalling = installingSkills.has(r.repo + '/' + r.name);
+const cleanRemoteDesc = r.description && !r.description.includes(' installs') && !/^[>|]-?$/.test(r.description.trim()) ? r.description : undefined;
 const row = createRow(
   rowIdx++,
   createLucideIcon('sparkles', 13, '#5f6368'),
   r.name,
   metaLabel,
-  false
+  false,
+  cleanRemoteDesc
 );
 const headerRow = row.querySelector('.item-row');
 const actionBtn = document.createElement('button');
