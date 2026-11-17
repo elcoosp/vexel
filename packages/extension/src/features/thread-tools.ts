@@ -106,6 +106,8 @@ function extractTurns(): ThreadTurn[] {
   return turns;
 }
 
+const BT1 = String.fromCharCode(96);
+
 function extractUserAttachments(turnBlock: HTMLElement): string[] {
   const names: string[] = [];
   turnBlock.querySelectorAll<HTMLElement>('.Abx0mc .LxGa3').forEach((el) => {
@@ -122,7 +124,7 @@ function elementToMarkdown(root: HTMLElement, role: 'user' | 'assistant'): strin
     const textEl = root.querySelector<HTMLElement>('[jsname="y5v2y"]') || root;
     const body = (textEl.innerText || textEl.textContent || '').trim();
     if (attachments.length > 0) {
-      return '> Attachments: ' + attachments.map((a) => '`' + a + '`').join(', ') + '\n\n' + body;
+      return '> Attachments: ' + attachments.map((a) => BT1 + a + BT1).join(', ') + '\n\n' + body;
     }
     return body;
   }
@@ -131,7 +133,6 @@ function elementToMarkdown(root: HTMLElement, role: 'user' | 'assistant'): strin
     root.querySelector<HTMLElement>('[data-container-id="main-col"], [data-xid="VpUvz"]') || root;
   const clone = mainCol.cloneNode(true) as HTMLElement;
 
-  // Strip Google AI Mode boilerplate, feedback widgets, right-hand drawers, and Vexel buttons
   clone
     .querySelectorAll(
       [
@@ -152,25 +153,27 @@ function elementToMarkdown(root: HTMLElement, role: 'user' | 'assistant'): strin
     )
     .forEach((el) => el.remove());
 
-  // 1. Code blocks (.aiModeUiCodeBlock__Container or pre)
+  // 1. Code blocks: read .GlO4G language BEFORE removing header .rq1a2
   clone.querySelectorAll<HTMLElement>('.aiModeUiCodeBlock__Container, pre').forEach((block) => {
     if (block.tagName === 'PRE' && block.closest('.aiModeUiCodeBlock__Container')) return;
-    const langLabel = block.querySelector<HTMLElement>('.GlO4G')?.textContent?.trim() || '';
+    const langEl = block.querySelector<HTMLElement>('.GlO4G');
+    const langLabel = (langEl?.textContent || '').trim().toLowerCase();
+    block.querySelectorAll('.rq1a2, .a2TNg').forEach((hdr) => hdr.remove());
     const codeEl = block.querySelector('code');
     const langMatch = (codeEl?.className || '').match(/language-([a-zA-Z0-9_-]+)/);
     const lang = langLabel || (langMatch ? langMatch.slice(1, 2).find(() => true) || '' : '');
     const codeText = ((codeEl ? codeEl.textContent : block.textContent) || '').replace(/\n$/, '');
-    const fence = codeText.includes(BT3) ? BT3 + String.fromCharCode(96) : BT3;
+    const fence = codeText.includes(BT3) ? BT3 + BT1 : BT3;
     block.replaceWith(
       document.createTextNode('\n\n' + fence + lang + '\n' + codeText + '\n' + fence + '\n\n')
     );
   });
 
-  // 2. Inline code tags
-  clone.querySelectorAll('code').forEach((code) => {
+  // 2. Inline code tags (.KDcb0c or <code> outside <pre>)
+  clone.querySelectorAll('code, .KDcb0c').forEach((code) => {
     if (code.closest('pre')) return;
     const txt = (code.textContent || '').trim();
-    if (txt) code.replaceWith(document.createTextNode('`' + txt + '`'));
+    if (txt) code.replaceWith(document.createTextNode(BT1 + txt + BT1));
   });
 
   // 3. Bold & italic
@@ -197,7 +200,7 @@ function elementToMarkdown(root: HTMLElement, role: 'user' | 'assistant'): strin
     hr.replaceWith(document.createTextNode('\n\n---\n\n'));
   });
 
-  // 6. Section headings (Google uses div[role="heading"] with .ZLzG0d or .AdPoic)
+  // 6. Section headings
   clone.querySelectorAll<HTMLElement>('.ZLzG0d, [role="heading"][aria-level="4"]').forEach((h) => {
     const txt = (h.textContent || '').trim();
     if (txt) h.replaceWith(document.createTextNode('\n\n### ' + txt + '\n\n'));
@@ -212,23 +215,25 @@ function elementToMarkdown(root: HTMLElement, role: 'user' | 'assistant'): strin
     if (txt) h.replaceWith(document.createTextNode('\n\n' + hashes + ' ' + txt + '\n\n'));
   });
 
-  // 7. Follow-up suggestion chips (.AHmQrc)
+  // 7. Follow-up suggestion chips
   clone.querySelectorAll<HTMLElement>('.AHmQrc .yrZ5Oe').forEach((chip) => {
     const txt = (chip.textContent || '').trim();
     if (txt) chip.replaceWith(document.createTextNode('\n- ' + txt));
   });
 
-  // 8. List items & paragraphs
-  clone.querySelectorAll('li').forEach((li) => {
-    const txt = (li.textContent || '').trim();
-    if (!txt) {
-      li.remove();
-      return;
-    }
-    const isNested = Boolean(li.parentElement?.closest('li'));
-    const prefix = isNested ? '  - ' : '- ';
-    li.replaceWith(document.createTextNode('\n' + prefix + txt));
-  });
+  // 8. Bottom-up list items so nested lists keep proper indentation and newlines
+  Array.from(clone.querySelectorAll('li'))
+    .reverse()
+    .forEach((li) => {
+      const txt = (li.textContent || '').trim();
+      if (!txt) {
+        li.remove();
+        return;
+      }
+      const isNested = Boolean(li.parentElement?.closest('li'));
+      const prefix = isNested ? '  - ' : '- ';
+      li.replaceWith(document.createTextNode('\n' + prefix + txt));
+    });
 
   clone.querySelectorAll('p, .n6owBd').forEach((p) => {
     const txt = (p.textContent || '').trim();
