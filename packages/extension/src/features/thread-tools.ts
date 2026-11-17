@@ -9,6 +9,48 @@ interface ThreadTurn {
 
 const BT3 = String.fromCharCode(96, 96, 96);
 
+function getUserTurnElements(): HTMLElement[] {
+  const seen = new Set<HTMLElement>();
+  const results: HTMLElement[] = [];
+
+  const turnBlocks = document.querySelectorAll<HTMLElement>(
+    '.CKgc1d[data-scope-id="turn"], [jsname="CS7uPe"], [data-turn-id]'
+  );
+
+  for (let i = 0; i < turnBlocks.length; i++) {
+    const block = turnBlocks[i];
+    const userEl =
+      block.querySelector<HTMLElement>(
+        '[jsname="eFVkfb"], .VndcI.veK2kb, .tbIZh.Odbbif, [data-user-query], .ryAKYc'
+      ) || null;
+    if (userEl && !seen.has(userEl)) {
+      seen.add(userEl);
+      results.push(userEl);
+    }
+  }
+
+  const standalone = document.querySelectorAll<HTMLElement>(
+    '[jsname="eFVkfb"], .VndcI.veK2kb, .tbIZh.Odbbif, [data-user-query]'
+  );
+  for (let i = 0; i < standalone.length; i++) {
+    const el = standalone[i];
+    if (seen.has(el)) continue;
+    let isNested = false;
+    for (const existing of seen) {
+      if (existing.contains(el) || el.contains(existing)) {
+        isNested = true;
+        break;
+      }
+    }
+    if (!isNested) {
+      seen.add(el);
+      results.push(el);
+    }
+  }
+
+  return results;
+}
+
 function extractTurns(): ThreadTurn[] {
   const turns: ThreadTurn[] = [];
   const turnBlocks = Array.from(
@@ -49,9 +91,7 @@ function extractTurns(): ThreadTurn[] {
     return turns;
   }
 
-  const fallbackUserNodes = Array.from(
-    document.querySelectorAll<HTMLElement>('[jsname="eFVkfb"], .VndcI.veK2kb')
-  );
+  const fallbackUserNodes = getUserTurnElements();
   for (const node of fallbackUserNodes) {
     const clean = (node.innerText || node.textContent || '').replace(/\s+/g, ' ').trim();
     if (clean) {
@@ -71,16 +111,22 @@ function elementToMarkdown(root: HTMLElement): string {
   clone.querySelectorAll('pre').forEach((pre) => {
     const codeEl = pre.querySelector('code');
     const langMatch = (codeEl?.className || '').match(/language-([a-zA-Z0-9_-]+)/);
-    const lang = langMatch ? (langMatch.slice(1, 2).find(() => true) || '') : '';
+    const lang = langMatch ? langMatch.slice(1, 2).find(() => true) || '' : '';
     const codeText = (codeEl ? codeEl.textContent : pre.textContent) || '';
-    pre.replaceWith(document.createTextNode('\n' + BT3 + lang + '\n' + codeText.trim() + '\n' + BT3 + '\n'));
+    pre.replaceWith(
+      document.createTextNode('\n' + BT3 + lang + '\n' + codeText.trim() + '\n' + BT3 + '\n')
+    );
   });
   clone.querySelectorAll('h1, h2, h3, h4').forEach((h) => {
     const hashes = '#'.repeat(Number(h.tagName.slice(1)));
     h.replaceWith(document.createTextNode('\n\n' + hashes + ' ' + (h.textContent || '').trim() + '\n\n'));
   });
-  clone.querySelectorAll('li').forEach((li) => li.replaceWith(document.createTextNode('\n- ' + (li.textContent || '').trim())));
-  clone.querySelectorAll('p').forEach((p) => p.replaceWith(document.createTextNode('\n\n' + (p.textContent || '').trim() + '\n')));
+  clone.querySelectorAll('li').forEach((li) =>
+    li.replaceWith(document.createTextNode('\n- ' + (li.textContent || '').trim()))
+  );
+  clone.querySelectorAll('p').forEach((p) =>
+    p.replaceWith(document.createTextNode('\n\n' + (p.textContent || '').trim() + '\n'))
+  );
   return (clone.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
 }
 
@@ -168,59 +214,61 @@ export function initThreadTools(_showToast?: (msg: string) => void): void {
   shadow.append(styleEl, rail, sharedTip);
   document.body.appendChild(host);
 
-  let lastSignature = '';
-  let tipVisible = false;
-  let hideTimer: number | undefined;
-  let currentIdx = -1;
-  let turnEntries: Array<{ wrap: HTMLDivElement; target: HTMLElement }> = [];
-
-  const hideTooltip = () => {
-    if (!tipVisible) return;
-    tipVisible = false;
-    animate(sharedTip, { opacity: 0, x: 4 }, { duration: 0.14 });
-  };
-
-  const showTooltipAt = (wrap: HTMLElement, indexLabel: string, preview: string) => {
-    if (hideTimer) window.clearTimeout(hideTimer);
-    tipBadge.textContent = indexLabel;
-    tipText.textContent = preview;
-    const rect = wrap.getBoundingClientRect();
-    const centerY = Math.round(rect.top + rect.height / 2 - 15);
-    if (!tipVisible) {
-      tipVisible = true;
-      sharedTip.style.transform = 'translateY(' + centerY + 'px) translateX(4px)';
-      animate(
-        sharedTip,
-        { opacity: 1, y: centerY, x: 0 },
-        { duration: 0.16, ease: [0.2, 0, 0, 1] }
-      );
-    } else {
-      animate(
-        sharedTip,
-        { opacity: 1, y: centerY, x: 0 },
-        { type: 'spring', stiffness: 520, damping: 38, mass: 0.6 }
-      );
-    }
-  };
-
-  rail.addEventListener('pointerleave', () => {
-    hideTimer = window.setTimeout(hideTooltip, 80);
-  });
-
-  const syncThumb = () => {
-    const sh = railScroll.scrollHeight;
-    const ch = railScroll.clientHeight;
-    if (sh <= ch) return;
-    const trackH = ch - 4;
-    const thumbH = Math.max(20, Math.round((ch / sh) * trackH));
-    const maxScroll = sh - ch;
-    const maxTop = trackH - thumbH;
-    const top = 8 + (maxScroll > 0 ? Math.round((railScroll.scrollTop / maxScroll) * maxTop) : 0);
-    customThumb.style.height = thumbH + 'px';
-    customThumb.style.top = top + 'px';
-  };
-  railScroll.addEventListener('scroll', () => { hideTooltip(); syncThumb(); }, { passive: true });
-
+let renderedPreviews: string[] = [];
+let tipVisible = false;
+let hideTimer: number | undefined;
+let currentIdx = -1;
+let turnEntries: Array<{ wrap: HTMLDivElement; target: HTMLElement }> = [];
+const hideTooltip = () => {
+if (!tipVisible) return;
+tipVisible = false;
+animate(sharedTip, { opacity: 0, x: 4 }, { duration: 0.14 });
+};
+const showTooltipAt = (wrap: HTMLElement, indexLabel: string, preview: string) => {
+if (hideTimer) window.clearTimeout(hideTimer);
+tipBadge.textContent = indexLabel;
+tipText.textContent = preview;
+const rect = wrap.getBoundingClientRect();
+const centerY = Math.round(rect.top + rect.height / 2 - 15);
+if (!tipVisible) {
+tipVisible = true;
+sharedTip.style.transform = 'translateY(' + centerY + 'px) translateX(4px)';
+animate(
+sharedTip,
+{ opacity: 1, y: centerY, x: 0 },
+{ duration: 0.16, ease: [0.2, 0, 0, 1] }
+);
+} else {
+animate(
+sharedTip,
+{ opacity: 1, y: centerY, x: 0 },
+{ type: 'spring', stiffness: 520, damping: 38, mass: 0.6 }
+);
+}
+};
+rail.addEventListener('pointerleave', () => {
+hideTimer = window.setTimeout(hideTooltip, 80);
+});
+const syncThumb = () => {
+const sh = railScroll.scrollHeight;
+const ch = railScroll.clientHeight;
+if (sh <= ch) return;
+const trackH = ch - 4;
+const thumbH = Math.max(20, Math.round((ch / sh) * trackH));
+const maxScroll = sh - ch;
+const maxTop = trackH - thumbH;
+const top = 8 + (maxScroll > 0 ? Math.round((railScroll.scrollTop / maxScroll) * maxTop) : 0);
+customThumb.style.height = thumbH + 'px';
+customThumb.style.top = top + 'px';
+};
+railScroll.addEventListener(
+'scroll',
+() => {
+hideTooltip();
+syncThumb();
+},
+{ passive: true }
+);
 const moveActivePill = (idx: number, instant = false) => {
 if (idx < 0 || idx >= turnEntries.length) return;
 const targetY = idx * 20;
@@ -259,32 +307,17 @@ turnEntries[i].wrap.classList.toggle('current', i === bestIdx);
 moveActivePill(bestIdx, instant);
 }
 };
-const refreshToc = () => {
-const userTurns = extractTurns().filter((t) => t.role === 'user');
-const sig = userTurns.map((t) => t.preview).join('|');
-if (sig === lastSignature) return;
-lastSignature = sig;
-turnEntries = [];
-currentIdx = -1;
-hideTooltip();
-railInner.replaceChildren(activePill);
-if (userTurns.length < 2) {
-rail.classList.remove('visible');
-return;
-}
-rail.classList.add('visible');
-for (let i = 0; i < userTurns.length; i++) {
-const turn = userTurns[i];
+const createTickNode = (el: HTMLElement, preview: string, idx: number) => {
 const wrap = document.createElement('div');
 wrap.className = 'tick-wrap';
 const dot = document.createElement('div');
 dot.className = 'tick';
 wrap.appendChild(dot);
-const turnRoot = (turn.element.closest('.CKgc1d') || turn.element) as HTMLElement;
+const turnRoot = (el.closest('.CKgc1d') || el) as HTMLElement;
 turnEntries.push({ wrap, target: turnRoot });
-const badgeLabel = '#' + (i + 1);
+const badgeLabel = '#' + (idx + 1);
 wrap.addEventListener('pointerenter', () => {
-showTooltipAt(wrap, badgeLabel, turn.preview);
+showTooltipAt(wrap, badgeLabel, preview);
 });
 wrap.addEventListener('click', () => {
 turnRoot.classList.remove('vexel-virtualized');
@@ -295,32 +328,127 @@ turnRoot.inert = false;
 turnRoot.scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 railInner.appendChild(wrap);
+};
+const refreshToc = () => {
+const userEls = getUserTurnElements();
+const nextItems: Array<{ el: HTMLElement; preview: string }> = [];
+for (let i = 0; i < userEls.length; i++) {
+const el = userEls[i];
+const preview = (el.innerText || el.textContent || '')
+.replace(/\s+/g, ' ')
+.trim()
+.slice(0, 72);
+if (preview) nextItems.push({ el, preview });
+}
+const canAppendIncrementally =
+nextItems.length > renderedPreviews.length &&
+renderedPreviews.length >= 2 &&
+renderedPreviews.every((prev, i) => nextItems[i]?.preview === prev);
+if (canAppendIncrementally) {
+for (let i = renderedPreviews.length; i < nextItems.length; i++) {
+createTickNode(nextItems[i].el, nextItems[i].preview, i);
+}
+renderedPreviews = nextItems.map((x) => x.preview);
+window.requestAnimationFrame(() => {
+const isOverflow = railScroll.scrollHeight > railScroll.clientHeight;
+rail.classList.toggle('overflowing', isOverflow);
+railScroll.classList.toggle('overflowing', isOverflow);
+syncThumb();
+updateCurrentTurn(false);
+});
+return;
+}
+if (
+nextItems.length === renderedPreviews.length &&
+nextItems.every((item, i) => item.preview === renderedPreviews[i])
+) {
+return;
+}
+renderedPreviews = nextItems.map((x) => x.preview);
+turnEntries = [];
+currentIdx = -1;
+hideTooltip();
+railInner.replaceChildren(activePill);
+if (nextItems.length < 2) {
+rail.classList.remove('visible');
+return;
+}
+rail.classList.add('visible');
+for (let i = 0; i < nextItems.length; i++) {
+createTickNode(nextItems[i].el, nextItems[i].preview, i);
 }
 window.requestAnimationFrame(() => {
-const isOverflow = railScroll.scrollHeight > railScroll.clientHeight; rail.classList.toggle('overflowing', isOverflow); railScroll.classList.toggle('overflowing', isOverflow); syncThumb();
+const isOverflow = railScroll.scrollHeight > railScroll.clientHeight;
+rail.classList.toggle('overflowing', isOverflow);
+railScroll.classList.toggle('overflowing', isOverflow);
+syncThumb();
 updateCurrentTurn(true);
 });
 };
-window.addEventListener('scroll', () => updateCurrentTurn(false), { passive: true });
-window.addEventListener('resize', () => {
-const isOverflow = railScroll.scrollHeight > railScroll.clientHeight; rail.classList.toggle('overflowing', isOverflow); railScroll.classList.toggle('overflowing', isOverflow); syncThumb();
-}, { passive: true });
+let scrollTicking = false;
+window.addEventListener(
+'scroll',
+() => {
+if (scrollTicking) return;
+scrollTicking = true;
+window.requestAnimationFrame(() => {
+updateCurrentTurn(false);
+scrollTicking = false;
+});
+},
+{ passive: true }
+);
+window.addEventListener(
+'resize',
+() => {
+const isOverflow = railScroll.scrollHeight > railScroll.clientHeight;
+rail.classList.toggle('overflowing', isOverflow);
+railScroll.classList.toggle('overflowing', isOverflow);
+syncThumb();
+},
+{ passive: true }
+);
 let tocTimer: number | undefined;
-const scheduleToc = () => {
+const scheduleToc = (delay = 180) => {
 if (tocTimer) window.clearTimeout(tocTimer);
 tocTimer = window.setTimeout(() => {
-if ('requestIdleCallback' in window) window.requestIdleCallback(refreshToc, { timeout: 1500 });
-else refreshToc();
-}, 600);
+refreshToc();
+}, delay);
 };
+// Instant sync right after sending a message (Enter or Send button click)
+document.addEventListener(
+'keydown',
+(ev: KeyboardEvent) => {
+if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing) {
+window.setTimeout(refreshToc, 120);
+window.setTimeout(refreshToc, 450);
+}
+},
+true
+);
+document.addEventListener(
+'click',
+(ev: MouseEvent) => {
+const target = ev.target as HTMLElement | null;
+if (target?.closest('button, [role="button"]')) {
+window.setTimeout(refreshToc, 150);
+window.setTimeout(refreshToc, 550);
+}
+},
+true
+);
+window.addEventListener('popstate', () => scheduleToc(200));
 const obs = new MutationObserver((mutations) => {
 for (let i = 0; i < mutations.length; i++) {
-if (mutations[i].addedNodes.length) {
-scheduleToc();
+const added = mutations[i].addedNodes;
+for (let j = 0; j < added.length; j++) {
+if (added[j].nodeType === 1) {
+scheduleToc(180);
 return;
+}
 }
 }
 });
 obs.observe(document.body, { childList: true, subtree: true });
-scheduleToc();
+scheduleToc(100);
 }
