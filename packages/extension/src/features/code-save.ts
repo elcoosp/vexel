@@ -405,6 +405,7 @@ let acSelectedIdx = -1;
 let acTimer: number | undefined;
 let lastQueriedDir = '\0';
 let cachedDirEntries: BrowseEntry[] = [];
+        let hasUserTyped = false;
 const getCurrentFileName = (): string => {
 const cur = input.value.trim();
 const idx = cur.lastIndexOf('/');
@@ -488,7 +489,7 @@ acList.appendChild(row);
 });
 };
 const filterAndShowAc = (dirEntries: BrowseEntry[], partialName: string) => {
-const q = partialName.toLowerCase();
+const q = hasUserTyped ? partialName.toLowerCase() : '';
 acEntries = dirEntries
 .filter(
 (e) =>
