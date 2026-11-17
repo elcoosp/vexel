@@ -623,9 +623,25 @@ chipsRow.appendChild(chip);
 }
 drawerEl.appendChild(chipsRow);
 }
-const commitSave = () => {
-const relPath = input.value.trim();
-if (!relPath) return;
+const hasValidFileExt = (p: string): boolean => {
+          if (!p || p.endsWith('/')) return false;
+          const base = p.slice(p.lastIndexOf('/') + 1);
+          const dotIdx = base.lastIndexOf('.');
+          return dotIdx > 0 && dotIdx < base.length - 1;
+        };
+
+        const commitSave = () => {
+          const relPath = input.value.trim();
+          if (!relPath) return;
+          if (!hasValidFileExt(relPath)) {
+            inputShell.style.borderColor = '#c5221f';
+            inputShell.style.boxShadow = '0 0 0 3px rgba(197, 34, 31, 0.14)';
+            animate(inputShell, { x: Array(-4, 4, -3, 3, 0) }, { duration: 0.24 });
+            const suggestedExt = EXT_BY_LANG[lang] || 'txt';
+            showToast('Add a file extension first (e.g. .' + suggestedExt + ')');
+            input.focus();
+            return;
+          }
 saveBtn.disabled = true;
 saveBtn.textContent = 'Saving...';
 chrome.runtime.sendMessage(
