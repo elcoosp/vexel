@@ -174,9 +174,13 @@ export function openOnboardingModal(showToast: (msg: string) => void): void {
         chip.className = 'demo-chip' + (selectedDemoSkill === skillKey ? ' selected' : '');
         chip.textContent = '/' + skillKey;
         chip.addEventListener('click', () => {
+          if (selectedDemoSkill === skillKey) return;
           selectedDemoSkill = skillKey;
+          chips.querySelectorAll('.demo-chip').forEach((c) => c.classList.remove('selected'));
+          chip.classList.add('selected');
           animate(chip, { scale: Array(0.95, 1) }, { duration: 0.16 });
-          renderStep();
+          previewBox.textContent = previews[selectedDemoSkill] || '';
+          animate(previewBox, { opacity: Array(0.45, 1) }, { duration: 0.16 });
         });
         chips.appendChild(chip);
       });
