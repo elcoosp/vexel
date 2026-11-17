@@ -106,15 +106,37 @@ export async function enrichLocalSkill(skill) {
 
 export async function installRemoteSkill(repo, skillName) {
   if (!/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(repo)) {
-    throw new Error('Repo invalide')
+    throw new Error('Invalid repository')
   }
-  const args = ['-y', 'skills', 'add', repo]
-  if (skillName && /^[a-zA-Z0-9_.-]+$/.test(skillName)) {
-    args.push('--skill', skillName)
+  const runAdd = async (targetSkill) => {
+    const args = ['-y', 'skills', 'add', repo]
+    if (targetSkill && /^[a-zA-Z0-9_.-]+$/.test(targetSkill)) {
+      args.push('--skill', targetSkill)
+    }
+    args.push('-g', '-y')
+    return execFileAsync('npx', args, { timeout: 60000 })
   }
-  args.push('-g', '-y')
-  const { stdout, stderr } = await execFileAsync('npx', args, { timeout: 60000 })
-  return { ok: true, output: (stdout || stderr || '').trim() }
+
+  try {
+    const { stdout, stderr } = await runAdd(skillName)
+    return { ok: true, output: (stdout || stderr || '').trim() }
+  } catch (err) {
+    const combined = String((err && err.stdout) || '') + '\n' + String((err && err.stderr) || '')
+    if (combined.includes('SKILLS_NO_MATCHING_SKILLS')) {
+      const availMatch = combined.match(/Available skills:\s*(?:│\s*)?-\s*([a-zA-Z0-9_.-]+)/)
+      const fallbackSkill = availMatch ? availMatch[1] : ''
+      const { stdout, stderr } = await runAdd(fallbackSkill || undefined)
+      return { ok: true, output: (stdout || stderr || '').trim() }
+    }
+    const cleanMsg = combined
+      .replace(/\x1B\[[0-9;?]*[a-zA-Z]/g, '')
+      .split('\n')
+      .map((l) => l.replace(/^[│◇■╰▶\s]+/, '').trim())
+      .filter(Boolean)
+      .slice(-2)
+      .join(' — ')
+    throw new Error(cleanMsg || (err && err.message) || 'npx install failed')
+  }
 }
 
 export async function removeLocalSkill(skillId, skillDir) {

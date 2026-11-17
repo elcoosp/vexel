@@ -293,21 +293,31 @@ const server = http.createServer(async (req, res) => {
     return
   }
   if (parsedUrl.pathname === "/skills/install" && req.method === "POST") {
-    let body = ""
-    for await (const chunk of req) body += chunk
-    const { repo, name } = JSON.parse(body || "{}")
-    const result = await installRemoteSkill(repo, name)
-    res.writeHead(200)
-    res.end(JSON.stringify(result))
+    try {
+      let body = ""
+      for await (const chunk of req) body += chunk
+      const { repo, name } = JSON.parse(body || "{}")
+      const result = await installRemoteSkill(repo, name)
+      res.writeHead(200)
+      res.end(JSON.stringify(result))
+    } catch (err) {
+      res.writeHead(200)
+      res.end(JSON.stringify({ ok: false, error: err && err.message ? err.message : String(err) }))
+    }
     return
   }
   if (parsedUrl.pathname === "/skills/remove" && req.method === "POST") {
-    let body = ""
-    for await (const chunk of req) body += chunk
-    const { id, dir } = JSON.parse(body || "{}")
-    const result = await removeLocalSkill(id, dir)
-    res.writeHead(200)
-    res.end(JSON.stringify(result))
+    try {
+      let body = ""
+      for await (const chunk of req) body += chunk
+      const { id, dir } = JSON.parse(body || "{}")
+      const result = await removeLocalSkill(id, dir)
+      res.writeHead(200)
+      res.end(JSON.stringify(result))
+    } catch (err) {
+      res.writeHead(200)
+      res.end(JSON.stringify({ ok: false, error: err && err.message ? err.message : String(err) }))
+    }
     return
   }
 
