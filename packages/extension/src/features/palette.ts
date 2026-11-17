@@ -94,8 +94,8 @@ const POPOVER_CSS = [
   '.badge.install { font-family: inherit; font-weight: 600; color: #ffffff; background: #1a73e8; border: none; cursor: pointer; padding: 3px 9px; }',
   '.badge.install:hover { background: #1557b0; }',
   '.badge.installing { font-family: inherit; font-weight: 600; color: #1967d2; background: #e8f0fe; border: 1px solid #d2e3fc; padding: 3px 9px; display: inline-flex; align-items: center; gap: 6px; }',
-  '.spin-dot { width: 7px; height: 7px; border-radius: 50%; background: #1a73e8; animation: vexelPulse 0.9s infinite ease-in-out; }',
-  '@keyframes vexelPulse { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }',
+  '.vexel-spinner { width: 11px; height: 11px; border: 1.8px solid rgba(26, 115, 232, 0.25); border-top-color: #1a73e8; border-radius: 50%; animation: vexelSpin 0.65s linear infinite; flex-shrink: 0; }',
+  '@keyframes vexelSpin { to { transform: rotate(360deg); } }',
   '.section-label { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #80868b; padding: 8px 12px 2px 12px; }',
   '.footer { display: flex; justify-content: space-between; align-items: center; padding: 7px 16px; border-top: 1px solid #f1f3f4; background: #fafbfc; font-size: 11px; color: #5f6368; }',
   '.empty { padding: 24px 16px; text-align: center; color: #5f6368; font-size: 12.5px; }',
@@ -214,7 +214,7 @@ footer.className = 'footer';
 const statusText = document.createElement('span');
 statusText.textContent = '0 element';
 const hints = document.createElement('span');
-hints.textContent = 'Naviguer: fleches | Inserer: Entree | Dossier parent: gauche';
+hints.textContent = 'Navigate: arrows | Insert: Enter | Parent: left';
 footer.append(statusText, hints);
 popover.appendChild(footer);
 shadow.appendChild(popover);
@@ -432,10 +432,10 @@ const parent = idx === -1 ? '' : currentDir.slice(0, idx);
 navigateToDir(parent);
 }
 function fetchSkills(): void {
-setEmptyMessage('Chargement des skills...');
+setEmptyMessage('Loading skills...');
 chrome.runtime.sendMessage({ type: 'FETCH_SKILLS' }, (res) => {
 if (chrome.runtime.lastError || !res?.ok) {
-setEmptyMessage('Bridge local injoignable (127.0.0.1:49152)');
+setEmptyMessage('Local bridge unreachable (127.0.0.1:49152)');
 return;
 }
 skills = res.data?.skills || [];
@@ -448,7 +448,7 @@ fileFetchTimer = window.setTimeout(
 () => {
 chrome.runtime.sendMessage({ type: 'BROWSE_DIR', dir, query }, (res) => {
 if (chrome.runtime.lastError || !res?.ok) {
-setEmptyMessage('Bridge local injoignable (127.0.0.1:49152)');
+setEmptyMessage('Local bridge unreachable (127.0.0.1:49152)');
 return;
 }
 rootLabel = res.data?.rootLabel || '~';
@@ -458,7 +458,7 @@ if (!query && currentDir) {
 const idx = currentDir.lastIndexOf('/');
 const parentPath = idx === -1 ? '' : currentDir.slice(0, idx);
 browseEntries = [
-{ name: '.. (Dossier parent)', relPath: parentPath, isDir: true },
+{ name: '.. (Parent folder)', relPath: parentPath, isDir: true },
 ...rawEntries,
 ];
 } else {
@@ -483,12 +483,12 @@ syncSegmentedPill(instantPill);
 filterInput.value = initialQuery;
 renderBreadcrumbs();
 if (mode === 'skills') {
-filterInput.placeholder = 'Filtrer les skills...';
+filterInput.placeholder = 'Filter skills...';
 if (skills.length === 0) fetchSkills();
 else applyFilter(initialQuery);
 } else if (mode === 'files') {
-filterInput.placeholder = 'Filtrer ce dossier ou rechercher un fichier...';
-setEmptyMessage('Chargement des fichiers...');
+filterInput.placeholder = 'Filter this folder or search files...';
+setEmptyMessage('Loading files...');
 browseDir(currentDir, initialQuery);
 }
 window.requestAnimationFrame(positionPopover);
@@ -618,7 +618,7 @@ frag.appendChild(rowHighlight);
 if (mode === 'refs' && activeSkill) {
 statusText.textContent = filteredRefs.length + ' ref(s) — ' + activeSkill.name;
 if (filteredRefs.length === 0) {
-setEmptyMessage('Aucune reference correspondante.');
+setEmptyMessage('No matching references.');
 return;
 }
 for (let i = 0; i < filteredRefs.length; i++) {
@@ -630,9 +630,9 @@ frag.appendChild(row);
 }
 }
 } else if (mode === 'skills') {
-statusText.textContent = filteredSkills.length + ' local(aux)' + (remoteSkills.length ? ' • ' + remoteSkills.length + ' sur skills.sh' : '');
+statusText.textContent = filteredSkills.length + ' local' + (remoteSkills.length ? ' • ' + remoteSkills.length + ' on skills.sh' : '');
 if (filteredSkills.length === 0 && remoteSkills.length === 0) {
-setEmptyMessage('Aucun skill correspondant.');
+setEmptyMessage('No matching skills.');
 return;
 }
 let rowIdx = 0;
@@ -651,7 +651,7 @@ frag.appendChild(row);
 if (remoteSkills.length > 0) {
 const sec = document.createElement('div');
 sec.className = 'section-label';
-sec.textContent = 'Disponible sur skills.sh (npx skills add)';
+sec.textContent = 'Available on skills.sh (npx skills add)';
 frag.appendChild(sec);
 for (let i = 0; i < remoteSkills.length; i++) {
 const r = remoteSkills.slice(i, i + 1).find(() => true);
@@ -662,7 +662,7 @@ const row = createRow(
   rowIdx++,
   createLucideIcon('download', 13, '#1a73e8'),
   r.name,
-  isInstalling ? 'Installation...' : 'Installer',
+  isInstalling ? 'Loading...' : 'Install',
   true,
   sub
 );
@@ -671,9 +671,9 @@ if (badgeEl) {
   if (isInstalling) {
     badgeEl.className = 'badge installing';
     badgeEl.replaceChildren();
-    const dot = document.createElement('span');
-    dot.className = 'spin-dot';
-    badgeEl.append(dot, document.createTextNode('Installation...'));
+    const spinner = document.createElement('span');
+    spinner.className = 'vexel-spinner';
+    badgeEl.append(spinner, document.createTextNode('Loading...'));
   } else {
     badgeEl.className = 'badge install';
   }
@@ -683,15 +683,15 @@ frag.appendChild(row);
 }
 }
 } else if (mode === 'files') {
-statusText.textContent = browseEntries.length + ' element(s)';
+statusText.textContent = browseEntries.length + ' item(s)';
 if (browseEntries.length === 0) {
-setEmptyMessage('Dossier vide ou aucun fichier correspondant.');
+setEmptyMessage('Empty folder or no matching files.');
 return;
 }
 for (let i = 0; i < browseEntries.length; i++) {
 const entry = browseEntries.slice(i, i + 1).find(() => true);
 if (!entry) continue;
-const badge = entry.isDir ? 'Dossier' : 'Fichier';
+const badge = entry.isDir ? 'Folder' : 'File';
 const showSub = filterInput.value.trim().length > 0 ? entry.relPath : undefined;
 const row = createRow(i, createFileOrFolderIcon(entry.name, entry.isDir, 14), entry.name, badge, entry.isDir, showSub);
 rowElements.push(row);
@@ -796,7 +796,7 @@ if (mode === 'skills') {
 if (idx >= filteredSkills.length) {
 const remote = remoteSkills[idx - filteredSkills.length];
 if (!remote) return;
-showToast('Installation de ' + remote.name + ' (' + remote.repo + ')...');
+showToast('Installing ' + remote.name + ' (' + remote.repo + ')...');
 chrome.runtime.sendMessage({ type: 'INSTALL_REMOTE_SKILL', repo: remote.repo, name: remote.name }, (res) => {
 if (!res?.ok) {
 showToast('Echec installation npx: ' + (res?.error || 'erreur'));
