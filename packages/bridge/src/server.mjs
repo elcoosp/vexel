@@ -487,8 +487,7 @@ const server = http.createServer(async (req, res) => {
         '> ' + files.length + ' file(s) packed (~' + tokensEst + ' tokens' + (usedGit ? ', .gitignore respected' : '') + ')',
         '',
         bodyText,
-      ].join('
-')
+      ].join('\n')
       res.writeHead(200)
       res.end(JSON.stringify({
         ok: true,
