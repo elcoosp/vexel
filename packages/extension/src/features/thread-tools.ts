@@ -115,11 +115,11 @@ export function exportConversationMarkdown(showToast: (msg: string) => void): vo
 
 const TOC_CSS = [
   ':host { all: initial; color-scheme: light; }',
-  '.rail { box-sizing: border-box; position: fixed; right: 16px; top: 50%; transform: translateY(-50%); z-index: 2147483640; display: none; flex-direction: column; align-items: center; width: 28px; max-height: min(62vh, 420px); padding: 6px 4px; border-radius: 999px; background: rgba(255, 255, 255, 0.88); backdrop-filter: blur(16px); border: 1px solid rgba(0, 0, 0, 0.08); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif; transition: width 0.22s cubic-bezier(0.2, 0, 0, 1), background-color 0.2s ease, box-shadow 0.2s ease; }',
-  '.rail.overflowing:hover { width: 33px; }',
+  '.rail { box-sizing: border-box; position: fixed; right: 16px; top: 50%; transform: translateY(-50%); z-index: 2147483640; display: none; flex-direction: column; align-items: center; width: 28px; max-height: min(62vh, 420px); padding: 6px 3px; border-radius: 999px; background: rgba(255, 255, 255, 0.88); backdrop-filter: blur(16px); border: 1px solid rgba(0, 0, 0, 0.08); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif; transition: width 0.22s cubic-bezier(0.2, 0, 0, 1), background-color 0.2s ease, box-shadow 0.2s ease; }',
+  '.rail.overflowing:hover { width: 32px; }',
   '.rail.visible { display: flex; }',
   '.rail:hover { background: rgba(255, 255, 255, 0.98); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05); }',
-  '.rail-scroll { box-sizing: border-box; position: relative; width: 100%; max-height: calc(min(62vh, 420px) - 12px); overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: transparent transparent; padding: 0 1px; transition: scrollbar-color 0.22s ease; }',
+  '.rail-scroll { box-sizing: border-box; position: relative; width: 100%; max-height: calc(min(62vh, 420px) - 12px); overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: transparent transparent; padding: 0 0 0 4px; transition: scrollbar-color 0.22s ease; }',
   '.rail.overflowing:hover .rail-scroll { scrollbar-color: rgba(60, 64, 67, 0.26) transparent; }',
   '.rail-scroll::-webkit-scrollbar { width: 4px; }',
   '.rail-scroll::-webkit-scrollbar-track { background: transparent; margin: 6px 0; }',
@@ -128,7 +128,7 @@ const TOC_CSS = [
   '.rail.overflowing:hover .rail-scroll::-webkit-scrollbar-thumb:hover { background: rgba(26, 115, 232, 0.55); }',
   '.rail-scroll.overflowing { mask-image: linear-gradient(to bottom, transparent 0%, #000 10px, #000 calc(100% - 10px), transparent 100%); -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 10px, #000 calc(100% - 10px), transparent 100%); }',
   '.rail-inner { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; }',
-  '.active-pill { position: absolute; left: 0; top: 0; width: 18px; height: 18px; border-radius: 999px; background: #e8f0fe; pointer-events: none; will-change: transform; }',
+  '.active-pill { position: absolute; left: 50%; margin-left: -9px; top: 0; width: 18px; height: 18px; border-radius: 999px; background: #e8f0fe; pointer-events: none; will-change: transform; }',
   '.tick-wrap { position: relative; z-index: 1; width: 18px; height: 18px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 999px; }',
   '.tick { width: 5px; height: 5px; border-radius: 50%; background: #c4c7c5; transition: background-color 0.18s ease, transform 0.18s ease; }',
   '.tick-wrap:hover .tick { background: #5f6368; transform: scale(1.25); }',
