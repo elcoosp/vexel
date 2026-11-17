@@ -144,7 +144,7 @@ const headerRight = document.createElement('div');
   btnTour.className = 'export-btn';
   btnTour.title = 'Interactive welcome tour & local folder setup';
   btnTour.textContent = '?';
-  btnTour.style.padding = '4px 8px';
+  Object.assign(btnTour.style, { width: '28px', height: '28px', minWidth: '28px', padding: '0', borderRadius: '999px', justifyContent: 'center' });
   btnTour.addEventListener('click', () => {
     closeMenu();
     openOnboardingModal(showToast);
