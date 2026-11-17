@@ -1,9 +1,32 @@
 const KEEP_RECENT_TURNS = 3
-const DEBOUNCE_MS = 600
+const DEBOUNCE_MS = 450
+const DEFAULT_ESTIMATED_HEIGHT = 480
 
 let isUserInteracting = false
 let interactionTimer: number | undefined
 let scheduleTimer: number | undefined
+
+const measuredHeights = new WeakMap<HTMLElement, number>()
+const observedTurns = new WeakSet<HTMLElement>()
+
+const heightObserver = new ResizeObserver((entries) => {
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i]
+    const el = entry.target as HTMLElement
+    // Only record height when the element is actively rendered (not skipped by content-visibility)
+    if (el.offsetParent === null) continue
+    const boxHeight = entry.borderBoxSize?.[0]?.blockSize ?? el.offsetHeight
+    if (boxHeight > 40) {
+      const rounded = Math.round(boxHeight)
+      if (measuredHeights.get(el) !== rounded) {
+        measuredHeights.set(el, rounded)
+        if (el.classList.contains('vexel-virtualized')) {
+          el.style.containIntrinsicSize = `auto ${rounded}px`
+        }
+      }
+    }
+  }
+})
 
 function markUserInteracting(): void {
   isUserInteracting = true
@@ -12,58 +35,41 @@ function markUserInteracting(): void {
   }
   interactionTimer = window.setTimeout(() => {
     isUserInteracting = false
-  }, 1200)
+  }, 900)
 }
 
-function findVisibleInput(): Element | null {
-  const inputs = document.querySelectorAll('textarea, [contenteditable="true"]')
-  for (let i = 0; i < inputs.length; i++) {
-    const el = inputs[i] as HTMLElement
-    if (el.offsetParent !== null) return el
+function findRealTurnElements(): HTMLElement[] {
+  // Primary selector for Google AI Mode conversation turns
+  const primary = document.querySelectorAll<HTMLElement>('.CKgc1d[data-scope-id="turn"], [data-scope-id="turn"]')
+  const turns: HTMLElement[] = []
+
+  for (let i = 0; i < primary.length; i++) {
+    const el = primary[i]
+    if (el.tagName !== 'DIV') continue
+    if (el.style.display === 'none' || el.hidden) continue
+    if (el.childElementCount === 0) continue
+    turns.push(el)
   }
-  return null
+
+  return turns
 }
 
-function findConversationTurnElements(visibleInput: Element | null): HTMLElement[] {
-  const anchors = document.querySelectorAll('.aiModeUiCodeBlock__Container, [data-hveid]')
-  if (anchors.length === 0) return []
+function attachTurnTracking(turn: HTMLElement): void {
+  if (observedTurns.has(turn)) return
+  observedTurns.add(turn)
+  heightObserver.observe(turn)
 
-  const parentCounts = new Map<HTMLElement, number>()
-  for (let i = 0; i < anchors.length; i++) {
-    let curr: HTMLElement | null = anchors[i].parentElement
-    let depth = 0
-    while (curr && curr !== document.body && depth < 8) {
-      if (curr.children.length >= 4 && curr.children.length <= 500) {
-        parentCounts.set(curr, (parentCounts.get(curr) || 0) + 1)
-      }
-      curr = curr.parentElement
-      depth++
-    }
-  }
-
-  let bestContainer: HTMLElement | null = null
-  let bestScore = 0
-  parentCounts.forEach((count, container) => {
-    if (visibleInput && !container.contains(visibleInput)) {
-      const score = count * container.children.length
-      if (score > bestScore) {
-        bestScore = score
-        bestContainer = container
+  // Chrome fires contentvisibilityautostatechange right before skipping/unskipping offscreen subtrees
+  turn.addEventListener('contentvisibilityautostatechange', (ev: Event) => {
+    const skipped = (ev as Event & { skipped?: boolean }).skipped
+    if (!skipped) {
+      const h = turn.offsetHeight
+      if (h > 40) {
+        measuredHeights.set(turn, h)
+        turn.style.containIntrinsicSize = `auto ${h}px`
       }
     }
   })
-
-  if (!bestContainer) return []
-
-  const turns: HTMLElement[] = []
-  const children = (bestContainer as HTMLElement).children
-  for (let i = 0; i < children.length; i++) {
-    const child = children[i] as HTMLElement
-    if (!visibleInput || !child.contains(visibleInput)) {
-      turns.push(child)
-    }
-  }
-  return turns
 }
 
 function virtualizeOldTurns(): void {
@@ -72,8 +78,13 @@ function virtualizeOldTurns(): void {
     return
   }
 
-  const visibleInput = findVisibleInput()
-  const turns = findConversationTurnElements(visibleInput)
+  const turns = findRealTurnElements()
+  if (turns.length === 0) return
+
+  for (let i = 0; i < turns.length; i++) {
+    attachTurnTracking(turns[i])
+  }
+
   if (turns.length <= KEEP_RECENT_TURNS) return
 
   const cutoff = turns.length - KEEP_RECENT_TURNS
@@ -82,9 +93,17 @@ function virtualizeOldTurns(): void {
   for (let i = 0; i < cutoff; i++) {
     const turn = turns[i]
     if (!turn.classList.contains('vexel-virtualized')) {
+      // Measure real rendered height BEFORE enabling content-visibility: auto to prevent any scroll jump
+      const currentHeight = turn.offsetHeight
+      const exactHeight =
+        currentHeight > 40
+          ? currentHeight
+          : measuredHeights.get(turn) ?? DEFAULT_ESTIMATED_HEIGHT
+
+      measuredHeights.set(turn, exactHeight)
       turn.classList.add('vexel-virtualized')
+      turn.style.containIntrinsicSize = `auto ${exactHeight}px`
       turn.style.contentVisibility = 'auto'
-      turn.style.containIntrinsicSize = 'auto 450px'
       turn.style.contain = 'layout style paint'
       newlyVirtualized++
     }
@@ -102,7 +121,7 @@ function virtualizeOldTurns(): void {
 
   if (newlyVirtualized > 0) {
     console.log(
-      `[Vexel DOM Booster] ${newlyVirtualized} tours virtualises (${cutoff}/${turns.length})`
+      `[Vexel DOM Booster] ${newlyVirtualized} tours virtualises avec hauteur exacte (${cutoff}/${turns.length})`
     )
   }
 }
@@ -113,7 +132,7 @@ function scheduleBoost(): void {
   }
   scheduleTimer = window.setTimeout(() => {
     if ('requestIdleCallback' in window) {
-      window.requestIdleCallback(() => virtualizeOldTurns(), { timeout: 1000 })
+      window.requestIdleCallback(() => virtualizeOldTurns(), { timeout: 800 })
     } else {
       virtualizeOldTurns()
     }
@@ -121,12 +140,7 @@ function scheduleBoost(): void {
 }
 
 export function initDomBooster(): void {
-  console.log('[Vexel DOM Booster] Demarrage (mode non-imbrique + idle)')
-
-  document.documentElement.style.overflowAnchor = 'none'
-  if (document.body) {
-    document.body.style.overflowAnchor = 'none'
-  }
+  console.log('[Vexel DOM Booster] Demarrage (tours cibles + hauteur exacte anti-jump)')
 
   window.addEventListener('keydown', markUserInteracting, { capture: true, passive: true })
   window.addEventListener('paste', markUserInteracting, { capture: true, passive: true })
@@ -134,10 +148,12 @@ export function initDomBooster(): void {
 
   const observer = new MutationObserver((mutations) => {
     for (let i = 0; i < mutations.length; i++) {
-      if (mutations[i].addedNodes.length > 0) {
-        scheduleBoost()
-        return
-      }
+      const m = mutations[i]
+      if (m.addedNodes.length === 0) continue
+      const target = m.target as HTMLElement | null
+      if (target?.closest?.('[data-vexel-ui]')) continue
+      scheduleBoost()
+      return
     }
   })
 
