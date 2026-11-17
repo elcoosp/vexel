@@ -623,35 +623,69 @@ input.addEventListener('input', () => {
 triggerAutocomplete();
 });
 input.addEventListener('keydown', (e) => {
-e.stopPropagation();
-if (acEntries.length > 0 && acList.style.display !== 'none') {
-if (e.key === 'ArrowDown') {
-e.preventDefault();
-acSelectedIdx = (acSelectedIdx + 1) % acEntries.length;
-renderAutocomplete();
-return;
-}
-if (e.key === 'ArrowUp') {
-e.preventDefault();
-acSelectedIdx = (acSelectedIdx - 1 + acEntries.length) % acEntries.length;
-renderAutocomplete();
-return;
-}
-if (e.key === 'Tab' && acSelectedIdx >= 0) {
-e.preventDefault();
-const chosen = acEntries.slice(acSelectedIdx, acSelectedIdx + 1).find(Boolean);
-if (chosen) applyAutocompleteEntry(chosen);
-return;
-}
-}
-if (e.key === 'Enter') {
-e.preventDefault();
-commitSave();
-} else if (e.key === 'Escape') {
-e.preventDefault();
-closeDrawer();
-}
-});
+          e.stopPropagation();
+          const hasAc = acEntries.length > 0 && acList.style.display !== 'none';
+          if (hasAc) {
+            if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              acSelectedIdx = (acSelectedIdx + 1) % acEntries.length;
+              renderAutocomplete();
+              return;
+            }
+            if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              acSelectedIdx = (acSelectedIdx - 1 + acEntries.length) % acEntries.length;
+              renderAutocomplete();
+              return;
+            }
+            const atEnd = input.selectionStart === input.value.length && input.selectionEnd === input.value.length;
+            if ((e.key === 'Tab' || (e.key === 'ArrowRight' && atEnd)) && acSelectedIdx >= 0) {
+              e.preventDefault();
+              const chosen = acEntries.slice(acSelectedIdx, acSelectedIdx + 1).find(Boolean);
+              if (chosen) applyAutocompleteEntry(chosen);
+              return;
+            }
+          }
+
+          if (e.altKey && e.key >= '1' && e.key <= '4') {
+            const idx = Number(e.key) - 1;
+            const targetFolder = recentFolders.slice(idx, idx + 1).find(Boolean);
+            if (targetFolder) {
+              e.preventDefault();
+              hasUserTyped = false;
+              const baseFile = getCurrentFileName() || 'snippet.txt';
+              input.value = targetFolder + '/' + baseFile;
+              const slashIdx = input.value.lastIndexOf('/');
+              input.setSelectionRange(slashIdx + 1, input.value.length);
+              triggerAutocomplete();
+              return;
+            }
+          }
+
+          if (e.key === 'Backspace' && input.selectionStart === input.selectionEnd) {
+            const pos = input.selectionStart || 0;
+            if (pos > 0 && input.value.slice(pos - 1, pos) === '/') {
+              const beforeSlash = input.value.slice(0, pos - 1);
+              const prevSlash = beforeSlash.lastIndexOf('/');
+              const parentPrefix = prevSlash !== -1 ? beforeSlash.slice(0, prevSlash + 1) : '';
+              const afterSlash = input.value.slice(pos);
+              e.preventDefault();
+              hasUserTyped = false;
+              input.value = parentPrefix + afterSlash;
+              input.setSelectionRange(parentPrefix.length, parentPrefix.length);
+              triggerAutocomplete();
+              return;
+            }
+          }
+
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey || true)) {
+            e.preventDefault();
+            commitSave();
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            closeDrawer();
+          }
+        });
 document.body.appendChild(drawerEl);
 positionDrawer();
 window.addEventListener('scroll', positionDrawer, true);
