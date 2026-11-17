@@ -1,5 +1,6 @@
 import { initCodeSave } from './features/code-save'
 import { initDomBooster } from './features/dom-booster'
+import { MAX_SAFE_LENGTH, uploadAsTextFile } from './features/file-upload'
 import { initCommandPalette } from './features/palette'
 import { initThreadTools } from './features/thread-tools'
 
@@ -30,10 +31,34 @@ function showToast(message: string): void {
   }, 3000)
 }
 
+function initAutoFilePaste(): void {
+  document.addEventListener(
+    'paste',
+    (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement | null
+      if (!target) return
+      if (target.closest('[data-vexel-ui]') || target.id?.startsWith('vexel-')) return
+      const isPromptInput =
+        target.matches('textarea, [contenteditable="true"], input[type="text"]') ||
+        Boolean(target.closest('textarea, [contenteditable="true"]'))
+      if (!isPromptInput) return
+
+      const pasted = e.clipboardData?.getData('text/plain') || ''
+      if (pasted.length > MAX_SAFE_LENGTH) {
+        e.preventDefault()
+        e.stopPropagation()
+        uploadAsTextFile(pasted, target, showToast)
+      }
+    },
+    true
+  )
+}
+
 if (window === window.top) {
   initDomBooster()
 
   const bootUi = () => {
+    initAutoFilePaste()
     initCommandPalette(showToast)
     initThreadTools(showToast)
     initCodeSave(showToast)

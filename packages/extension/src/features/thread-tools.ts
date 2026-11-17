@@ -106,28 +106,140 @@ function extractTurns(): ThreadTurn[] {
   return turns;
 }
 
-function elementToMarkdown(root: HTMLElement): string {
-  const clone = root.cloneNode(true) as HTMLElement;
-  clone.querySelectorAll('pre').forEach((pre) => {
-    const codeEl = pre.querySelector('code');
+function extractUserAttachments(turnBlock: HTMLElement): string[] {
+  const names: string[] = [];
+  turnBlock.querySelectorAll<HTMLElement>('.Abx0mc .LxGa3').forEach((el) => {
+    const label = (el.textContent || '').trim();
+    if (label && !names.includes(label)) names.push(label);
+  });
+  return names;
+}
+
+function elementToMarkdown(root: HTMLElement, role: 'user' | 'assistant'): string {
+  if (role === 'user') {
+    const turnContainer = root.closest<HTMLElement>('.CKgc1d[data-scope-id="turn"], [jsname="CS7uPe"]');
+    const attachments = turnContainer ? extractUserAttachments(turnContainer) : [];
+    const textEl = root.querySelector<HTMLElement>('[jsname="y5v2y"]') || root;
+    const body = (textEl.innerText || textEl.textContent || '').trim();
+    if (attachments.length > 0) {
+      return '> Attachments: ' + attachments.map((a) => '`' + a + '`').join(', ') + '\n\n' + body;
+    }
+    return body;
+  }
+
+  const mainCol =
+    root.querySelector<HTMLElement>('[data-container-id="main-col"], [data-xid="VpUvz"]') || root;
+  const clone = mainCol.cloneNode(true) as HTMLElement;
+
+  // Strip Google AI Mode boilerplate, feedback widgets, right-hand drawers, and Vexel buttons
+  clone
+    .querySelectorAll(
+      [
+        '[data-ignore-copy]',
+        '.iMqumd',
+        '[data-xid="Gd7Hsc"]',
+        '.HvurC',
+        '[data-container-id="rhs-col"]',
+        '[data-xid="a2jnbe"]',
+        '.iMHp6c',
+        '[data-vexel-ui]',
+        '.WBgIic',
+        '.DHPVt',
+        '.D4m3ce .hmOmxe',
+        'style',
+        'script',
+      ].join(', ')
+    )
+    .forEach((el) => el.remove());
+
+  // 1. Code blocks (.aiModeUiCodeBlock__Container or pre)
+  clone.querySelectorAll<HTMLElement>('.aiModeUiCodeBlock__Container, pre').forEach((block) => {
+    if (block.tagName === 'PRE' && block.closest('.aiModeUiCodeBlock__Container')) return;
+    const langLabel = block.querySelector<HTMLElement>('.GlO4G')?.textContent?.trim() || '';
+    const codeEl = block.querySelector('code');
     const langMatch = (codeEl?.className || '').match(/language-([a-zA-Z0-9_-]+)/);
-    const lang = langMatch ? langMatch.slice(1, 2).find(() => true) || '' : '';
-    const codeText = (codeEl ? codeEl.textContent : pre.textContent) || '';
-    pre.replaceWith(
-      document.createTextNode('\n' + BT3 + lang + '\n' + codeText.trim() + '\n' + BT3 + '\n')
+    const lang = langLabel || (langMatch ? langMatch.slice(1, 2).find(() => true) || '' : '');
+    const codeText = ((codeEl ? codeEl.textContent : block.textContent) || '').replace(/\n$/, '');
+    const fence = codeText.includes(BT3) ? BT3 + String.fromCharCode(96) : BT3;
+    block.replaceWith(
+      document.createTextNode('\n\n' + fence + lang + '\n' + codeText + '\n' + fence + '\n\n')
     );
+  });
+
+  // 2. Inline code tags
+  clone.querySelectorAll('code').forEach((code) => {
+    if (code.closest('pre')) return;
+    const txt = (code.textContent || '').trim();
+    if (txt) code.replaceWith(document.createTextNode('`' + txt + '`'));
+  });
+
+  // 3. Bold & italic
+  clone.querySelectorAll('strong, b').forEach((el) => {
+    const txt = (el.textContent || '').trim();
+    if (txt) el.replaceWith(document.createTextNode('**' + txt + '**'));
+  });
+  clone.querySelectorAll('em, i').forEach((el) => {
+    const txt = (el.textContent || '').trim();
+    if (txt) el.replaceWith(document.createTextNode('*' + txt + '*'));
+  });
+
+  // 4. Links
+  clone.querySelectorAll('a[href]').forEach((a) => {
+    const href = a.getAttribute('href') || '';
+    const txt = (a.textContent || '').trim();
+    if (txt && href && !href.startsWith('#')) {
+      a.replaceWith(document.createTextNode('[' + txt + '](' + href + ')'));
+    }
+  });
+
+  // 5. Horizontal rules
+  clone.querySelectorAll('hr').forEach((hr) => {
+    hr.replaceWith(document.createTextNode('\n\n---\n\n'));
+  });
+
+  // 6. Section headings (Google uses div[role="heading"] with .ZLzG0d or .AdPoic)
+  clone.querySelectorAll<HTMLElement>('.ZLzG0d, [role="heading"][aria-level="4"]').forEach((h) => {
+    const txt = (h.textContent || '').trim();
+    if (txt) h.replaceWith(document.createTextNode('\n\n### ' + txt + '\n\n'));
+  });
+  clone.querySelectorAll<HTMLElement>('.AdPoic, [role="heading"][aria-level="5"]').forEach((h) => {
+    const txt = (h.textContent || '').trim().replace(/^\*\*|\*\*$/g, '');
+    if (txt) h.replaceWith(document.createTextNode('\n\n#### ' + txt + '\n\n'));
   });
   clone.querySelectorAll('h1, h2, h3, h4').forEach((h) => {
     const hashes = '#'.repeat(Number(h.tagName.slice(1)));
-    h.replaceWith(document.createTextNode('\n\n' + hashes + ' ' + (h.textContent || '').trim() + '\n\n'));
+    const txt = (h.textContent || '').trim();
+    if (txt) h.replaceWith(document.createTextNode('\n\n' + hashes + ' ' + txt + '\n\n'));
   });
-  clone.querySelectorAll('li').forEach((li) =>
-    li.replaceWith(document.createTextNode('\n- ' + (li.textContent || '').trim()))
-  );
-  clone.querySelectorAll('p').forEach((p) =>
-    p.replaceWith(document.createTextNode('\n\n' + (p.textContent || '').trim() + '\n'))
-  );
-  return (clone.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+
+  // 7. Follow-up suggestion chips (.AHmQrc)
+  clone.querySelectorAll<HTMLElement>('.AHmQrc .yrZ5Oe').forEach((chip) => {
+    const txt = (chip.textContent || '').trim();
+    if (txt) chip.replaceWith(document.createTextNode('\n- ' + txt));
+  });
+
+  // 8. List items & paragraphs
+  clone.querySelectorAll('li').forEach((li) => {
+    const txt = (li.textContent || '').trim();
+    if (!txt) {
+      li.remove();
+      return;
+    }
+    const isNested = Boolean(li.parentElement?.closest('li'));
+    const prefix = isNested ? '  - ' : '- ';
+    li.replaceWith(document.createTextNode('\n' + prefix + txt));
+  });
+
+  clone.querySelectorAll('p, .n6owBd').forEach((p) => {
+    const txt = (p.textContent || '').trim();
+    if (txt) p.replaceWith(document.createTextNode('\n\n' + txt + '\n\n'));
+  });
+
+  return (clone.textContent || '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 export function exportConversationMarkdown(showToast: (msg: string) => void): void {
@@ -144,7 +256,7 @@ export function exportConversationMarkdown(showToast: (msg: string) => void): vo
     '',
   ];
   for (const turn of turns) {
-    const mdBody = elementToMarkdown(turn.element);
+    const mdBody = elementToMarkdown(turn.element, turn.role);
     if (mdBody) lines.push('---', '', turn.role === 'user' ? '## User' : '## Assistant', '', mdBody, '');
   }
   const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' });
