@@ -1,6 +1,7 @@
 import { animate } from 'motion';
-import { createLucideIcon } from './icons';
+import { createLucideIcon, createFileOrFolderIcon } from './icons';
 import { loadRecentFiles } from './palette-files';
+import type { BrowseEntry } from './palette-ui';
 
 const EXT_BY_LANG: Record<string, string> = {
   typescript: 'ts',
@@ -72,12 +73,12 @@ function detectLanguage(container: HTMLElement, codeEl: HTMLElement, header: HTM
   const classSources = [codeEl.className || '', container.className || ''];
   for (const src of classSources) {
     const m = src.match(/language-([a-zA-Z0-9_-]+)/i);
-    if (m && m[1]) return m[1].toLowerCase();
+    const g1 = m ? m.slice(1, 2).find(Boolean) : undefined; if (g1) return g1.toLowerCase();
   }
 
   const headerClone = header.cloneNode(true) as HTMLElement;
   headerClone.querySelectorAll('button, [data-vexel-ui]').forEach((el) => el.remove());
-  const rawLabel = (headerClone.textContent || '').trim().split(/\s+/)[0]?.toLowerCase() || '';
+  const rawLabel = (headerClone.textContent || '').trim().split(/\s+/).find(Boolean)?.toLowerCase() || '';
   if (rawLabel && EXT_BY_LANG[rawLabel]) {
     return rawLabel;
   }
@@ -91,19 +92,18 @@ function inferSuggestedPath(
   lang: string,
   recentFolders: string[]
 ): string {
-  const defaultFolder = recentFolders[0] || '';
+  const defaultFolder = recentFolders.find(Boolean) || '';
   const withFolder = (filePath: string): string => {
     if (!defaultFolder || filePath.includes('/')) return filePath;
     return defaultFolder + '/' + filePath;
   };
 
-  const firstLine = (codeText.split('\n')[0] || '').trim();
+  const firstLine = (codeText.split('\n').find(() => true) || '').trim();
   const commentPathMatch = firstLine.match(
     /^(?:\/\/|#|\/\*|<!--)\s*(?:file:\s*)?([a-zA-Z0-9_./-]+\.[a-zA-Z0-9]+)/i
   );
-  if (commentPathMatch && commentPathMatch[1]) {
-    return withFolder(commentPathMatch[1]);
-  }
+  const cm = commentPathMatch ? commentPathMatch.slice(1, 2).find(Boolean) : undefined;
+  if (cm) return withFolder(cm);
 
   let prev: Element | null = container.previousElementSibling;
   for (let step = 0; step < 2 && prev; step++) {
@@ -111,9 +111,7 @@ function inferSuggestedPath(
     const headerMatch = txt.match(
       /(?:File:|Path:|\b)([a-zA-Z0-9_.-]+\/[a-zA-Z0-9_./-]+\.[a-zA-Z0-9]+)/
     );
-    if (headerMatch && headerMatch[1]) {
-      return headerMatch[1];
-    }
+    const hm = headerMatch ? headerMatch.slice(1, 2).find(Boolean) : undefined; if (hm) return hm;
     prev = prev.previousElementSibling;
   }
 
@@ -210,7 +208,10 @@ export function initCodeSave(showToast: (msg: string) => void): void {
         if (!drawerEl || !isOpen) return;
         isOpen = false;
         setTriggerActiveStyle(false);
-        if (cleanupListeners) { cleanupListeners(); cleanupListeners = null; }
+        if (cleanupListeners) {
+          cleanupListeners();
+          cleanupListeners = null;
+        }
         const closingEl = drawerEl;
         drawerEl = null;
         animate(
@@ -223,7 +224,7 @@ export function initCodeSave(showToast: (msg: string) => void): void {
       triggerBtn.addEventListener('click', (ev) => {
         ev.preventDefault();
         ev.stopPropagation();
-        animate(triggerBtn, { scale: [0.95, 1] }, { duration: 0.18 });
+        animate(triggerBtn, { scale: Array(0.95, 1) }, { duration: 0.18 });
 
         if (isOpen) {
           closeDrawer();
@@ -239,43 +240,52 @@ export function initCodeSave(showToast: (msg: string) => void): void {
 
         const positionDrawer = () => {
           if (!drawerEl) return;
-          const btnRect = triggerBtn.getBoundingClientRect();
-          const panelW = Math.min(520, window.innerWidth - 24);
-          const left = Math.max(12, Math.min(btnRect.right - panelW, window.innerWidth - panelW - 12));
-          const top = Math.min(btnRect.bottom + 8, window.innerHeight - 130);
-          drawerEl.style.width = panelW + "px";
-          drawerEl.style.left = left + "px";
-          drawerEl.style.top = top + "px";
+          const boxRect = container.getBoundingClientRect();
+          const hdrRect = header.getBoundingClientRect();
+          const availW = Math.max(280, Math.min(boxRect.width - 24, 560));
+          const panelW = Math.min(availW, window.innerWidth - 24);
+          const rawLeft = boxRect.right - panelW - 12;
+          const minLeft = Math.max(12, boxRect.left + 12);
+          const left = Math.max(minLeft, Math.min(rawLeft, window.innerWidth - panelW - 12));
+          const top = Math.max(12, Math.min(hdrRect.bottom + 10, window.innerHeight - 180));
+
+          drawerEl.style.width = panelW + 'px';
+          drawerEl.style.left = left + 'px';
+          drawerEl.style.top = top + 'px';
         };
+
         const handleOutsideClick = (e: MouseEvent) => {
           const t = e.target as Node | null;
           if (drawerEl && t && !drawerEl.contains(t) && !triggerBtn.contains(t)) {
             closeDrawer();
           }
         };
+
         cleanupListeners = () => {
-          window.removeEventListener("scroll", positionDrawer, true);
-          window.removeEventListener("resize", positionDrawer);
-          document.removeEventListener("mousedown", handleOutsideClick, true);
+          window.removeEventListener('scroll', positionDrawer, true);
+          window.removeEventListener('resize', positionDrawer);
+          document.removeEventListener('mousedown', handleOutsideClick, true);
         };
+
         drawerEl = document.createElement('div');
         drawerEl.setAttribute('data-vexel-ui', 'true');
         Object.assign(drawerEl.style, {
           position: 'fixed',
           zIndex: '2147483645',
           margin: '0',
-          padding: '10px 12px',
-          borderRadius: '14px',
-          backgroundColor: 'rgba(255, 255, 255, 0.96)',
-          backdropFilter: 'blur(14px)',
+          padding: '11px 12px',
+          borderRadius: '16px',
+          backgroundColor: 'rgba(255, 255, 255, 0.98)',
+          backdropFilter: 'blur(18px)',
           border: '1px solid #dadce0',
-          boxShadow: '0 8px 24px rgba(60, 64, 67, 0.12), 0 1px 3px rgba(60, 64, 67, 0.06)',
+          boxShadow: '0 14px 36px rgba(60, 64, 67, 0.18), 0 2px 6px rgba(60, 64, 67, 0.08)',
           display: 'flex',
           flexDirection: 'column',
           gap: '8px',
           fontFamily: '"Google Sans", -apple-system, BlinkMacSystemFont, "Inter", sans-serif',
-          transformOrigin: 'top center',
+          transformOrigin: 'top right',
           opacity: '0',
+          boxSizing: 'border-box',
         });
 
         const topRow = document.createElement('div');
@@ -283,57 +293,54 @@ export function initCodeSave(showToast: (msg: string) => void): void {
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
+          width: '100%',
         });
 
         const inputShell = document.createElement('div');
-        Object.assign(inputShell.style, {
-          flex: '1',
-          minWidth: '0',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '7px',
-          padding: '5px 10px',
-          borderRadius: '10px',
-          backgroundColor: '#f8f9fa',
-          border: '1px solid #dadce0',
-          transition: 'border-color 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease',
-        });
-
-        const folderGlyph = createLucideIcon('folder', 13, '#1a73e8');
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.value = suggested;
-        input.placeholder = 'folder/filename.ext';
-        Object.assign(input.style, {
-          flex: '1',
-          minWidth: '0',
-          border: 'none',
-          background: 'transparent',
-          color: '#1f1f1f',
-          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-          fontSize: '12.5px',
-          fontWeight: '500',
-          outline: 'none',
-        });
-
-        input.addEventListener('focus', () => {
-          inputShell.style.backgroundColor = '#ffffff';
-          inputShell.style.borderColor = '#1a73e8';
-          inputShell.style.boxShadow = '0 0 0 3px rgba(26, 115, 232, 0.14)';
-        });
-        input.addEventListener('blur', () => {
-          inputShell.style.backgroundColor = '#f8f9fa';
-          inputShell.style.borderColor = '#dadce0';
-          inputShell.style.boxShadow = 'none';
-        });
-
-        inputShell.append(folderGlyph, input);
-
-        const saveBtn = document.createElement('button');
-        saveBtn.type = 'button';
+Object.assign(inputShell.style, {
+flex: '1',
+minWidth: '0',
+display: 'flex',
+alignItems: 'center',
+gap: '7px',
+padding: '6px 10px',
+borderRadius: '10px',
+backgroundColor: '#f8f9fa',
+border: '1px solid #dadce0',
+transition: 'border-color 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease',
+});
+const folderGlyph = createLucideIcon('folder', 13, '#1a73e8');
+const input = document.createElement('input');
+input.type = 'text';
+input.value = suggested;
+input.placeholder = 'folder/filename.ext';
+Object.assign(input.style, {
+flex: '1',
+minWidth: '0',
+border: 'none',
+background: 'transparent',
+color: '#1f1f1f',
+fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+fontSize: '12.5px',
+fontWeight: '500',
+outline: 'none',
+});
+input.addEventListener('focus', () => {
+inputShell.style.backgroundColor = '#ffffff';
+inputShell.style.borderColor = '#1a73e8';
+inputShell.style.boxShadow = '0 0 0 3px rgba(26, 115, 232, 0.14)';
+});
+input.addEventListener('blur', () => {
+inputShell.style.backgroundColor = '#f8f9fa';
+inputShell.style.borderColor = '#dadce0';
+inputShell.style.boxShadow = 'none';
+});
+inputShell.append(folderGlyph, input);
+const saveBtn = document.createElement('button');
+saveBtn.type = 'button';
 saveBtn.textContent = 'Save';
 Object.assign(saveBtn.style, {
-height: '30px',
+height: '32px',
 padding: '0 14px',
 borderRadius: '999px',
 border: 'none',
@@ -357,7 +364,7 @@ const cancelBtn = document.createElement('button');
 cancelBtn.type = 'button';
 cancelBtn.textContent = 'Cancel';
 Object.assign(cancelBtn.style, {
-height: '30px',
+height: '32px',
 padding: '0 11px',
 borderRadius: '999px',
 border: '1px solid #e0e0e0',
@@ -380,17 +387,150 @@ cancelBtn.style.color = '#5f6368';
 });
 topRow.append(inputShell, saveBtn, cancelBtn);
 drawerEl.appendChild(topRow);
+// Path autocomplete suggestions list
+const acList = document.createElement('div');
+Object.assign(acList.style, {
+display: 'none',
+flexDirection: 'column',
+gap: '2px',
+maxHeight: '150px',
+overflowY: 'auto',
+padding: '4px',
+borderRadius: '10px',
+backgroundColor: '#f8f9fa',
+border: '1px solid #e8eaed',
+});
+let acEntries: BrowseEntry[] = [];
+let acSelectedIdx = -1;
+let acTimer: number | undefined;
+let lastQueriedDir = '\0';
+let cachedDirEntries: BrowseEntry[] = [];
+const getCurrentFileName = (): string => {
+const cur = input.value.trim();
+const idx = cur.lastIndexOf('/');
+return idx !== -1 ? cur.slice(idx + 1) : cur;
+};
+const applyAutocompleteEntry = (entry: BrowseEntry) => {
+if (entry.isDir) {
+const fileName = getCurrentFileName() || 'snippet.txt';
+input.value = entry.relPath + '/' + fileName;
+const slashPos = input.value.lastIndexOf('/');
+input.focus();
+input.setSelectionRange(slashPos + 1, input.value.length);
+triggerAutocomplete();
+} else {
+input.value = entry.relPath;
+input.focus();
+acList.style.display = 'none';
+acEntries = [];
+acSelectedIdx = -1;
+}
+};
+const renderAutocomplete = () => {
+if (acEntries.length === 0) {
+acList.style.display = 'none';
+return;
+}
+acList.style.display = 'flex';
+acList.replaceChildren();
+acEntries.forEach((entry, idx) => {
+const row = document.createElement('div');
+const isSel = idx === acSelectedIdx;
+Object.assign(row.style, {
+display: 'flex',
+alignItems: 'center',
+justifyContent: 'space-between',
+gap: '8px',
+padding: '5px 8px',
+borderRadius: '7px',
+cursor: 'pointer',
+backgroundColor: isSel ? '#e8f0fe' : 'transparent',
+color: isSel ? '#1967d2' : '#1f1f1f',
+fontSize: '12px',
+fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+});
+const leftPart = document.createElement('span');
+Object.assign(leftPart.style, {
+display: 'inline-flex',
+alignItems: 'center',
+gap: '6px',
+minWidth: '0',
+overflow: 'hidden',
+textOverflow: 'ellipsis',
+whiteSpace: 'nowrap',
+});
+leftPart.append(
+createFileOrFolderIcon(entry.name, entry.isDir, 13),
+document.createTextNode(entry.isDir ? entry.name + '/' : entry.name)
+);
+const hintBadge = document.createElement('span');
+hintBadge.textContent = entry.isDir ? 'Folder' : 'Overwrite';
+Object.assign(hintBadge.style, {
+fontSize: '10px',
+fontWeight: '600',
+padding: '1px 6px',
+borderRadius: '5px',
+backgroundColor: entry.isDir ? '#e8f0fe' : 'rgba(60, 64, 67, 0.08)',
+color: entry.isDir ? '#1967d2' : '#5f6368',
+flexShrink: '0',
+});
+row.append(leftPart, hintBadge);
+row.addEventListener('mouseenter', () => {
+acSelectedIdx = idx;
+renderAutocomplete();
+});
+row.addEventListener('mousedown', (ev) => {
+ev.preventDefault();
+ev.stopPropagation();
+applyAutocompleteEntry(entry);
+});
+acList.appendChild(row);
+});
+};
+const filterAndShowAc = (dirEntries: BrowseEntry[], partialName: string) => {
+const q = partialName.toLowerCase();
+acEntries = dirEntries
+.filter(
+(e) =>
+e.relPath !== 'git_diff' &&
+e.name !== '.. (Parent folder)' &&
+(!q || e.name.toLowerCase().includes(q))
+)
+.slice(0, 6);
+acSelectedIdx = acEntries.length > 0 ? 0 : -1;
+renderAutocomplete();
+};
+const triggerAutocomplete = () => {
+if (acTimer) window.clearTimeout(acTimer);
+acTimer = window.setTimeout(() => {
+const raw = input.value.trim();
+const slashIdx = raw.lastIndexOf('/');
+const dir = slashIdx !== -1 ? raw.slice(0, slashIdx) : '';
+const partial = slashIdx !== -1 ? raw.slice(slashIdx + 1) : raw;
+if (dir === lastQueriedDir) {
+filterAndShowAc(cachedDirEntries, partial);
+return;
+}
+chrome.runtime.sendMessage({ type: 'BROWSE_DIR', dir, query: '' }, (res) => {
+if (!res?.ok || !Array.isArray(res.data?.entries)) return;
+lastQueriedDir = dir;
+cachedDirEntries = res.data.entries;
+filterAndShowAc(cachedDirEntries, partial);
+});
+}, 90);
+};
+drawerEl.appendChild(acList);
 if (recentFolders.length > 0) {
 const chipsRow = document.createElement('div');
 Object.assign(chipsRow.style, {
 display: 'flex',
 alignItems: 'center',
 flexWrap: 'wrap',
-gap: '6px',
+gap: '5px',
 paddingLeft: '2px',
 });
 const chipsLabel = document.createElement('span');
-chipsLabel.textContent = 'Recent folders:';
+chipsLabel.textContent = 'Recent:';
 Object.assign(chipsLabel.style, {
 fontSize: '11px',
 fontWeight: '500',
@@ -424,13 +564,13 @@ chip.style.backgroundColor = '#f0f6ff';
 chip.addEventListener('click', (e) => {
 e.preventDefault();
 e.stopPropagation();
-animate(chip, { scale: [0.94, 1] }, { duration: 0.16 });
-const cur = input.value.trim();
-const baseFile = cur.includes('/') ? cur.slice(cur.lastIndexOf('/') + 1) : cur || 'snippet.txt';
+animate(chip, { scale: Array(0.94, 1) }, { duration: 0.16 });
+const baseFile = getCurrentFileName() || 'snippet.txt';
 input.value = folder + '/' + baseFile;
 input.focus();
 const slashIdx = input.value.lastIndexOf('/');
 input.setSelectionRange(slashIdx + 1, input.value.length);
+triggerAutocomplete();
 });
 chipsRow.appendChild(chip);
 }
@@ -460,7 +600,7 @@ window.setTimeout(() => closeDrawer(), 420);
 saveBtn.addEventListener('click', (e) => {
 e.preventDefault();
 e.stopPropagation();
-animate(saveBtn, { scale: [0.95, 1] }, { duration: 0.16 });
+animate(saveBtn, { scale: Array(0.95, 1) }, { duration: 0.16 });
 commitSave();
 });
 cancelBtn.addEventListener('click', (e) => {
@@ -468,8 +608,31 @@ e.preventDefault();
 e.stopPropagation();
 closeDrawer();
 });
+input.addEventListener('input', () => {
+triggerAutocomplete();
+});
 input.addEventListener('keydown', (e) => {
 e.stopPropagation();
+if (acEntries.length > 0 && acList.style.display !== 'none') {
+if (e.key === 'ArrowDown') {
+e.preventDefault();
+acSelectedIdx = (acSelectedIdx + 1) % acEntries.length;
+renderAutocomplete();
+return;
+}
+if (e.key === 'ArrowUp') {
+e.preventDefault();
+acSelectedIdx = (acSelectedIdx - 1 + acEntries.length) % acEntries.length;
+renderAutocomplete();
+return;
+}
+if (e.key === 'Tab' && acSelectedIdx >= 0) {
+e.preventDefault();
+const chosen = acEntries.slice(acSelectedIdx, acSelectedIdx + 1).find(Boolean);
+if (chosen) applyAutocompleteEntry(chosen);
+return;
+}
+}
 if (e.key === 'Enter') {
 e.preventDefault();
 commitSave();
@@ -478,7 +641,11 @@ e.preventDefault();
 closeDrawer();
 }
 });
-header.insertAdjacentElement('afterend', drawerEl);
+document.body.appendChild(drawerEl);
+positionDrawer();
+window.addEventListener('scroll', positionDrawer, true);
+window.addEventListener('resize', positionDrawer);
+document.addEventListener('mousedown', handleOutsideClick, true);
 animate(
 drawerEl,
 { opacity: Array(0, 1), y: Array(-6, 0), scale: Array(0.985, 1) },
@@ -491,6 +658,7 @@ input.setSelectionRange(slashPos + 1, input.value.length);
 } else {
 input.select();
 }
+triggerAutocomplete();
 });
 header.appendChild(triggerBtn);
 });
