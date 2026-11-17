@@ -88,6 +88,7 @@ const POPOVER_CSS = [
   '.item-title { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #1f1f1f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; min-width: 0; }',
   '.item.active .item-title { color: #1967d2; }',
   '.item-sub { font-size: 12px; color: #5f6368; line-height: 1.4; padding-left: 21px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
+  '.item-sub.cmd-code { display: inline-block; width: fit-content; max-width: calc(100% - 21px); margin-left: 21px; margin-top: 2px; padding: 2px 7px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; color: #3c4043; background: rgba(60, 64, 67, 0.06); border: 1px solid rgba(60, 64, 67, 0.1); border-radius: 5px; }',
   '.badge { display: inline-flex; align-items: center; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px; font-weight: 500; color: #5f6368; background: rgba(60, 64, 67, 0.055); border: 1px solid rgba(60, 64, 67, 0.08); padding: 1px 7px; border-radius: 6px; white-space: nowrap; flex-shrink: 0; }',
   '.item.active .badge { background: #e8f0fe; color: #1967d2; }',
   '.badge.dir { font-family: inherit; font-weight: 500; color: #1967d2; background: #e8f0fe; }',
@@ -792,6 +793,8 @@ if (isInstalling) {
   actionBtn.className = 'badge install';
   actionBtn.append(createLucideIcon('download', 12, '#ffffff'), document.createTextNode('Install'));
 }
+const subEl = row.querySelector('.item-sub');
+if (subEl) subEl.classList.add('cmd-code');
 if (headerRow) headerRow.appendChild(actionBtn);
 rowElements.push(row);
 frag.appendChild(row);
