@@ -121,13 +121,9 @@ function inferSuggestedPath(
 }
 
 export function initCodeSave(showToast: (msg: string) => void): void {
-  const attachSaveButtons = () => {
-    const containers = document.querySelectorAll<HTMLElement>(
-      '.aiModeUiCodeBlock__Container:not([data-vexel-save="true"])'
-    );
-
-    containers.forEach((container) => {
-      container.setAttribute('data-vexel-save', 'true');
+  const mountSaveButton = (container: HTMLElement) => {
+    if (container.getAttribute('data-vexel-save') === 'true') return;
+    container.setAttribute('data-vexel-save', 'true');
       const codeEl = container.querySelector('code');
       const header =
         container.querySelector<HTMLElement>('.a2TNg') ||
@@ -758,8 +754,32 @@ input.select();
 triggerAutocomplete();
 });
 header.appendChild(triggerBtn);
-});
-};
+  };
+
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i];
+        if (entry.isIntersecting) {
+          const el = entry.target as HTMLElement;
+          io.unobserve(el);
+          mountSaveButton(el);
+        }
+      }
+    },
+    { rootMargin: '400px 0px' }
+  );
+
+  const attachSaveButtons = () => {
+    const containers = document.querySelectorAll<HTMLElement>(
+      '.aiModeUiCodeBlock__Container:not([data-vexel-save-observed="true"])'
+    );
+    for (let i = 0; i < containers.length; i++) {
+      const c = containers[i];
+      c.setAttribute('data-vexel-save-observed', 'true');
+      io.observe(c);
+    }
+  };
 let timer: number | undefined;
 const schedule = () => {
 if (timer) window.clearTimeout(timer);
