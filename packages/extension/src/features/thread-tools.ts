@@ -115,17 +115,23 @@ export function exportConversationMarkdown(showToast: (msg: string) => void): vo
 
 const TOC_CSS = [
   ':host { all: initial; color-scheme: light; }',
-  '.rail { position: fixed; right: 16px; top: 50%; transform: translateY(-50%); z-index: 2147483640; display: none; flex-direction: column; align-items: center; padding: 6px 5px; border-radius: 999px; background: rgba(255, 255, 255, 0.86); backdrop-filter: blur(16px); border: 1px solid rgba(0, 0, 0, 0.08); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif; transition: background-color 0.2s ease, box-shadow 0.2s ease; }',
+  '.rail { position: fixed; right: 16px; top: 50%; transform: translateY(-50%); z-index: 2147483640; display: none; flex-direction: column; align-items: center; max-height: min(62vh, 420px); padding: 6px 4px; border-radius: 999px; background: rgba(255, 255, 255, 0.88); backdrop-filter: blur(16px); border: 1px solid rgba(0, 0, 0, 0.08); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif; transition: background-color 0.2s ease, box-shadow 0.2s ease; }',
   '.rail.visible { display: flex; }',
   '.rail:hover { background: rgba(255, 255, 255, 0.98); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05); }',
+  '.rail-scroll { position: relative; width: 100%; max-height: calc(min(62vh, 420px) - 12px); overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(60, 64, 67, 0.22) transparent; padding: 0 1px; }',
+  '.rail-scroll::-webkit-scrollbar { width: 3px; }',
+  '.rail-scroll::-webkit-scrollbar-track { background: transparent; margin: 4px 0; }',
+  '.rail-scroll::-webkit-scrollbar-thumb { background: rgba(60, 64, 67, 0.2); border-radius: 999px; }',
+  '.rail-scroll:hover::-webkit-scrollbar-thumb { background: rgba(26, 115, 232, 0.45); }',
+  '.rail-scroll.overflowing { mask-image: linear-gradient(to bottom, transparent 0%, #000 10px, #000 calc(100% - 10px), transparent 100%); -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 10px, #000 calc(100% - 10px), transparent 100%); }',
   '.rail-inner { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; }',
   '.active-pill { position: absolute; left: 0; top: 0; width: 18px; height: 18px; border-radius: 999px; background: #e8f0fe; pointer-events: none; will-change: transform; }',
-  '.tick-wrap { position: relative; z-index: 1; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 999px; }',
+  '.tick-wrap { position: relative; z-index: 1; width: 18px; height: 18px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 999px; }',
   '.tick { width: 5px; height: 5px; border-radius: 50%; background: #c4c7c5; transition: background-color 0.18s ease, transform 0.18s ease; }',
   '.tick-wrap:hover .tick { background: #5f6368; transform: scale(1.25); }',
   '.tick-wrap.current .tick { background: #1a73e8; transform: scale(1.2); }',
   '.shared-tip, .shared-tip * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif; }',
-  '.shared-tip { position: fixed; right: 48px; top: 0; display: inline-flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(18px); color: #1f1f1f; border: 1px solid rgba(0, 0, 0, 0.08); padding: 6px 12px 6px 8px; border-radius: 10px; font-size: 12px; font-weight: 500; line-height: 1.3; white-space: nowrap; max-width: 280px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05); opacity: 0; pointer-events: none; will-change: transform, opacity; z-index: 2147483641; }',
+  '.shared-tip { position: fixed; right: 50px; top: 0; display: inline-flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(18px); color: #1f1f1f; border: 1px solid rgba(0, 0, 0, 0.08); padding: 6px 12px 6px 8px; border-radius: 10px; font-size: 12px; font-weight: 500; line-height: 1.3; white-space: nowrap; max-width: 280px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05); opacity: 0; pointer-events: none; will-change: transform, opacity; z-index: 2147483641; }',
   '.tip-badge { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; font-weight: 600; color: #1a73e8; background: #e8f0fe; padding: 1px 6px; border-radius: 6px; flex-shrink: 0; }',
   '.tip-text { overflow: hidden; text-overflow: ellipsis; color: #3c4043; }',
 ].join('\n');
@@ -140,11 +146,14 @@ export function initThreadTools(_showToast?: (msg: string) => void): void {
 
   const rail = document.createElement('div');
   rail.className = 'rail';
+  const railScroll = document.createElement('div');
+  railScroll.className = 'rail-scroll';
   const railInner = document.createElement('div');
   railInner.className = 'rail-inner';
   const activePill = document.createElement('div');
   activePill.className = 'active-pill';
-  rail.appendChild(railInner);
+  railScroll.appendChild(railInner);
+  rail.appendChild(railScroll);
 
   const sharedTip = document.createElement('div');
   sharedTip.className = 'shared-tip';
@@ -196,43 +205,47 @@ export function initThreadTools(_showToast?: (msg: string) => void): void {
     hideTimer = window.setTimeout(hideTooltip, 80);
   });
 
-  const moveActivePill = (idx: number, instant = false) => {
-    if (idx < 0 || idx >= turnEntries.length) return;
-    const targetY = idx * 20;
-    if (instant) {
-      activePill.style.transform = 'translateY(' + targetY + 'px)';
-    } else {
-      animate(
-        activePill,
-        { y: targetY },
-        { type: 'spring', stiffness: 480, damping: 36, mass: 0.7 }
-      );
-    }
-  };
+  railScroll.addEventListener('scroll', hideTooltip, { passive: true });
 
-  const updateCurrentTurn = (instant = false) => {
-    if (turnEntries.length === 0) return;
-    const mid = window.innerHeight * 0.42;
-    let bestIdx = 0;
-    let bestDist = Infinity;
-    for (let i = 0; i < turnEntries.length; i++) {
-      const rect = turnEntries[i].target.getBoundingClientRect();
-      const dist = Math.abs(rect.top - mid);
-      if (dist < bestDist) {
-        bestDist = dist;
-        bestIdx = i;
-      }
-    }
-    if (bestIdx !== currentIdx || instant) {
-      currentIdx = bestIdx;
-      for (let i = 0; i < turnEntries.length; i++) {
-        turnEntries[i].wrap.classList.toggle('current', i === bestIdx);
-      }
-      moveActivePill(bestIdx, instant);
-    }
-  };
-
-  const refreshToc = () => {
+const moveActivePill = (idx: number, instant = false) => {
+if (idx < 0 || idx >= turnEntries.length) return;
+const targetY = idx * 20;
+if (instant) {
+activePill.style.transform = 'translateY(' + targetY + 'px)';
+} else {
+animate(
+activePill,
+{ y: targetY },
+{ type: 'spring', stiffness: 480, damping: 36, mass: 0.7 }
+);
+}
+if (railScroll.scrollHeight > railScroll.clientHeight) {
+const desiredTop = Math.max(0, targetY - railScroll.clientHeight / 2 + 9);
+railScroll.scrollTo({ top: desiredTop, behavior: instant ? 'auto' : 'smooth' });
+}
+};
+const updateCurrentTurn = (instant = false) => {
+if (turnEntries.length === 0) return;
+const mid = window.innerHeight * 0.42;
+let bestIdx = 0;
+let bestDist = Infinity;
+for (let i = 0; i < turnEntries.length; i++) {
+const rect = turnEntries[i].target.getBoundingClientRect();
+const dist = Math.abs(rect.top - mid);
+if (dist < bestDist) {
+bestDist = dist;
+bestIdx = i;
+}
+}
+if (bestIdx !== currentIdx || instant) {
+currentIdx = bestIdx;
+for (let i = 0; i < turnEntries.length; i++) {
+turnEntries[i].wrap.classList.toggle('current', i === bestIdx);
+}
+moveActivePill(bestIdx, instant);
+}
+};
+const refreshToc = () => {
 const userTurns = extractTurns().filter((t) => t.role === 'user');
 const sig = userTurns.map((t) => t.preview).join('|');
 if (sig === lastSignature) return;
@@ -246,11 +259,8 @@ rail.classList.remove('visible');
 return;
 }
 rail.classList.add('visible');
-const maxTicks = 14;
-const step = userTurns.length > maxTicks ? Math.ceil(userTurns.length / maxTicks) : 1;
-for (let i = 0; i < userTurns.length; i += step) {
-const turn = userTurns.slice(i, i + 1).find(() => true);
-if (!turn) continue;
+for (let i = 0; i < userTurns.length; i++) {
+const turn = userTurns[i];
 const wrap = document.createElement('div');
 wrap.className = 'tick-wrap';
 const dot = document.createElement('div');
@@ -272,9 +282,15 @@ turnRoot.scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 railInner.appendChild(wrap);
 }
+window.requestAnimationFrame(() => {
+railScroll.classList.toggle('overflowing', railScroll.scrollHeight > railScroll.clientHeight);
 updateCurrentTurn(true);
+});
 };
 window.addEventListener('scroll', () => updateCurrentTurn(false), { passive: true });
+window.addEventListener('resize', () => {
+railScroll.classList.toggle('overflowing', railScroll.scrollHeight > railScroll.clientHeight);
+}, { passive: true });
 let tocTimer: number | undefined;
 const scheduleToc = () => {
 if (tocTimer) window.clearTimeout(tocTimer);
