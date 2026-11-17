@@ -115,10 +115,75 @@ function syncVirtualizeTurns(): void {
   }
 }
 
+
+function findLastUserPromptElement(): HTMLElement | null {
+  const lastTurn =
+    document.querySelector<HTMLElement>('.CKgc1d[data-last-turn="true"]') ||
+    findRealTurnElements().slice(-1).find(Boolean) ||
+    null;
+  if (!lastTurn) return null;
+  return lastTurn.querySelector<HTMLElement>('.ilZyRc.R7mRQb, .tbIZh.Odbbif') || lastTurn;
+}
+
+export function scrollToLastUserPrompt(smooth = false): boolean {
+  const target = findLastUserPromptElement();
+  if (!target) return false;
+  target.style.scrollMarginTop = '92px';
+  target.scrollIntoView({
+    behavior: smooth ? 'smooth' : 'instant',
+    block: 'start',
+  });
+  return true;
+}
+
+function initSmartAutoScroll(scheduleSync: () => void): () => void {
+  let autoScrollActive = true;
+  const startTime = Date.now();
+  const MAX_WINDOW_MS = 3500;
+
+  const cancelAutoScroll = () => {
+    autoScrollActive = false;
+  };
+
+  window.addEventListener('wheel', cancelAutoScroll, { passive: true, once: true });
+  window.addEventListener('touchstart', cancelAutoScroll, { passive: true, once: true });
+  window.addEventListener('pointerdown', cancelAutoScroll, { passive: true, once: true });
+
+  window.addEventListener('keydown', (e) => {
+    if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(e.key)) {
+      cancelAutoScroll();
+    }
+    if (e.altKey && e.key === 'ArrowDown') {
+      e.preventDefault();
+      scrollToLastUserPrompt(true);
+    }
+  });
+
+  return () => {
+    if (!autoScrollActive) return;
+    if (Date.now() - startTime > MAX_WINDOW_MS) {
+      autoScrollActive = false;
+      return;
+    }
+    // Wait until at least 2 turns exist (restored thread) before locking onto last user message
+    const turns = findRealTurnElements();
+    if (turns.length < 2) return;
+
+    window.requestAnimationFrame(() => {
+      if (!autoScrollActive) return;
+      const didScroll = scrollToLastUserPrompt(false);
+      if (didScroll) {
+        scheduleSync();
+      }
+    });
+  };
+}
+
 export function initDomBooster(): void {
   injectInstantVirtualizationCSS()
 
   let rafPending = false
+  let runAutoScroll: (() => void) | null = null
   const scheduleSync = () => {
     if (rafPending) return
     rafPending = true
@@ -136,6 +201,7 @@ export function initDomBooster(): void {
       if (target?.closest?.('[data-vexel-ui]')) continue
       // Apply synchronously in the microtask BEFORE browser layout/paint of newly streamed turns
       syncVirtualizeTurns()
+      runAutoScroll?.()
       scheduleSync()
       return
     }
@@ -143,8 +209,10 @@ export function initDomBooster(): void {
 
   const startObserving = () => {
     if (document.body) {
+      runAutoScroll = initSmartAutoScroll(scheduleSync)
       observer.observe(document.body, { childList: true, subtree: true })
       syncVirtualizeTurns()
+      runAutoScroll()
     }
   }
 
