@@ -88,7 +88,7 @@ const POPOVER_CSS = [
   '.item-title { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: #1f1f1f; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
   '.item.active .item-title { color: #1967d2; }',
   '.item-sub { font-size: 11.5px; color: #5f6368; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 22px; }',
-  '.badge { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 10.5px; padding: 2px 7px; border-radius: 999px; background: #f1f3f4; color: #5f6368; flex-shrink: 0; transition: background-color 0.14s ease, color 0.14s ease; }',
+  '.badge { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 10.5px; padding: 2px 7px; border-radius: 999px; background: #f1f3f4; color: #5f6368; flex-shrink: 0; transition: background-color 0.14s ease, color 0.14s ease; margin-left: auto; }',
   '.item.active .badge { background: #e8f0fe; color: #1967d2; }',
   '.badge.dir { font-family: inherit; font-weight: 500; color: #1967d2; background: #e8f0fe; }',
   '.badge.install { font-family: inherit; font-weight: 600; color: #ffffff; background: #1a73e8; border: none; cursor: pointer; padding: 3px 9px; }',
