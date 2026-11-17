@@ -523,6 +523,42 @@ chrome.runtime.sendMessage({ type: 'BROWSE_DIR', dir, query: '' }, (res) => {
                 acList.appendChild(errRow);
                 return;
               }
+              if (res?.data?.missingDir) {
+                lastQueriedDir = dir;
+                cachedDirEntries = [];
+                acEntries = [];
+                acSelectedIdx = -1;
+                acList.style.display = 'flex';
+                acList.replaceChildren();
+                const infoRow = document.createElement('div');
+                Object.assign(infoRow.style, {
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '8px',
+                  padding: '5px 8px',
+                  borderRadius: '7px',
+                  fontSize: '11.5px',
+                  color: '#5f6368',
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                });
+                const txt = document.createElement('span');
+                txt.textContent = (dir || 'new folder') + '/';
+                const badge = document.createElement('span');
+                badge.textContent = 'New folder on save';
+                Object.assign(badge.style, {
+                  fontSize: '10px',
+                  fontWeight: '600',
+                  padding: '2px 7px',
+                  borderRadius: '999px',
+                  backgroundColor: '#e8f0fe',
+                  color: '#1967d2',
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                });
+                infoRow.append(txt, badge);
+                acList.appendChild(infoRow);
+                return;
+              }
               const list = res?.data?.entries || res?.data?.items || [];
               lastQueriedDir = dir;
               cachedDirEntries = list;

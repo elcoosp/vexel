@@ -362,6 +362,11 @@ const server = http.createServer(async (req, res) => {
         })
       )
     } catch (err) {
+      if (err && (err.code === 'ENOENT' || err.code === 'ENOTDIR')) {
+        res.writeHead(200)
+        res.end(JSON.stringify({ rootLabel: path.basename(ROOT_DIR), dir: '', entries: [], missingDir: true }))
+        return
+      }
       res.writeHead(500)
       res.end(JSON.stringify({ error: String(err) }))
     }
@@ -514,7 +519,9 @@ const server = http.createServer(async (req, res) => {
 
   if (parsedUrl.pathname === '/write-file' && req.method === 'POST') {
     try {
-      const body = await readJsonBody(req)
+      let rawBody = ''
+      for await (const chunk of req) rawBody += chunk
+      const body = JSON.parse(rawBody || '{}')
       const relPath = String(body.relPath || '').trim()
       const content = typeof body.content === 'string' ? body.content : ''
       if (!relPath) {
