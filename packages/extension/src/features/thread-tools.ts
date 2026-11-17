@@ -1,4 +1,5 @@
 import { animate } from 'motion';
+
 interface ThreadTurn {
   index: number;
   element: HTMLElement;
@@ -86,19 +87,19 @@ function elementToMarkdown(root: HTMLElement): string {
 export function exportConversationMarkdown(showToast: (msg: string) => void): void {
   const turns = extractTurns();
   if (turns.length === 0) {
-    showToast('Aucun tour de conversation detecte');
+    showToast('No conversation turns found');
     return;
   }
   const timestamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
   const lines: string[] = [
-    '# Export Google AI Mode (' + new Date().toLocaleDateString('fr-FR') + ')',
+    '# Google AI Mode Export (' + new Date().toLocaleDateString('en-US') + ')',
     '',
-    '> ' + turns.length + ' blocs exportes via Vexel',
+    '> ' + turns.length + ' blocks exported via Vexel',
     '',
   ];
   for (const turn of turns) {
     const mdBody = elementToMarkdown(turn.element);
-    if (mdBody) lines.push('---', '', turn.role === 'user' ? '## Utilisateur' : '## Assistant', '', mdBody, '');
+    if (mdBody) lines.push('---', '', turn.role === 'user' ? '## User' : '## Assistant', '', mdBody, '');
   }
   const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -109,21 +110,23 @@ export function exportConversationMarkdown(showToast: (msg: string) => void): vo
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
-  showToast('Conversation exportee (' + turns.length + ' blocs)');
+  showToast('Conversation exported (' + turns.length + ' blocks)');
 }
 
 const TOC_CSS = [
   ':host { all: initial; color-scheme: light; }',
-  '.rail { position: fixed; right: 14px; top: 50%; transform: translateY(-50%); z-index: 2147483640; display: none; flex-direction: column; align-items: flex-end; gap: 2px; padding: 8px 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.78); backdrop-filter: blur(14px); border: 1px solid rgba(218, 220, 224, 0.75); box-shadow: 0 2px 10px rgba(60, 64, 67, 0.06); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif; transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }',
+  '.rail { position: fixed; right: 16px; top: 50%; transform: translateY(-50%); z-index: 2147483640; display: none; flex-direction: column; align-items: center; padding: 6px 5px; border-radius: 999px; background: rgba(255, 255, 255, 0.86); backdrop-filter: blur(16px); border: 1px solid rgba(0, 0, 0, 0.08); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif; transition: background-color 0.2s ease, box-shadow 0.2s ease; }',
   '.rail.visible { display: flex; }',
-  '.rail:hover { background: rgba(255, 255, 255, 0.96); border-color: #dadce0; box-shadow: 0 6px 20px rgba(60, 64, 67, 0.11); }',
-  '.tick-wrap { display: flex; align-items: center; justify-content: flex-end; cursor: pointer; padding: 4px 4px; }',
-  '.tick { width: 8px; height: 2px; border-radius: 999px; background: #dadce0; will-change: width, background-color; transition: background-color 0.15s ease; }',
-  '.tick-wrap.current .tick { width: 14px; background: #1a73e8; }',
-  '.tick-wrap:hover .tick { background: #1a73e8; }',
+  '.rail:hover { background: rgba(255, 255, 255, 0.98); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05); }',
+  '.rail-inner { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; }',
+  '.active-pill { position: absolute; left: 0; top: 0; width: 18px; height: 18px; border-radius: 999px; background: #e8f0fe; pointer-events: none; will-change: transform; }',
+  '.tick-wrap { position: relative; z-index: 1; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 999px; }',
+  '.tick { width: 5px; height: 5px; border-radius: 50%; background: #c4c7c5; transition: background-color 0.18s ease, transform 0.18s ease; }',
+  '.tick-wrap:hover .tick { background: #5f6368; transform: scale(1.25); }',
+  '.tick-wrap.current .tick { background: #1a73e8; transform: scale(1.2); }',
   '.shared-tip, .shared-tip * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif; }',
-  '.shared-tip { position: fixed; right: 44px; top: 0; display: inline-flex; align-items: center; gap: 7px; background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(16px); color: #1f1f1f; border: 1px solid #e1e3e6; padding: 6px 11px 6px 8px; border-radius: 12px; font-size: 12px; font-weight: 500; white-space: nowrap; max-width: 280px; box-shadow: 0 8px 24px rgba(60, 64, 67, 0.14), 0 1px 3px rgba(60, 64, 67, 0.06); opacity: 0; pointer-events: none; will-change: transform, opacity; z-index: 2147483641; }',
-  '.tip-badge { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 10px; font-weight: 600; color: #1a73e8; background: #e8f0fe; padding: 1px 6px; border-radius: 999px; flex-shrink: 0; }',
+  '.shared-tip { position: fixed; right: 48px; top: 0; display: inline-flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(18px); color: #1f1f1f; border: 1px solid rgba(0, 0, 0, 0.08); padding: 6px 12px 6px 8px; border-radius: 10px; font-size: 12px; font-weight: 500; line-height: 1.3; white-space: nowrap; max-width: 280px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05); opacity: 0; pointer-events: none; will-change: transform, opacity; z-index: 2147483641; }',
+  '.tip-badge { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; font-weight: 600; color: #1a73e8; background: #e8f0fe; padding: 1px 6px; border-radius: 6px; flex-shrink: 0; }',
   '.tip-text { overflow: hidden; text-overflow: ellipsis; color: #3c4043; }',
 ].join('\n');
 
@@ -137,6 +140,11 @@ export function initThreadTools(_showToast?: (msg: string) => void): void {
 
   const rail = document.createElement('div');
   rail.className = 'rail';
+  const railInner = document.createElement('div');
+  railInner.className = 'rail-inner';
+  const activePill = document.createElement('div');
+  activePill.className = 'active-pill';
+  rail.appendChild(railInner);
 
   const sharedTip = document.createElement('div');
   sharedTip.className = 'shared-tip';
@@ -152,12 +160,13 @@ export function initThreadTools(_showToast?: (msg: string) => void): void {
   let lastSignature = '';
   let tipVisible = false;
   let hideTimer: number | undefined;
-  let turnEntries: Array<{ wrap: HTMLDivElement; tick: HTMLDivElement; target: HTMLElement }> = [];
+  let currentIdx = -1;
+  let turnEntries: Array<{ wrap: HTMLDivElement; target: HTMLElement }> = [];
 
   const hideTooltip = () => {
     if (!tipVisible) return;
     tipVisible = false;
-    animate(sharedTip, { opacity: 0, x: 6, scale: 0.96 }, { duration: 0.14 });
+    animate(sharedTip, { opacity: 0, x: 4 }, { duration: 0.14 });
   };
 
   const showTooltipAt = (wrap: HTMLElement, indexLabel: string, preview: string) => {
@@ -168,26 +177,40 @@ export function initThreadTools(_showToast?: (msg: string) => void): void {
     const centerY = Math.round(rect.top + rect.height / 2 - 15);
     if (!tipVisible) {
       tipVisible = true;
-      sharedTip.style.transform = 'translateY(' + centerY + 'px) translateX(6px) scale(0.96)';
+      sharedTip.style.transform = 'translateY(' + centerY + 'px) translateX(4px)';
       animate(
         sharedTip,
-        { opacity: 1, y: centerY, x: 0, scale: 1 },
-        { type: 'spring', stiffness: 520, damping: 34, mass: 0.7 }
+        { opacity: 1, y: centerY, x: 0 },
+        { duration: 0.16, ease: [0.2, 0, 0, 1] }
       );
     } else {
       animate(
         sharedTip,
-        { opacity: 1, y: centerY, x: 0, scale: 1 },
-        { type: 'spring', stiffness: 560, damping: 38, mass: 0.6 }
+        { opacity: 1, y: centerY, x: 0 },
+        { type: 'spring', stiffness: 520, damping: 38, mass: 0.6 }
       );
     }
   };
 
   rail.addEventListener('pointerleave', () => {
-    hideTimer = window.setTimeout(hideTooltip, 60);
+    hideTimer = window.setTimeout(hideTooltip, 80);
   });
 
-  const updateCurrentTurn = () => {
+  const moveActivePill = (idx: number, instant = false) => {
+    if (idx < 0 || idx >= turnEntries.length) return;
+    const targetY = idx * 20;
+    if (instant) {
+      activePill.style.transform = 'translateY(' + targetY + 'px)';
+    } else {
+      animate(
+        activePill,
+        { y: targetY },
+        { type: 'spring', stiffness: 480, damping: 36, mass: 0.7 }
+      );
+    }
+  };
+
+  const updateCurrentTurn = (instant = false) => {
     if (turnEntries.length === 0) return;
     const mid = window.innerHeight * 0.42;
     let bestIdx = 0;
@@ -200,93 +223,74 @@ export function initThreadTools(_showToast?: (msg: string) => void): void {
         bestIdx = i;
       }
     }
-    for (let i = 0; i < turnEntries.length; i++) {
-      const isCurr = i === bestIdx;
-      const wasCurr = turnEntries[i].wrap.classList.contains('current');
-      if (isCurr !== wasCurr) {
-        turnEntries[i].wrap.classList.toggle('current', isCurr);
-        animate(
-          turnEntries[i].tick,
-          { width: isCurr ? 14 : 8 },
-          { type: 'spring', stiffness: 520, damping: 34 }
-        );
+    if (bestIdx !== currentIdx || instant) {
+      currentIdx = bestIdx;
+      for (let i = 0; i < turnEntries.length; i++) {
+        turnEntries[i].wrap.classList.toggle('current', i === bestIdx);
       }
+      moveActivePill(bestIdx, instant);
     }
   };
 
   const refreshToc = () => {
-    const userTurns = extractTurns().filter((t) => t.role === 'user');
-    const sig = userTurns.map((t) => t.preview).join('|');
-    if (sig === lastSignature) return;
-    lastSignature = sig;
-    turnEntries = [];
-    hideTooltip();
-    rail.replaceChildren();
-    if (userTurns.length < 2) {
-      rail.classList.remove('visible');
-      return;
-    }
-    rail.classList.add('visible');
-
-    const maxTicks = 14;
-    const step = userTurns.length > maxTicks ? Math.ceil(userTurns.length / maxTicks) : 1;
-    for (let i = 0; i < userTurns.length; i += step) {
-      const turn = userTurns.slice(i, i + 1).find(() => true);
-      if (!turn) continue;
-      const wrap = document.createElement('div');
-      wrap.className = 'tick-wrap';
-      const tick = document.createElement('div');
-      tick.className = 'tick';
-      wrap.appendChild(tick);
-
-      const turnRoot = turn.element.closest<HTMLElement>('.CKgc1d') || turn.element;
-      turnEntries.push({ wrap, tick, target: turnRoot });
-      const badgeLabel = '#' + (i + 1);
-
-      wrap.addEventListener('pointerenter', () => {
-        animate(tick, { width: 18 }, { type: 'spring', stiffness: 560, damping: 32 });
-        showTooltipAt(wrap, badgeLabel, turn.preview);
-      });
-
-      wrap.addEventListener('pointerleave', () => {
-        const isCurr = wrap.classList.contains('current');
-        animate(tick, { width: isCurr ? 14 : 8 }, { type: 'spring', stiffness: 500, damping: 34 });
-      });
-
-      wrap.addEventListener('click', () => {
-        animate(tick, { scaleX: [0.85, 1.1, 1] }, { duration: 0.22 });
-        turnRoot.classList.remove('vexel-virtualized');
-        turnRoot.style.contentVisibility = '';
-        turnRoot.style.containIntrinsicSize = '';
-        turnRoot.style.contain = '';
-        turnRoot.inert = false;
-        turnRoot.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-
-      rail.appendChild(wrap);
-    }
-    updateCurrentTurn();
-  };
-
-  window.addEventListener('scroll', updateCurrentTurn, { passive: true });
-
-  let tocTimer: number | undefined;
-  const scheduleToc = () => {
-    if (tocTimer) window.clearTimeout(tocTimer);
-    tocTimer = window.setTimeout(() => {
-      if ('requestIdleCallback' in window) window.requestIdleCallback(refreshToc, { timeout: 1500 });
-      else refreshToc();
-    }, 600);
-  };
-
-  const obs = new MutationObserver((mutations) => {
-    for (let i = 0; i < mutations.length; i++) {
-      if (mutations[i].addedNodes.length) {
-        scheduleToc();
-        return;
-      }
-    }
-  });
-  obs.observe(document.body, { childList: true, subtree: true });
-  scheduleToc();
+const userTurns = extractTurns().filter((t) => t.role === 'user');
+const sig = userTurns.map((t) => t.preview).join('|');
+if (sig === lastSignature) return;
+lastSignature = sig;
+turnEntries = [];
+currentIdx = -1;
+hideTooltip();
+railInner.replaceChildren(activePill);
+if (userTurns.length < 2) {
+rail.classList.remove('visible');
+return;
+}
+rail.classList.add('visible');
+const maxTicks = 14;
+const step = userTurns.length > maxTicks ? Math.ceil(userTurns.length / maxTicks) : 1;
+for (let i = 0; i < userTurns.length; i += step) {
+const turn = userTurns.slice(i, i + 1).find(() => true);
+if (!turn) continue;
+const wrap = document.createElement('div');
+wrap.className = 'tick-wrap';
+const dot = document.createElement('div');
+dot.className = 'tick';
+wrap.appendChild(dot);
+const turnRoot = (turn.element.closest('.CKgc1d') || turn.element) as HTMLElement;
+turnEntries.push({ wrap, target: turnRoot });
+const badgeLabel = '#' + (i + 1);
+wrap.addEventListener('pointerenter', () => {
+showTooltipAt(wrap, badgeLabel, turn.preview);
+});
+wrap.addEventListener('click', () => {
+turnRoot.classList.remove('vexel-virtualized');
+turnRoot.style.contentVisibility = '';
+turnRoot.style.containIntrinsicSize = '';
+turnRoot.style.contain = '';
+turnRoot.inert = false;
+turnRoot.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+railInner.appendChild(wrap);
+}
+updateCurrentTurn(true);
+};
+window.addEventListener('scroll', () => updateCurrentTurn(false), { passive: true });
+let tocTimer: number | undefined;
+const scheduleToc = () => {
+if (tocTimer) window.clearTimeout(tocTimer);
+tocTimer = window.setTimeout(() => {
+if ('requestIdleCallback' in window) window.requestIdleCallback(refreshToc, { timeout: 1500 });
+else refreshToc();
+}, 600);
+};
+const obs = new MutationObserver((mutations) => {
+for (let i = 0; i < mutations.length; i++) {
+if (mutations[i].addedNodes.length) {
+scheduleToc();
+return;
+}
+}
+});
+obs.observe(document.body, { childList: true, subtree: true });
+scheduleToc();
 }
