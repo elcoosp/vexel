@@ -271,13 +271,9 @@ function elementToMarkdown(root: HTMLElement, role: 'user' | 'assistant'): strin
     .trim();
 }
 
-export function exportConversationMarkdown(showToast: (msg: string) => void): void {
+function buildCleanThreadMarkdown(): string | null {
   const turns = extractTurns();
-  if (turns.length === 0) {
-    showToast('No conversation turns found');
-    return;
-  }
-  const timestamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+  if (turns.length === 0) return null;
   const lines: string[] = [
     '# Google AI Mode Export (' + new Date().toLocaleDateString('en-US') + ')',
     '',
@@ -288,6 +284,33 @@ export function exportConversationMarkdown(showToast: (msg: string) => void): vo
     const mdBody = elementToMarkdown(turn.element, turn.role);
     if (mdBody) lines.push('---', '', turn.role === 'user' ? '## User' : '## Assistant', '', mdBody, '');
   }
+  return lines.join('\n');
+}
+
+export async function copyCleanThread(showToast: (msg: string) => void): Promise<boolean> {
+  const md = buildCleanThreadMarkdown();
+  if (!md) {
+    showToast('No conversation turns found');
+    return false;
+  }
+  try {
+    await navigator.clipboard.writeText(md);
+    showToast('Clean thread copied to clipboard (' + Math.round(md.length / 100) / 10 + ' KB)');
+    return true;
+  } catch {
+    showToast('Clipboard write blocked');
+    return false;
+  }
+}
+
+export function exportConversationMarkdown(showToast: (msg: string) => void): void {
+  const md = buildCleanThreadMarkdown();
+  if (!md) {
+    showToast('No conversation turns found');
+    return;
+  }
+  const timestamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+  const lines = md.split('\n');
   const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -297,7 +320,7 @@ export function exportConversationMarkdown(showToast: (msg: string) => void): vo
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
-  showToast('Conversation exported (' + turns.length + ' blocks)');
+  showToast('Conversation exported (' + Math.round(md.length / 100) / 10 + ' KB)');
 }
 
 const TOC_CSS = [

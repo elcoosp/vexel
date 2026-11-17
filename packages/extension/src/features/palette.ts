@@ -3,7 +3,7 @@ import { openOnboardingModal } from './onboarding';
 import { animate } from 'motion';
 import { createLucideIcon, createFileOrFolderIcon } from './icons';
 import { MAX_SAFE_LENGTH, uploadAsTextFile } from './file-upload';
-import { exportConversationMarkdown } from './thread-tools';
+import { copyCleanThread, exportConversationMarkdown } from './thread-tools';
 import { BUILTIN_SKILLS } from './builtin-skills';
 
 import { type RefFile, type SkillItem, type RemoteSkill, type BrowseEntry, type MenuMode, BT1, BT3, formatChars, DOCK_CSS, POPOVER_CSS } from './palette-ui';
@@ -149,7 +149,25 @@ const headerRight = document.createElement('div');
     closeMenu();
     openOnboardingModal(showToast);
   });
-  headerRight.append(btnExport, btnTour);
+  const btnCopy = document.createElement('button');
+  btnCopy.type = 'button';
+  btnCopy.className = 'export-btn';
+  btnCopy.title = 'Copy clean Markdown thread to clipboard';
+  const setCopyIdle = () => {
+    btnCopy.classList.remove('done');
+    btnCopy.replaceChildren(createLucideIcon('copy', 12), document.createTextNode('Copy'));
+  };
+  setCopyIdle();
+  btnCopy.addEventListener('click', async () => {
+    animate(btnCopy, { scale: Array(0.95, 1) }, { type: 'spring', stiffness: 550, damping: 28 });
+    const ok = await copyCleanThread(showToast);
+    if (ok) {
+      btnCopy.classList.add('done');
+      btnCopy.replaceChildren(createLucideIcon('check', 12, '#137333'), document.createTextNode('Copied'));
+      window.setTimeout(setCopyIdle, 1600);
+    }
+  });
+  headerRight.append(btnCopy, btnExport, btnTour);
   header.append(tabs, headerRight);
 popover.appendChild(header);
 const breadcrumbsEl = document.createElement('div');
