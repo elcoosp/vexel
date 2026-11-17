@@ -116,3 +116,36 @@ export async function installRemoteSkill(repo, skillName) {
   const { stdout, stderr } = await execFileAsync('npx', args, { timeout: 60000 })
   return { ok: true, output: (stdout || stderr || '').trim() }
 }
+
+export async function removeLocalSkill(skillId, skillDir) {
+  const safeId = String(skillId || '').trim()
+  if (!safeId || !/^[a-zA-Z0-9_.-]+$/.test(safeId)) {
+    throw new Error('Invalid skill identifier')
+  }
+  try {
+    await execFileAsync('npx', ['-y', 'skills', 'remove', safeId, '-g', '-y'], { timeout: 30000 })
+  } catch {}
+
+  const candidates = [
+    skillDir,
+    path.join(os.homedir(), '.agents', 'skills', safeId),
+    path.join(os.homedir(), '.claude', 'skills', safeId),
+  ].filter(Boolean)
+
+  for (const dir of candidates) {
+    try {
+      const resolved = path.resolve(dir)
+      const inAgents = resolved.startsWith(path.resolve(os.homedir(), '.agents', 'skills') + path.sep)
+      const inClaude = resolved.startsWith(path.resolve(os.homedir(), '.claude', 'skills') + path.sep)
+      if ((inAgents || inClaude) && fs.existsSync(resolved)) {
+        fs.rmSync(resolved, { recursive: true, force: true })
+      }
+    } catch {}
+  }
+
+  if (diskMeta[safeId.toLowerCase()]) {
+    delete diskMeta[safeId.toLowerCase()]
+    saveMetaCache(diskMeta)
+  }
+  return { ok: true }
+}

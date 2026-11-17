@@ -42,6 +42,17 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       .catch((e) => sendResponse({ ok: false, error: String(e) }))
     return true
   }
+  if (message.type === 'REMOVE_LOCAL_SKILL') {
+    fetch(LOCAL_HOST + '/skills/remove', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: message.id, dir: message.dir }),
+    })
+      .then((r) => r.json())
+      .then((data) => sendResponse({ ok: true, data }))
+      .catch((e) => sendResponse({ ok: false, error: String(e) }))
+    return true
+  }
   if (message.type === 'BROWSE_DIR') {
     const dir = encodeURIComponent(message.dir || '')
     const q = encodeURIComponent(message.query || '')

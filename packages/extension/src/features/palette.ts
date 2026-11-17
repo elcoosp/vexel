@@ -93,6 +93,12 @@ const POPOVER_CSS = [
   '.badge.dir { font-family: inherit; font-weight: 500; color: #1967d2; background: #e8f0fe; }',
   '.badge.install { font-family: inherit; font-weight: 600; color: #ffffff; background: #1a73e8; border: none; cursor: pointer; padding: 3px 9px; }',
   '.badge.install:hover { background: #1557b0; }',
+  '.del-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 22px; padding: 0 6px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: #80868b; font-size: 11px; font-weight: 600; cursor: pointer; opacity: 0; transition: opacity 0.14s ease, background-color 0.14s ease, color 0.14s ease, border-color 0.14s ease; flex-shrink: 0; }',
+  '.item:hover .del-btn, .item.active .del-btn, .del-btn.confirm, .del-btn.removing { opacity: 1; }',
+  '.del-btn:hover { background: #fce8e6; color: #c5221f; }',
+  '.del-btn.confirm { background: #fce8e6; color: #c5221f; border-color: #f6aea9; padding: 0 8px; }',
+  '.del-btn.removing { background: #fce8e6; color: #c5221f; border-color: #f6aea9; padding: 0 8px; cursor: default; }',
+  '.vexel-spinner.danger { border-color: rgba(197, 34, 31, 0.25); border-top-color: #c5221f; }',
   '.badge.installing { font-family: inherit; font-weight: 600; color: #1967d2; background: #e8f0fe; border: 1px solid #d2e3fc; padding: 3px 9px; display: inline-flex; align-items: center; gap: 6px; }',
   '.vexel-spinner { width: 11px; height: 11px; border: 1.8px solid rgba(26, 115, 232, 0.25); border-top-color: #1a73e8; border-radius: 50%; animation: vexelSpin 0.65s linear infinite; flex-shrink: 0; }',
   '@keyframes vexelSpin { to { transform: rotate(360deg); } }',
@@ -112,6 +118,9 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
   let remoteSkills: RemoteSkill[] = [];
   let remoteTimer: number | undefined;
   const installingSkills = new Set<string>();
+  const removingSkills = new Set<string>();
+  let confirmDeleteId: string | null = null;
+  let confirmDeleteTimer: number | undefined;
   let activeSkill: SkillItem | null = null;
   let filteredRefs: RefFile[] = [];
   let currentDir = '';
@@ -552,9 +561,7 @@ renderList();
 if (remoteTimer) window.clearTimeout(remoteTimer);
 if (q.length >= 2) {
 remoteTimer = window.setTimeout(() => {
-console.log("[Vexel Palette] Search ->", q);
 chrome.runtime.sendMessage({ type: 'SEARCH_REMOTE_SKILLS', query: q }, (res) => {
-console.log("[Vexel Palette] Search <-", res?.data?.skills?.length, res?.data?.skills?.[0]);
 if (!res?.ok) return;
 const localNames = new Set(skills.map((x) => x.name.toLowerCase()));
 remoteSkills = (res.data?.skills || []).filter(
@@ -644,6 +651,59 @@ if (s.sourceRepo) metaParts.push(s.sourceRepo);
 if (s.refCount > 0) metaParts.push(s.refCount + ' refs');
 metaParts.push(formatChars(s.smartLength));
 const row = createRow(rowIdx++, createLucideIcon('sparkles', 13, '#1a73e8'), s.name, metaParts.join(' • '), false, s.description);
+const isRemoving = removingSkills.has(s.id);
+const isConfirming = confirmDeleteId === s.id;
+const delBtn = document.createElement('button');
+delBtn.type = 'button';
+delBtn.className = 'del-btn' + (isRemoving ? ' removing' : isConfirming ? ' confirm' : '');
+delBtn.title = isConfirming ? 'Click again to delete permanently' : 'Uninstall skill';
+if (isRemoving) {
+  const sp = document.createElement('span');
+  sp.className = 'vexel-spinner danger';
+  delBtn.append(sp, document.createTextNode('Removing...'));
+} else if (isConfirming) {
+  delBtn.textContent = 'Confirm?';
+} else {
+  delBtn.textContent = '✕';
+}
+delBtn.addEventListener('mousedown', (ev) => {
+  ev.preventDefault();
+  ev.stopPropagation();
+  if (removingSkills.has(s.id)) return;
+  if (confirmDeleteId !== s.id) {
+    confirmDeleteId = s.id;
+    if (confirmDeleteTimer) window.clearTimeout(confirmDeleteTimer);
+    confirmDeleteTimer = window.setTimeout(() => {
+      if (confirmDeleteId === s.id) {
+        confirmDeleteId = null;
+        if (mode === 'skills') renderList();
+      }
+    }, 3000);
+    renderList();
+    return;
+  }
+  confirmDeleteId = null;
+  removingSkills.add(s.id);
+  renderList();
+  statusText.textContent = 'Removing ' + s.name + '...';
+  chrome.runtime.sendMessage({ type: 'REMOVE_LOCAL_SKILL', id: s.id, dir: (s as any).dir || '' }, (res) => {
+    removingSkills.delete(s.id);
+    if (!res?.ok || res?.data?.ok === false) {
+      renderList();
+      const errMsg = res?.data?.error || res?.error || 'remove error';
+      statusText.textContent = 'Remove failed: ' + errMsg;
+      showToast('Remove failed: ' + errMsg);
+      return;
+    }
+    showToast('✓ Skill "' + s.name + '" removed!');
+    statusText.textContent = '✓ "' + s.name + '" removed!';
+    skills = skills.filter((x) => x.id !== s.id);
+    filteredSkills = filteredSkills.filter((x) => x.id !== s.id);
+    renderList();
+    fetchSkills();
+  });
+});
+row.appendChild(delBtn);
 rowElements.push(row);
 frag.appendChild(row);
 }

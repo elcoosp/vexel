@@ -1,4 +1,4 @@
-import { searchRemoteSkills, enrichLocalSkill, installRemoteSkill } from './skills-registry.mjs'
+import { searchRemoteSkills, enrichLocalSkill, installRemoteSkill, removeLocalSkill } from './skills-registry.mjs'
 import http from 'node:http'
 import fs from 'node:fs/promises'
 import path from 'node:path'
@@ -215,9 +215,6 @@ const server = http.createServer(async (req, res) => {
     res.end()
     return
   }
-
-  console.log("[Vexel Bridge] REQ", req.method, req.url);
-  console.log("[Vexel Bridge] REQ", req.method, req.url);
   const parsedUrl = new URL(req.url || '/', 'http://127.0.0.1')
 
   if (parsedUrl.pathname === '/skills') {
@@ -300,6 +297,15 @@ const server = http.createServer(async (req, res) => {
     for await (const chunk of req) body += chunk
     const { repo, name } = JSON.parse(body || "{}")
     const result = await installRemoteSkill(repo, name)
+    res.writeHead(200)
+    res.end(JSON.stringify(result))
+    return
+  }
+  if (parsedUrl.pathname === "/skills/remove" && req.method === "POST") {
+    let body = ""
+    for await (const chunk of req) body += chunk
+    const { id, dir } = JSON.parse(body || "{}")
+    const result = await removeLocalSkill(id, dir)
     res.writeHead(200)
     res.end(JSON.stringify(result))
     return
