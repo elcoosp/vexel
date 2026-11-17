@@ -110,16 +110,19 @@ const BT1 = String.fromCharCode(96);
 
 function extractUserAttachments(turnBlock: HTMLElement): string[] {
   const names: string[] = [];
-  turnBlock.querySelectorAll<HTMLElement>('.Abx0mc .LxGa3').forEach((el) => {
-    const label = (el.textContent || '').trim();
-    if (label && !names.includes(label)) names.push(label);
+  turnBlock.querySelectorAll<HTMLElement>('[role="listitem"]').forEach((item) => {
+    const leaf = item.firstElementChild as HTMLElement | null;
+    const label = (leaf?.textContent || '').trim();
+    if (label && label.length < 120 && !names.includes(label)) {
+      names.push(label);
+    }
   });
   return names;
 }
 
 function elementToMarkdown(root: HTMLElement, role: 'user' | 'assistant'): string {
   if (role === 'user') {
-    const turnContainer = root.closest<HTMLElement>('.CKgc1d[data-scope-id="turn"], [jsname="CS7uPe"]');
+    const turnContainer = root.closest<HTMLElement>('[data-scope-id="turn"]');
     const attachments = turnContainer ? extractUserAttachments(turnContainer) : [];
     const textEl = root.querySelector<HTMLElement>('[jsname="y5v2y"]') || root;
     const body = (textEl.innerText || textEl.textContent || '').trim();
@@ -130,47 +133,63 @@ function elementToMarkdown(root: HTMLElement, role: 'user' | 'assistant'): strin
   }
 
   const mainCol =
-    root.querySelector<HTMLElement>('[data-container-id="main-col"], [data-xid="VpUvz"]') || root;
+    root.querySelector<HTMLElement>('[data-container-id="main-col"]') || root;
   const clone = mainCol.cloneNode(true) as HTMLElement;
 
+  // Strip non-content UI using semantic/ARIA attributes only (zero generated class names)
   clone
     .querySelectorAll(
       [
         '[data-ignore-copy]',
-        '.iMqumd',
-        '[data-xid="Gd7Hsc"]',
-        '.HvurC',
         '[data-container-id="rhs-col"]',
-        '[data-xid="a2jnbe"]',
-        '.iMHp6c',
         '[data-vexel-ui]',
-        '.WBgIic',
-        '.DHPVt',
-        '.D4m3ce .hmOmxe',
+        '[aria-live]',
+        '[role="region"]',
+        '[role="dialog"]',
+        'button',
+        'svg',
         'style',
         'script',
       ].join(', ')
     )
     .forEach((el) => el.remove());
 
-  // 1. Code blocks: read .GlO4G language BEFORE removing header .rq1a2
-  clone.querySelectorAll<HTMLElement>('.aiModeUiCodeBlock__Container, pre').forEach((block) => {
-    if (block.tagName === 'PRE' && block.closest('.aiModeUiCodeBlock__Container')) return;
-    const langEl = block.querySelector<HTMLElement>('.GlO4G');
-    const langLabel = (langEl?.textContent || '').trim().toLowerCase();
-    block.querySelectorAll('.a2TNg').forEach((hdr) => hdr.remove());
-    const codeEl = block.querySelector('code');
+  // 1. Code blocks: anchor strictly on standard <pre><code>
+  clone.querySelectorAll('pre').forEach((pre) => {
+    const codeEl = pre.querySelector('code');
+    const codeText = ((codeEl ? codeEl.textContent : pre.textContent) || '').replace(/\n$/, '');
     const langMatch = (codeEl?.className || '').match(/language-([a-zA-Z0-9_-]+)/);
-    const lang = langLabel || (langMatch ? langMatch.slice(1, 2).find(() => true) || '' : '');
-    const codeText = ((codeEl ? codeEl.textContent : block.textContent) || '').replace(/\n$/, '');
+    let lang = langMatch ? langMatch.slice(1, 2).find(() => true) || '' : '';
+
+    // Find the enclosing code-card wrapper (the ancestor containing this <pre> and its language/footer chrome)
+    let card: HTMLElement = pre;
+    let curr: HTMLElement | null = pre.parentElement;
+    while (curr && curr !== clone) {
+      if (curr.querySelectorAll('pre').length === 1 && curr.hasAttribute('data-hveid')) {
+        card = curr;
+        break;
+      }
+      curr = curr.parentElement;
+    }
+
+    if (!lang && card !== pre) {
+      const prevSiblingText = (pre.parentElement?.previousElementSibling?.textContent || '')
+        .trim()
+        .split(/\s+/)
+        .find(Boolean) || '';
+      if (/^[a-zA-Z0-9_+-]{1,15}$/.test(prevSiblingText)) {
+        lang = prevSiblingText.toLowerCase();
+      }
+    }
+
     const fence = codeText.includes(BT3) ? BT3 + BT1 : BT3;
-    block.replaceWith(
+    card.replaceWith(
       document.createTextNode('\n\n' + fence + lang + '\n' + codeText + '\n' + fence + '\n\n')
     );
   });
 
-  // 2. Inline code tags (.KDcb0c or <code> outside <pre>)
-  clone.querySelectorAll('code, .KDcb0c').forEach((code) => {
+  // 2. Inline code tags
+  clone.querySelectorAll('code').forEach((code) => {
     if (code.closest('pre')) return;
     const txt = (code.textContent || '').trim();
     if (txt) code.replaceWith(document.createTextNode(BT1 + txt + BT1));
@@ -200,14 +219,12 @@ function elementToMarkdown(root: HTMLElement, role: 'user' | 'assistant'): strin
     hr.replaceWith(document.createTextNode('\n\n---\n\n'));
   });
 
-  // 6. Section headings
-  clone.querySelectorAll<HTMLElement>('.ZLzG0d, [role="heading"][aria-level="4"]').forEach((h) => {
-    const txt = (h.textContent || '').trim();
-    if (txt) h.replaceWith(document.createTextNode('\n\n### ' + txt + '\n\n'));
-  });
-  clone.querySelectorAll<HTMLElement>('.AdPoic, [role="heading"][aria-level="5"]').forEach((h) => {
+  // 6. Semantic & ARIA headings
+  clone.querySelectorAll<HTMLElement>('[role="heading"]').forEach((h) => {
+    const level = Number(h.getAttribute('aria-level') || '4');
+    const hashes = '#'.repeat(Math.min(6, Math.max(2, level - 1)));
     const txt = (h.textContent || '').trim().replace(/^\*\*|\*\*$/g, '');
-    if (txt) h.replaceWith(document.createTextNode('\n\n#### ' + txt + '\n\n'));
+    if (txt) h.replaceWith(document.createTextNode('\n\n' + hashes + ' ' + txt + '\n\n'));
   });
   clone.querySelectorAll('h1, h2, h3, h4').forEach((h) => {
     const hashes = '#'.repeat(Number(h.tagName.slice(1)));
@@ -215,13 +232,13 @@ function elementToMarkdown(root: HTMLElement, role: 'user' | 'assistant'): strin
     if (txt) h.replaceWith(document.createTextNode('\n\n' + hashes + ' ' + txt + '\n\n'));
   });
 
-  // 7. Follow-up suggestion chips
-  clone.querySelectorAll<HTMLElement>('.AHmQrc .yrZ5Oe').forEach((chip) => {
+  // 7. Follow-up suggestion links ([role="link"])
+  clone.querySelectorAll<HTMLElement>('[role="link"]').forEach((chip) => {
     const txt = (chip.textContent || '').trim();
     if (txt) chip.replaceWith(document.createTextNode('\n- ' + txt));
   });
 
-  // 8. Bottom-up list items so nested lists keep proper indentation and newlines
+  // 8. Bottom-up list items
   Array.from(clone.querySelectorAll('li'))
     .reverse()
     .forEach((li) => {
@@ -235,7 +252,9 @@ function elementToMarkdown(root: HTMLElement, role: 'user' | 'assistant'): strin
       li.replaceWith(document.createTextNode('\n' + prefix + txt));
     });
 
-  clone.querySelectorAll('p, .n6owBd').forEach((p) => {
+  // 9. Paragraph blocks
+  clone.querySelectorAll('p, div[data-hveid]').forEach((p) => {
+    if (p.querySelector('ul, ol, hr, [role="heading"]')) return;
     const txt = (p.textContent || '').trim();
     if (txt) p.replaceWith(document.createTextNode('\n\n' + txt + '\n\n'));
   });
