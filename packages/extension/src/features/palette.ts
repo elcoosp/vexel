@@ -99,7 +99,7 @@ const POPOVER_CSS = [
   '.del-btn.confirm { width: auto; padding: 0 7px; background: #fce8e6; color: #c5221f; border-color: rgba(197, 34, 31, 0.24); }',
   '.del-btn.removing { width: auto; padding: 0 8px; background: #fce8e6; color: #c5221f; border-color: rgba(197, 34, 31, 0.24); cursor: default; }',
   '.vexel-spinner.danger { width: 9px; height: 9px; border-width: 1.5px; border-color: rgba(197, 34, 31, 0.25); border-top-color: #c5221f; }',
-  '.badge.installing { margin-left: auto; font-family: inherit; font-weight: 600; color: #1967d2; background: #e8f0fe; border: 1px solid #d2e3fc; padding: 3px 9px; display: inline-flex; align-items: center; gap: 6px; }',
+  '.badge.installing, .item.active .badge.installing { margin-left: auto; font-family: inherit; font-size: 11.5px; font-weight: 600; color: #1967d2; background: #e8f0fe; border: 1px solid #d2e3fc; padding: 3px 10px; border-radius: 7px; display: inline-flex; align-items: center; gap: 6px; }',
   '.vexel-spinner { width: 11px; height: 11px; border: 1.8px solid rgba(26, 115, 232, 0.25); border-top-color: #1a73e8; border-radius: 50%; animation: vexelSpin 0.65s linear infinite; flex-shrink: 0; }',
   '.empty-loading { display: inline-flex; align-items: center; justify-content: center; gap: 8px; color: #5f6368; font-size: 13px; }',
   '.section-loading { display: inline-flex; align-items: center; gap: 6px; }',
@@ -770,28 +770,29 @@ frag.appendChild(sec);
 for (let i = 0; i < remoteSkills.length; i++) {
 const r = remoteSkills.slice(i, i + 1).find(() => true);
 if (!r) continue;
-const sub = [r.repo, r.installs ? r.installs + ' installs' : '', r.description].filter(Boolean).join(' • ');
+const metaLabel = [r.repo, r.installs ? r.installs + ' installs' : ''].filter(Boolean).join(' • ');
+const cmdSub = 'npx skills add ' + r.repo + ' --skill ' + r.name;
 const isInstalling = installingSkills.has(r.repo + '/' + r.name);
 const row = createRow(
   rowIdx++,
-  createLucideIcon('download', 13, '#1a73e8'),
+  createLucideIcon('sparkles', 13, '#5f6368'),
   r.name,
-  isInstalling ? 'Loading...' : 'Install',
-  true,
-  sub
+  metaLabel,
+  false,
+  cmdSub
 );
-const badgeEl = row.querySelector('.badge');
-if (badgeEl) {
-  if (isInstalling) {
-    badgeEl.className = 'badge installing';
-    badgeEl.replaceChildren();
-    const spinner = document.createElement('span');
-    spinner.className = 'vexel-spinner';
-    badgeEl.append(spinner, document.createTextNode('Loading...'));
-  } else {
-    badgeEl.className = 'badge install';
-  }
+const headerRow = row.querySelector('.item-row');
+const actionBtn = document.createElement('span');
+if (isInstalling) {
+  actionBtn.className = 'badge installing';
+  const spinner = document.createElement('span');
+  spinner.className = 'vexel-spinner';
+  actionBtn.append(spinner, document.createTextNode('Loading...'));
+} else {
+  actionBtn.className = 'badge install';
+  actionBtn.append(createLucideIcon('download', 12, '#ffffff'), document.createTextNode('Install'));
 }
+if (headerRow) headerRow.appendChild(actionBtn);
 rowElements.push(row);
 frag.appendChild(row);
 }
