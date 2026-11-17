@@ -276,6 +276,7 @@ dockHost.style.left = Math.max(12, rect.right - 122) + 'px';
 }
 }
 function positionPopover(): void {
+    if (!isOpen) return;
 if (!isOpen) return;
 const input = activeInput && document.contains(activeInput) ? activeInput : findVisibleInput();
 if (!input) return;

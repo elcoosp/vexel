@@ -571,7 +571,7 @@ document.addEventListener(
 'click',
 (ev: MouseEvent) => {
 const target = ev.target as HTMLElement | null;
-if (target?.closest('button, [role="button"]')) {
+if (target?.closest('[data-xid="aim-mars-input-plate"] button, form button, [aria-label*="Envoyer"], [aria-label*="Send"]')) {
 window.setTimeout(refreshToc, 150);
 window.setTimeout(refreshToc, 550);
 }
