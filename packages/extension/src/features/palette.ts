@@ -2,6 +2,7 @@ import { animate } from 'motion';
 import { createLucideIcon, createFileOrFolderIcon } from './icons';
 import { MAX_SAFE_LENGTH, uploadAsTextFile } from './untruncate';
 import { exportConversationMarkdown } from './thread-tools';
+import { BUILTIN_SKILLS } from './builtin-skills';
 
 interface RefFile {
   relPath: string;
@@ -21,6 +22,7 @@ interface SkillItem {
   refs: RefFile[];
   sourceRepo?: string;
   installs?: string | number;
+  isBuiltin?: boolean;
 }
 
 interface RemoteSkill {
@@ -118,7 +120,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
   let triggerTextLength = 0;
   let hasInlineTrigger = false;
   let activeInput: HTMLElement | null = null;
-  let skills: SkillItem[] = [];
+  let skills: SkillItem[] = [...BUILTIN_SKILLS];
   let filteredSkills: SkillItem[] = [];
   let remoteSkills: RemoteSkill[] = [];
   let remoteTimer: number | undefined;
@@ -713,6 +715,7 @@ const cleanDesc = s.description && !/^[>|]-?$/.test(s.description.trim()) ? s.de
 const row = createRow(rowIdx++, createLucideIcon('sparkles', 13, '#1a73e8'), s.name, metaParts.join(' • '), false, cleanDesc);
 const isRemoving = removingSkills.has(s.id);
 const isConfirming = confirmDeleteId === s.id;
+if (!s.isBuiltin) {
 const delBtn = document.createElement('button');
 delBtn.type = 'button';
 delBtn.className = 'del-btn' + (isRemoving ? ' removing' : isConfirming ? ' confirm' : '');
@@ -784,6 +787,7 @@ delBtn.addEventListener('mousedown', (ev) => {
 });
 const headerRow = row.querySelector('.item-row');
 if (headerRow) headerRow.appendChild(delBtn);
+}
 rowElements.push(row);
 frag.appendChild(row);
 }
@@ -893,16 +897,51 @@ frag.appendChild(browseSec);
 
 for (let i = 0; i < dirItems.length; i++) {
 const entry = dirItems[i];
-const badge = entry.isDir ? 'Folder' : 'File';
-const showSub = filterInput.value.trim().length > 0 ? entry.relPath : undefined;
+const isGitDiff = entry.relPath === 'git_diff';
+const badge = isGitDiff ? 'Git' : entry.isDir ? 'Folder' : 'File';
+const showSub = isGitDiff ? 'Inject staged + unstaged repository changes' : filterInput.value.trim().length > 0 ? entry.relPath : undefined;
 const row = createRow(
 fileRowIdx++,
-createFileOrFolderIcon(entry.name, entry.isDir, 14),
+isGitDiff ? createLucideIcon('sparkles', 14, '#1a73e8') : createFileOrFolderIcon(entry.name, entry.isDir, 14),
 entry.name,
 badge,
-entry.isDir,
+entry.isDir || isGitDiff,
 showSub
 );
+if (entry.isDir && entry.name !== '.. (Parent folder)') {
+const headerRow = row.querySelector('.item-row');
+const badgeEl = row.querySelector('.badge.dir');
+if (badgeEl) badgeEl.remove();
+const packBtn = document.createElement('button');
+packBtn.type = 'button';
+packBtn.className = 'pack-btn';
+packBtn.textContent = 'Pack folder';
+packBtn.addEventListener('mousedown', (ev) => {
+ev.preventDefault();
+ev.stopPropagation();
+const stripNow = hasInlineTrigger ? triggerTextLength : 0;
+recordRecentEntry(entry);
+closeMenu();
+showToast('Packing ' + entry.name + '/...');
+chrome.runtime.sendMessage({ type: 'PACK_FOLDER', relPath: entry.relPath }, (res) => {
+if (!res?.ok || !res.data?.ok) {
+showToast(res?.data?.error || 'Unable to pack folder');
+return;
+}
+const target = activeInput || findVisibleInput();
+if (target) {
+if (stripNow > 0) removeTriggerChars(target, stripNow);
+uploadAsTextFile(
+res.data.content,
+target,
+showToast,
+res.data.folderName + '-pack.md (' + res.data.fileCount + ' files, ~' + res.data.tokensEst + ' tok)'
+);
+}
+});
+});
+if (headerRow) headerRow.appendChild(packBtn);
+}
 rowElements.push(row);
 frag.appendChild(row);
 }
@@ -1041,6 +1080,22 @@ return;
 if (mode === 'files') {
 const entry = visibleFileItems[idx] || browseEntries[idx];
 if (!entry) return;
+if (entry.relPath === 'git_diff') {
+closeMenu();
+showToast('Packing Git diff...');
+chrome.runtime.sendMessage({ type: 'FETCH_GIT_DIFF', dir: currentDir }, (res) => {
+if (!res?.ok || !res.data?.ok) {
+showToast(res?.data?.error || 'No git repository found here');
+return;
+}
+const target = activeInput || findVisibleInput();
+if (target) {
+if (charsToStrip > 0) removeTriggerChars(target, charsToStrip);
+uploadAsTextFile(res.data.content, target, showToast, 'git-diff.md (~' + res.data.tokensEst + ' tok)');
+}
+});
+return;
+}
 recordRecentEntry(entry);
 if (entry.isDir) {
 navigateToDir(entry.relPath);

@@ -59,6 +59,16 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     fetchBridgeEndpoint('/browse?dir=' + dir + '&q=' + q).then(sendResponse)
     return true
   }
+  if (message.type === 'FETCH_GIT_DIFF') {
+    const dir = encodeURIComponent(message.dir || '')
+    fetchBridgeEndpoint('/git-diff?dir=' + dir).then(sendResponse)
+    return true
+  }
+  if (message.type === 'PACK_FOLDER') {
+    const p = encodeURIComponent(message.relPath || '')
+    fetchBridgeEndpoint('/pack-folder?path=' + p).then(sendResponse)
+    return true
+  }
   if (message.type === 'FETCH_FILE_CONTENT') {
     const p = encodeURIComponent(message.relPath || '')
     fetchBridgeEndpoint('/file?path=' + p).then(sendResponse)

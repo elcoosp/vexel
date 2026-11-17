@@ -1,6 +1,9 @@
 import { searchRemoteSkills, enrichLocalSkill, installRemoteSkill, removeLocalSkill } from './skills-registry.mjs'
 import http from 'node:http'
 import fs from 'node:fs/promises'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
+const execFileAsync = promisify(execFile)
 import path from 'node:path'
 import os from 'node:os'
 
@@ -348,6 +351,125 @@ const server = http.createServer(async (req, res) => {
     } catch (err) {
       res.writeHead(500)
       res.end(JSON.stringify({ error: String(err) }))
+    }
+    return
+  }
+
+  if (parsedUrl.pathname === '/git-diff') {
+    try {
+      const relDir = parsedUrl.searchParams.get('dir') || ''
+      const targetDir = resolveSafePath(relDir) || ROOT_DIR
+      const { stdout: statusOut } = await execFileAsync('git', ['status', '-s'], { cwd: targetDir, timeout: 5000 })
+      let diffOut = ''
+      try {
+        const resHead = await execFileAsync('git', ['diff', 'HEAD'], { cwd: targetDir, timeout: 8000, maxBuffer: 2 * 1024 * 1024 })
+        diffOut = resHead.stdout || ''
+      } catch {
+        const resPlain = await execFileAsync('git', ['diff'], { cwd: targetDir, timeout: 8000, maxBuffer: 2 * 1024 * 1024 })
+        diffOut = resPlain.stdout || ''
+      }
+      const trimmedDiff = diffOut.slice(0, 120000)
+      const changedFiles = statusOut.split('\n').map((l) => l.trim()).filter(Boolean).length
+      const content = [
+        '### Git Working Tree Diff' + (relDir ? ' (' + relDir + ')' : ''),
+        '',
+        '#### Status (' + changedFiles + ' changed file(s))',
+        '```',
+        statusOut.trim() || '(clean)',
+        '```',
+        '',
+        '#### Diff',
+        '```diff',
+        trimmedDiff.trim() || '(no unstaged/staged diff)',
+        '```',
+      ].join('\n')
+      res.writeHead(200)
+      res.end(JSON.stringify({
+        ok: true,
+        changedFiles,
+        tokensEst: Math.max(1, Math.round(content.length / 4)),
+        content,
+      }))
+    } catch (err) {
+      res.writeHead(200)
+      res.end(JSON.stringify({ ok: false, error: 'Not a git repository or git unavailable' }))
+    }
+    return
+  }
+
+  if (parsedUrl.pathname === '/pack-folder') {
+    try {
+      const relDir = parsedUrl.searchParams.get('path') || ''
+      const resolved = resolveSafePath(relDir)
+      if (!resolved || resolved === ROOT_DIR) {
+        res.writeHead(403)
+        res.end(JSON.stringify({ error: 'Cannot pack root directory directly' }))
+        return
+      }
+      const IGNORED = new Set(['node_modules', '.git', '.next', 'dist', 'build', '.turbo', '.cache', 'coverage', '__pycache__', '.venv', 'vendor'])
+      const BINARY_EXT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.pdf', '.zip', '.tar', '.gz', '.woff', '.woff2', '.ttf', '.eot', '.mp4', '.mp3', '.lock'])
+      const files = []
+      const treeLines = []
+      let totalBytes = 0
+      const MAX_BYTES = 120 * 1024
+      const MAX_FILES = 35
+
+      async function walk(dir, depth) {
+        if (depth > 4 || files.length >= MAX_FILES || totalBytes >= MAX_BYTES) return
+        const entries = await fs.readdir(dir, { withFileTypes: true })
+        entries.sort((a, b) => Number(b.isDirectory()) - Number(a.isDirectory()) || a.name.localeCompare(b.name))
+        for (const ent of entries) {
+          if (ent.name.startsWith('.') && ent.name !== '.env.example') continue
+          if (IGNORED.has(ent.name)) continue
+          const full = path.join(dir, ent.name)
+          const rel = path.relative(resolved, full)
+          const indent = '  '.repeat(depth)
+          if (ent.isDirectory()) {
+            treeLines.push(indent + ent.name + '/')
+            await walk(full, depth + 1)
+          } else if (ent.isFile()) {
+            const ext = path.extname(ent.name).toLowerCase()
+            if (BINARY_EXT.has(ext) || ent.name === 'package-lock.json' || ent.name === 'pnpm-lock.yaml' || ent.name === 'yarn.lock') continue
+            treeLines.push(indent + ent.name)
+            if (files.length >= MAX_FILES || totalBytes >= MAX_BYTES) continue
+            const st = await fs.stat(full)
+            if (st.size > 32 * 1024) continue
+            const raw = await fs.readFile(full, 'utf8')
+            if (raw.includes('\u0000')) continue
+            totalBytes += raw.length
+            files.push({ rel, ext: ext.replace(/^\./, '') || 'txt', content: raw })
+          }
+        }
+      }
+
+      await walk(resolved, 0)
+      const folderName = path.basename(resolved)
+      const sections = [
+        '### Folder Context Pack: `' + (relDir || folderName) + '`',
+        '',
+        '> ' + files.length + ' file(s) packed (~' + Math.max(1, Math.round(totalBytes / 4)) + ' tokens)',
+        '',
+        '#### Directory Structure',
+        '```text',
+        treeLines.join('\n') || '(empty)',
+        '```',
+        '',
+      ]
+      for (const f of files) {
+        sections.push('#### File: `' + f.rel + '`', '```' + f.ext, f.content.trim(), '```', '')
+      }
+      const packed = sections.join('\n')
+      res.writeHead(200)
+      res.end(JSON.stringify({
+        ok: true,
+        folderName,
+        fileCount: files.length,
+        tokensEst: Math.max(1, Math.round(packed.length / 4)),
+        content: packed,
+      }))
+    } catch (err) {
+      res.writeHead(500)
+      res.end(JSON.stringify({ ok: false, error: String(err) }))
     }
     return
   }
