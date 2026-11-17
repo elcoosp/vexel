@@ -512,9 +512,26 @@ if (dir === lastQueriedDir) {
 filterAndShowAc(cachedDirEntries, partial);
 return;
 }
-chrome.runtime.sendMessage({ type: 'BROWSE_DIR', dir, query: '' }, (res) => {
-              const list = res?.data?.items || res?.data?.entries;
-              if (!res?.ok || !Array.isArray(list)) return;
+console.log('[Vexel Save AC] query dir=', JSON.stringify(dir), 'partial=', JSON.stringify(partial));
+            acList.style.display = 'flex';
+            acList.replaceChildren();
+            const loadingRow = document.createElement('div');
+            loadingRow.textContent = 'Searching ' + (dir || '~') + '/ ...';
+            Object.assign(loadingRow.style, { padding: '4px 8px', fontSize: '11.5px', color: '#80868b', fontFamily: 'ui-monospace, monospace' });
+            acList.appendChild(loadingRow);
+            chrome.runtime.sendMessage({ type: 'BROWSE_DIR', dir, query: '' }, (res) => {
+              const lastErr = chrome.runtime.lastError?.message;
+              console.log('[Vexel Save AC] response=', { lastErr, ok: res?.ok, error: res?.error, count: res?.data?.entries?.length });
+              if (lastErr || !res?.ok) {
+                acList.style.display = 'flex';
+                acList.replaceChildren();
+                const errRow = document.createElement('div');
+                errRow.textContent = 'Bridge: ' + (lastErr || res?.error || 'unreachable');
+                Object.assign(errRow.style, { padding: '4px 8px', fontSize: '11.5px', color: '#c5221f', fontFamily: 'ui-monospace, monospace' });
+                acList.appendChild(errRow);
+                return;
+              }
+              const list = res?.data?.entries || res?.data?.items || [];
               lastQueriedDir = dir;
               cachedDirEntries = list;
               filterAndShowAc(cachedDirEntries, partial);
