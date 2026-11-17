@@ -1,4 +1,5 @@
 import { initUntruncate } from './features/untruncate'
+import { initCodeRepair } from './features/code-repair'
 import { initDomBooster } from './features/dom-booster'
 import { initCommandPalette } from './features/palette'
 import { initThreadTools } from './features/thread-tools'
@@ -28,5 +29,6 @@ function showToast(message: string): void {
 }
 initDomBooster()
 initUntruncate(showToast)
+initCodeRepair(showToast)
 initCommandPalette(showToast)
 initThreadTools(showToast)

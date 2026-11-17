@@ -208,7 +208,11 @@ async function searchEntries(absDir, query, depth = 0, out = []) {
 }
 
 const server = http.createServer(async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Vary', 'Origin')
+  const reqOrigin = req.headers.origin || ''
+  if (!reqOrigin || reqOrigin.startsWith('chrome-extension://')) {
+    res.setHeader('Access-Control-Allow-Origin', reqOrigin || 'chrome-extension://')
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   res.setHeader('Content-Type', 'application/json; charset=utf-8')
@@ -444,11 +448,7 @@ const server = http.createServer(async (req, res) => {
 
       await walk(resolved, 0)
       const folderName = path.basename(resolved)
-      const sections = [
-        '### Folder Context Pack: `' + (relDir || folderName) + '`',
-        '',
-        '> ' + files.length + ' file(s) packed (~' + Math.max(1, Math.round(totalBytes / 4)) + ' tokens)',
-        '',
+      const bodySections = [
         '#### Directory Structure',
         '```text',
         treeLines.join('\n') || '(empty)',
@@ -456,15 +456,23 @@ const server = http.createServer(async (req, res) => {
         '',
       ]
       for (const f of files) {
-        sections.push('#### File: `' + f.rel + '`', '```' + f.ext, f.content.trim(), '```', '')
+        bodySections.push('#### File: `' + f.rel + '`', '```' + f.ext, f.content.trim(), '```', '')
       }
-      const packed = sections.join('\n')
+      const bodyText = bodySections.join('\n')
+      const tokensEst = Math.max(1, Math.round(bodyText.length / 4))
+      const packed = [
+        '### Folder Context Pack: `' + (relDir || folderName) + '`',
+        '',
+        '> ' + files.length + ' file(s) packed (~' + tokensEst + ' tokens)',
+        '',
+        bodyText,
+      ].join('\n')
       res.writeHead(200)
       res.end(JSON.stringify({
         ok: true,
         folderName,
         fileCount: files.length,
-        tokensEst: Math.max(1, Math.round(packed.length / 4)),
+        tokensEst,
         content: packed,
       }))
     } catch (err) {
@@ -505,6 +513,6 @@ const server = http.createServer(async (req, res) => {
   res.end(JSON.stringify({ error: 'Not found' }))
 })
 
-server.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '127.0.0.1', () => {
   console.log('[Vexel Bridge] Pret sur http://127.0.0.1:' + PORT + ' (Racine: ' + ROOT_DIR + ')')
 })

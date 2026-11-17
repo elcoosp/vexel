@@ -915,7 +915,8 @@ if (badgeEl) badgeEl.remove();
 const packBtn = document.createElement('button');
 packBtn.type = 'button';
 packBtn.className = 'pack-btn';
-packBtn.textContent = 'Pack folder';
+packBtn.title = 'Pack folder tree & source files into context';
+packBtn.append(createLucideIcon('folder', 11, 'currentColor'), document.createTextNode('Pack'));
 packBtn.addEventListener('mousedown', (ev) => {
 ev.preventDefault();
 ev.stopPropagation();

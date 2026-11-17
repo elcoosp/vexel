@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite'
 import { resolve } from 'path'
-import { copyFileSync } from 'fs'
+
 export default defineConfig({
   build: {
     outDir: 'dist',
@@ -15,12 +15,4 @@ export default defineConfig({
       },
     },
   },
-  plugins: [
-    {
-      name: 'copy-manifest',
-      closeBundle() {
-        copyFileSync('manifest.json', 'dist/manifest.json')
-      },
-    },
-  ],
 })
