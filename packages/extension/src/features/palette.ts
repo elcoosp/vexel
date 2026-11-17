@@ -88,19 +88,19 @@ const POPOVER_CSS = [
   '.item-title { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #1f1f1f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; min-width: 0; }',
   '.item.active .item-title { color: #1967d2; }',
   '.item-sub { font-size: 12px; color: #5f6368; line-height: 1.4; padding-left: 21px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
-  '.item-sub.cmd-code { display: inline-block; width: fit-content; max-width: calc(100% - 21px); margin-left: 21px; margin-top: 2px; padding: 2px 7px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; color: #3c4043; background: rgba(60, 64, 67, 0.06); border: 1px solid rgba(60, 64, 67, 0.1); border-radius: 5px; }',
   '.badge { display: inline-flex; align-items: center; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px; font-weight: 500; color: #5f6368; background: rgba(60, 64, 67, 0.055); border: 1px solid rgba(60, 64, 67, 0.08); padding: 1px 7px; border-radius: 6px; white-space: nowrap; flex-shrink: 0; }',
   '.item.active .badge { background: #e8f0fe; color: #1967d2; }',
   '.badge.dir { font-family: inherit; font-weight: 500; color: #1967d2; background: #e8f0fe; }',
-  '.badge.install { font-family: inherit; font-weight: 600; color: #ffffff; background: #1a73e8; border: none; cursor: pointer; padding: 3px 9px; }',
-  '.badge.install:hover { background: #1557b0; }',
+  '.install-btn { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-family: inherit; font-size: 11.5px; font-weight: 600; line-height: 1; color: #ffffff; background: #1a73e8; border: none; padding: 5px 11px; border-radius: 7px; cursor: pointer; flex-shrink: 0; transition: background-color 0.14s ease; }',
+  '.install-btn:hover { background: #1557b0; color: #ffffff; }',
+  '.install-btn svg { stroke: #ffffff; flex-shrink: 0; }',
+  '.installing-btn { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-family: inherit; font-size: 11.5px; font-weight: 600; line-height: 1; color: #1967d2; background: #e8f0fe; border: 1px solid #d2e3fc; padding: 4px 10px; border-radius: 7px; flex-shrink: 0; }',
   '.del-btn { margin-left: auto; display: inline-flex; align-items: center; justify-content: center; gap: 4px; width: 22px; height: 22px; padding: 0; border-radius: 6px; border: 1px solid transparent; background: transparent; color: #9aa0a6; font-size: 10px; font-weight: 600; line-height: 1; cursor: pointer; opacity: 0; transition: opacity 0.14s ease, background-color 0.14s ease, color 0.14s ease, border-color 0.14s ease; flex-shrink: 0; }',
   '.item:hover .del-btn, .item.active .del-btn, .del-btn.confirm, .del-btn.removing { opacity: 1; }',
   '.del-btn:hover { background: rgba(197, 34, 31, 0.08); color: #c5221f; }',
   '.del-btn.confirm { width: auto; padding: 0 7px; background: #fce8e6; color: #c5221f; border-color: rgba(197, 34, 31, 0.24); }',
   '.del-btn.removing { width: auto; padding: 0 8px; background: #fce8e6; color: #c5221f; border-color: rgba(197, 34, 31, 0.24); cursor: default; }',
   '.vexel-spinner.danger { width: 9px; height: 9px; border-width: 1.5px; border-color: rgba(197, 34, 31, 0.25); border-top-color: #c5221f; }',
-  '.badge.installing, .item.active .badge.installing { margin-left: auto; font-family: inherit; font-size: 11.5px; font-weight: 600; color: #1967d2; background: #e8f0fe; border: 1px solid #d2e3fc; padding: 3px 10px; border-radius: 7px; display: inline-flex; align-items: center; gap: 6px; }',
   '.vexel-spinner { width: 11px; height: 11px; border: 1.8px solid rgba(26, 115, 232, 0.25); border-top-color: #1a73e8; border-radius: 50%; animation: vexelSpin 0.65s linear infinite; flex-shrink: 0; }',
   '.empty-loading { display: inline-flex; align-items: center; justify-content: center; gap: 8px; color: #5f6368; font-size: 13px; }',
   '.section-loading { display: inline-flex; align-items: center; gap: 6px; }',
@@ -765,36 +765,33 @@ sp.className = 'vexel-spinner';
 wrap.append(sp, document.createTextNode('Searching skills.sh...'));
 sec.appendChild(wrap);
 } else {
-sec.textContent = 'Available on skills.sh (npx skills add)';
+sec.textContent = 'Available on skills.sh';
 }
 frag.appendChild(sec);
 for (let i = 0; i < remoteSkills.length; i++) {
 const r = remoteSkills.slice(i, i + 1).find(() => true);
 if (!r) continue;
 const metaLabel = [r.repo, r.installs ? r.installs + ' installs' : ''].filter(Boolean).join(' • ');
-const cmdSub = 'npx skills add ' + r.repo + ' --skill ' + r.name;
 const isInstalling = installingSkills.has(r.repo + '/' + r.name);
 const row = createRow(
   rowIdx++,
   createLucideIcon('sparkles', 13, '#5f6368'),
   r.name,
   metaLabel,
-  false,
-  cmdSub
+  false
 );
 const headerRow = row.querySelector('.item-row');
-const actionBtn = document.createElement('span');
+const actionBtn = document.createElement('button');
+actionBtn.type = 'button';
 if (isInstalling) {
-  actionBtn.className = 'badge installing';
+  actionBtn.className = 'installing-btn';
   const spinner = document.createElement('span');
   spinner.className = 'vexel-spinner';
   actionBtn.append(spinner, document.createTextNode('Loading...'));
 } else {
-  actionBtn.className = 'badge install';
+  actionBtn.className = 'install-btn';
   actionBtn.append(createLucideIcon('download', 12, '#ffffff'), document.createTextNode('Install'));
 }
-const subEl = row.querySelector('.item-sub');
-if (subEl) subEl.classList.add('cmd-code');
 if (headerRow) headerRow.appendChild(actionBtn);
 rowElements.push(row);
 frag.appendChild(row);
