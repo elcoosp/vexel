@@ -216,6 +216,8 @@ const server = http.createServer(async (req, res) => {
     return
   }
 
+  console.log("[Vexel Bridge] REQ", req.method, req.url);
+  console.log("[Vexel Bridge] REQ", req.method, req.url);
   const parsedUrl = new URL(req.url || '/', 'http://127.0.0.1')
 
   if (parsedUrl.pathname === '/skills') {
@@ -288,7 +290,7 @@ const server = http.createServer(async (req, res) => {
 
   if (parsedUrl.pathname === "/skills/search") {
     const q = parsedUrl.searchParams.get("q") || ""
-    const remote = await searchRemoteSkills(q).catch(() => [])
+    const remote = await searchRemoteSkills(q).catch((e) => { console.error("[Vexel Bridge] searchRemoteSkills ERR:", e); return [] })
     res.writeHead(200)
     res.end(JSON.stringify({ skills: remote }))
     return

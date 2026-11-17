@@ -17,13 +17,19 @@ export async function searchRemoteSkills(query = '') {
   if (!q) return []
   const host = ['https://', 'www.', 'skills', '.sh'].join('')
   const url = host + '/api/search?q=' + encodeURIComponent(q)
+  console.log("[Vexel Registry] FETCH ->", url);
+  console.log("[Vexel Registry] FETCH ->", url);
   const res = await fetch(url, {
     signal: AbortSignal.timeout(4000),
     headers: { Accept: 'application/json', 'User-Agent': 'Vexel-Bridge/1.0' },
   })
+  console.log("[Vexel Registry] STATUS <-", res.status);
+  console.log("[Vexel Registry] STATUS <-", res.status);
   if (!res.ok) return []
   const data = await res.json()
   const items = Array.isArray(data && data.skills) ? data.skills : []
+  console.log("[Vexel Registry] ITEMS <-", items.length, items[0] ? items[0].name : "none")
+  console.log("[Vexel Registry] ITEMS <-", items.length, items[0] ? items[0].name : "none")
   return items.slice(0, 15).map((item) => {
     const repo = String(item.source || item.repo || '')
     const name = String(item.name || item.skillId || '')

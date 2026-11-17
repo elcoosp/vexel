@@ -93,6 +93,9 @@ const POPOVER_CSS = [
   '.badge.dir { font-family: inherit; font-weight: 500; color: #1967d2; background: #e8f0fe; }',
   '.badge.install { font-family: inherit; font-weight: 600; color: #ffffff; background: #1a73e8; border: none; cursor: pointer; padding: 3px 9px; }',
   '.badge.install:hover { background: #1557b0; }',
+  '.badge.installing { font-family: inherit; font-weight: 600; color: #1967d2; background: #e8f0fe; border: 1px solid #d2e3fc; padding: 3px 9px; display: inline-flex; align-items: center; gap: 6px; }',
+  '.spin-dot { width: 7px; height: 7px; border-radius: 50%; background: #1a73e8; animation: vexelPulse 0.9s infinite ease-in-out; }',
+  '@keyframes vexelPulse { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }',
   '.section-label { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #80868b; padding: 8px 12px 2px 12px; }',
   '.footer { display: flex; justify-content: space-between; align-items: center; padding: 7px 16px; border-top: 1px solid #f1f3f4; background: #fafbfc; font-size: 11px; color: #5f6368; }',
   '.empty { padding: 24px 16px; text-align: center; color: #5f6368; font-size: 12.5px; }',
@@ -108,6 +111,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
   let filteredSkills: SkillItem[] = [];
   let remoteSkills: RemoteSkill[] = [];
   let remoteTimer: number | undefined;
+  const installingSkills = new Set<string>();
   let activeSkill: SkillItem | null = null;
   let filteredRefs: RefFile[] = [];
   let currentDir = '';
@@ -653,9 +657,27 @@ for (let i = 0; i < remoteSkills.length; i++) {
 const r = remoteSkills.slice(i, i + 1).find(() => true);
 if (!r) continue;
 const sub = [r.repo, r.installs ? r.installs + ' installs' : '', r.description].filter(Boolean).join(' • ');
-const row = createRow(rowIdx++, createLucideIcon('download', 13, '#1a73e8'), r.name, 'Installer', true, sub);
+const isInstalling = installingSkills.has(r.repo + '/' + r.name);
+const row = createRow(
+  rowIdx++,
+  createLucideIcon('download', 13, '#1a73e8'),
+  r.name,
+  isInstalling ? 'Installation...' : 'Installer',
+  true,
+  sub
+);
 const badgeEl = row.querySelector('.badge');
-if (badgeEl) badgeEl.className = 'badge install';
+if (badgeEl) {
+  if (isInstalling) {
+    badgeEl.className = 'badge installing';
+    badgeEl.replaceChildren();
+    const dot = document.createElement('span');
+    dot.className = 'spin-dot';
+    badgeEl.append(dot, document.createTextNode('Installation...'));
+  } else {
+    badgeEl.className = 'badge install';
+  }
+}
 rowElements.push(row);
 frag.appendChild(row);
 }
