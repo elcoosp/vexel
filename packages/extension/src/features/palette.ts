@@ -1023,7 +1023,7 @@ const len =
 mode === 'refs'
 ? filteredRefs.length
 : mode === 'skills'
-? filteredSkills.length
+? filteredSkills.length + remoteSkills.length
 : browseEntries.length;
 if (e.key === 'Escape') {
 e.preventDefault();
