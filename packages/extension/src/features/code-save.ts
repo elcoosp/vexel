@@ -513,11 +513,12 @@ filterAndShowAc(cachedDirEntries, partial);
 return;
 }
 chrome.runtime.sendMessage({ type: 'BROWSE_DIR', dir, query: '' }, (res) => {
-if (!res?.ok || !Array.isArray(res.data?.entries)) return;
-lastQueriedDir = dir;
-cachedDirEntries = res.data.entries;
-filterAndShowAc(cachedDirEntries, partial);
-});
+              const list = res?.data?.items || res?.data?.entries;
+              if (!res?.ok || !Array.isArray(list)) return;
+              lastQueriedDir = dir;
+              cachedDirEntries = list;
+              filterAndShowAc(cachedDirEntries, partial);
+            });
 }, 90);
 };
 drawerEl.appendChild(acList);
