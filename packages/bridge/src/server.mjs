@@ -7,7 +7,7 @@ const execFileAsync = promisify(execFile)
 import path from 'node:path'
 import os from 'node:os'
 
-const PORT = 49152
+const PORT = Number(process.env.VEXEL_PORT) || 49152
 const HOME_DIR = os.homedir()
 const ROOT_DIR = process.env.VEXEL_ROOT_DIR ? path.resolve(process.env.VEXEL_ROOT_DIR) : HOME_DIR
 const SKILLS_DIR = path.join(HOME_DIR, '.agents', 'skills')
