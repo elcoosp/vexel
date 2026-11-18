@@ -1,28 +1,28 @@
 <div align="center">
-  <img src="https://jsdelivr.net" alt="Vexel Logo" width="300"/>
+  <img src="https://cdn.jsdelivr.net/gh/elcoosp/vexel@main/docs/logo.png" alt="Vexel Logo" width="300"/>
   <p>
-    <strong>A Chrome Manifest V3 extension and local skill bridge that eliminates input truncation and UI lag in Google AI Mode</strong><br/>
-    Vexel intercepts long clipboard pastes and converts them into file attachments, injects local
-    <code>~/.agents/skills</code> playbooks through a <code>Cmd+K</code> palette with progressive disclosure,
-    and virtualizes off-screen conversation turns to keep long sessions responsive. It is for developers and
-    power users running multi-turn coding sessions on <code>google.com</code> and <code>google.fr</code>.
+    <strong>A Chrome extension for developers that fixes Google AI Mode's paste truncation and UI lag.</strong><br/>
+    Vexel intercepts clipboard pastes over 8,000 characters and converts them into file attachments before Google AI Mode can truncate them. It also virtualizes off-screen conversation turns so long sessions stay responsive, and a local bridge exposes your <code>~/.agents/skills/</code> playbooks through a <code>Cmd+K</code> palette. Built for multi-turn coding sessions on <code>google.com</code> and <code>google.fr</code>.
   </p>
   <p>
-    <a href="https://github.com"><img src="https://shields.io" alt="Version"/></a>
-    <a href="https://chrome.com"><img src="https://shields.io" alt="Chrome Manifest V3"/></a>
-    <a href="https://nodejs.org"><img src="https://shields.io" alt="Node.js"/></a>
-    <a href="https://typescriptlang.org"><img src="https://shields.io" alt="TypeScript"/></a>
-    <a href="https://github.com"><img src="https://shields.io" alt="MIT License"/></a>
+    <a href="https://github.com/elcoosp/vexel/blob/main/LICENSE"><img src="https://img.shields.io/github/license/elcoosp/vexel?style=flat-square" alt="MIT License"/></a>
+    <a href="https://developer.chrome.com/docs/extensions/develop/migrate"><img src="https://img.shields.io/badge/Chrome-Manifest%20V3-blue?style=flat-square" alt="Chrome Manifest V3"/></a>
+    <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen?style=flat-square" alt="Node.js 20+"/></a>
+    <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-blue?style=flat-square" alt="TypeScript"/></a>
+  </p>
+  <p>
+    <a href="#quickstart">Quickstart</a> •
+    <a href="#why-vexel-exists">Why Vexel exists</a> •
+    <a href="#features">Features</a> •
+    <a href="#how-it-works">How it works</a> •
+    <a href="#usage">Usage</a> •
+    <a href="#status">Status</a>
   </p>
 </div>
 
-<p align="center">
-  <a href="#quickstart">Quickstart</a> • <a href="#why-vexel-exists">Why Vexel exists</a> • <a href="#features">Features</a> • <a href="#how-it-works">How it works</a> • <a href="#usage">Usage</a> • <a href="#status">Status</a>
-</p>
-
 ## Quickstart
 
-Prerequisites: Node.js 20+ (developed on `v24.22.2`), pnpm 10+ (`12.18.0`), and Google Chrome.
+Prerequisites: Node.js 20+ (developed on v24.22.2), pnpm 10+ (12.18.0), and Google Chrome.
 
 **1. Clone and build both workspace packages:**
 
@@ -60,5 +60,53 @@ pnpm dev:bridge
 
 **4. Open Google AI Mode** on `https://google.com` or `https://google.fr`:
 
-- Paste any log or source file over `8,000` characters to watch it convert into an attached `.txt` file.
+- Paste any log or source file over 8,000 characters to watch it convert into an attached `.txt` file.
 - Press `Cmd+K` (`Ctrl+K` on Linux/Windows) to search and inject skills from `~/.agents/skills/`.
+
+## Why Vexel exists
+
+Google AI Mode truncates long clipboard pastes and slows down as conversations grow. Paste a full log or source file and you lose the tail end; run a multi-turn coding session and off-screen turns keep the DOM busy. Vexel fixes both: it converts large pastes into file attachments before the input limit hits, and it virtualizes off-screen turns so long sessions stay responsive.
+
+## Features
+
+- **Paste-to-attachment**: pastes over 8,000 characters become attached `.txt` files, so no content is truncated.
+- **Local skill bridge**: serves `~/.agents/skills/` playbooks through a `Cmd+K` palette with progressive disclosure, so you can search and inject reusable instructions without leaving the page.
+- **Turn virtualization**: keeps only visible conversation turns in the DOM, so long sessions stay responsive.
+- **Cross-domain**: works on both `google.com` and `google.fr`.
+- **Zero-config skills**: drop a playbook into `~/.agents/skills/` and it appears in the palette.
+
+## How it works
+
+Vexel is a pnpm monorepo with two packages:
+
+- `packages/extension`: a Chrome Manifest V3 extension. `background.js` manages extension lifecycle, and `content.js` runs in the Google AI Mode page, intercepting pastes and virtualizing turns.
+- `packages/bridge`: a local Node.js server (native ESM) that reads `~/.agents/skills/` and serves playbooks to the extension.
+
+```mermaid
+flowchart LR
+  A[Google AI Mode page] --> B[content.js]
+  B --> C[Paste intercept: >8,000 chars → .txt]
+  B --> D[Cmd+K skill palette]
+  B --> E[Turn virtualization]
+  D --> F[packages/bridge]
+  F --> G[~/.agents/skills]
+```
+
+## Usage
+
+### Paste a long file
+
+Open Google AI Mode on `https://google.com` or `https://google.fr`, paste a log or source file over 8,000 characters, and Vexel attaches it as a `.txt` file instead of truncating the input.
+
+### Inject a skill
+
+Press `Cmd+K` (`Ctrl+K` on Linux/Windows), search your `~/.agents/skills/` playbooks, and select one to inject it into the conversation.
+
+### Keep long sessions responsive
+
+Scroll through a multi-turn session as normal. Vexel virtualizes off-screen turns, so the DOM stays small and the UI stays responsive.
+
+## Status
+
+> [!NOTE]
+> Vexel is under active development. It builds and runs on Node.js 20+ with pnpm 10+ and loads as an unpacked Chrome extension. A packaged release is not yet available.

@@ -15,7 +15,8 @@
     "test:dom": "vitest run --project dom",
     "test:e2e": "pnpm build && node packages/extension/test/e2e/run-e2e.mjs",
     "zip:store": "pnpm build && mkdir -p release && rm -f release/vexel-extension-store.zip && (cd packages/extension/dist && zip -r ../../../release/vexel-extension-store.zip .)",
-    "marketing:assets": "pnpm build && node scripts/generate-store-assets.mjs"
+    "marketing:assets": "node scripts/capture-live-assets.mjs",
+    "marketing:mock": "pnpm build && node scripts/generate-store-assets.mjs"
   },
   "devDependencies": {
     "happy-dom": "^21.0.4",
