@@ -262,9 +262,19 @@ export function initCodeSave(showToast: (msg: string) => void): void {
           }
         };
 
+        let drawerPosRaf = 0;
+        const schedulePositionDrawer = () => {
+          if (drawerPosRaf) return;
+          drawerPosRaf = window.requestAnimationFrame(() => {
+            drawerPosRaf = 0;
+            positionDrawer();
+          });
+        };
+
         cleanupListeners = () => {
-          window.removeEventListener('scroll', positionDrawer, true);
-          window.removeEventListener('resize', positionDrawer);
+          if (drawerPosRaf) window.cancelAnimationFrame(drawerPosRaf);
+          window.removeEventListener('scroll', schedulePositionDrawer, true);
+          window.removeEventListener('resize', schedulePositionDrawer);
           document.removeEventListener('mousedown', handleOutsideClick, true);
         };
 
@@ -750,8 +760,8 @@ input.addEventListener('keydown', (e) => {
         });
 document.body.appendChild(drawerEl);
 positionDrawer();
-window.addEventListener('scroll', positionDrawer, true);
-window.addEventListener('resize', positionDrawer);
+window.addEventListener('scroll', schedulePositionDrawer, { capture: true, passive: true });
+window.addEventListener('resize', schedulePositionDrawer, { passive: true });
 document.addEventListener('mousedown', handleOutsideClick, true);
 animate(
 drawerEl,

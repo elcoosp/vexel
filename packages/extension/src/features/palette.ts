@@ -1267,10 +1267,17 @@ mountDockIntoInput();
 if (isOpen) positionPopover();
 });
 }, { passive: true });
-document.addEventListener('scroll', positionPopover, { capture: true, passive: true });
+let paletteScrollRaf = 0;
+document.addEventListener('scroll', () => {
+if (!isOpen || paletteScrollRaf) return;
+paletteScrollRaf = window.requestAnimationFrame(() => {
+paletteScrollRaf = 0;
+if (isOpen) positionPopover();
+});
+}, { capture: true, passive: true });
 document.addEventListener('focusin', () => {
-mountDockIntoInput();
-positionPopover();
+if (!dockHost.isConnected) mountDockIntoInput();
+if (isOpen) positionPopover();
 }, true);
 window.addEventListener('popstate', () => window.setTimeout(mountDockIntoInput, 120));
 mountDockIntoInput();

@@ -501,7 +501,7 @@ const userEls = getUserTurnElements();
 const nextItems: Array<{ el: HTMLElement; preview: string }> = [];
 for (let i = 0; i < userEls.length; i++) {
 const el = userEls[i];
-const preview = (el.innerText || el.textContent || '')
+const preview = (el.textContent || '')
 .replace(/\s+/g, ' ')
 .trim()
 .slice(0, 72);
