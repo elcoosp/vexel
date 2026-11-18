@@ -2,7 +2,7 @@
   <img src="https://cdn.jsdelivr.net/gh/elcoosp/vexel@main/docs/logo.png" alt="Vexel Logo" width="300"/>
   <p>
     <strong>A Chrome extension for developers that fixes Google AI Mode's paste truncation and UI lag.</strong><br/>
-    Vexel intercepts clipboard pastes over 8,000 characters and converts them into file attachments before Google AI Mode can truncate them. It also virtualizes off-screen conversation turns so long sessions stay responsive, and a local bridge exposes your <code>~/.agents/skills/</code> playbooks through a <code>Cmd+K</code> palette. Built for multi-turn coding sessions on <code>google.com</code> and <code>google.fr</code>.
+    Vexel intercepts clipboard pastes over 8,000 characters and converts them into file attachments before Google AI Mode can truncate them. It also virtualizes off-screen conversation turns so long sessions stay responsive, and a local bridge exposes your <code>~/.agents/skills/</code> playbooks through a palette. Built for multi-turn coding sessions on <code>google.com</code> and <code>google.fr</code>.
   </p>
   <p>
     <a href="https://github.com/elcoosp/vexel/blob/main/LICENSE"><img src="https://img.shields.io/github/license/elcoosp/vexel?style=flat-square" alt="MIT License"/></a>
@@ -61,7 +61,7 @@ pnpm dev:bridge
 **4. Open Google AI Mode** on `https://google.com` or `https://google.fr`:
 
 - Paste any log or source file over 8,000 characters to watch it convert into an attached `.txt` file.
-- Press `Cmd+K` (`Ctrl+K` on Linux/Windows) to search and inject skills from `~/.agents/skills/`.
+- Press `/` to search and inject skills from `~/.agents/skills/`.
 
 ## Why Vexel exists
 
@@ -70,7 +70,7 @@ Google AI Mode truncates long clipboard pastes and slows down as conversations g
 ## Features
 
 - **Paste-to-attachment**: pastes over 8,000 characters become attached `.txt` files, so no content is truncated.
-- **Local skill bridge**: serves `~/.agents/skills/` playbooks through a `Cmd+K` palette with progressive disclosure, so you can search and inject reusable instructions without leaving the page.
+- **Local skill bridge**: serves `~/.agents/skills/` playbooks through a palette with progressive disclosure, so you can search and inject reusable instructions without leaving the page.
 - **Turn virtualization**: keeps only visible conversation turns in the DOM, so long sessions stay responsive.
 - **Cross-domain**: works on both `google.com` and `google.fr`.
 - **Zero-config skills**: drop a playbook into `~/.agents/skills/` and it appears in the palette.
@@ -86,7 +86,7 @@ Vexel is a pnpm monorepo with two packages:
 flowchart LR
   A[Google AI Mode page] --> B[content.js]
   B --> C[Paste intercept: >8,000 chars → .txt]
-  B --> D[Cmd+K skill palette]
+  B --> D[Slash skill palette]
   B --> E[Turn virtualization]
   D --> F[packages/bridge]
   F --> G[~/.agents/skills]
