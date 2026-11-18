@@ -3,3 +3,12 @@ dist/
 .DS_Store
 *.log
 wr.sh
+docs/assets/.caps/
+
+# Local marketing assets & temporary browser profiles (never commit)
+docs/assets/
+scripts/.chrome-profile/
+scripts/.demo-workspace/
+*.mp4
+*.webm
+*.gif

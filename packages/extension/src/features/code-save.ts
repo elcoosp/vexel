@@ -77,9 +77,14 @@ function detectLanguage(container: HTMLElement, codeEl: HTMLElement, header: HTM
     const g1 = m ? m.slice(1, 2).find(Boolean) : undefined; if (g1) return g1.toLowerCase();
   }
 
-  const headerClone = header.cloneNode(true) as HTMLElement;
-  headerClone.querySelectorAll('button, [data-vexel-ui]').forEach((el) => el.remove());
-  const rawLabel = (headerClone.textContent || '').trim().split(/\s+/).find(Boolean)?.toLowerCase() || '';
+  let rawText = '';
+  for (let n = header.firstChild; n; n = n.nextSibling) {
+    if (n.nodeType === 3) rawText += n.textContent || '';
+    else if (n.nodeType === 1 && !(n as Element).hasAttribute('data-vexel-ui') && (n as Element).tagName !== 'BUTTON') {
+      rawText += n.textContent || '';
+    }
+  }
+  const rawLabel = rawText.trim().split(/\s+/).find(Boolean)?.toLowerCase() || '';
   if (rawLabel && EXT_BY_LANG[rawLabel]) {
     return rawLabel;
   }
@@ -124,12 +129,12 @@ function inferSuggestedPath(
 export function initCodeSave(showToast: (msg: string) => void): void {
   const mountSaveButton = (container: HTMLElement) => {
     if (container.getAttribute('data-vexel-save') === 'true') return;
+    const codeEl = container.querySelector('code');
+    const header =
+      container.querySelector<HTMLElement>('.a2TNg') ||
+      (container.firstElementChild as HTMLElement | null);
+    if (!codeEl || !header) return;
     container.setAttribute('data-vexel-save', 'true');
-      const codeEl = container.querySelector('code');
-      const header =
-        container.querySelector<HTMLElement>('.a2TNg') ||
-        (container.firstElementChild as HTMLElement | null);
-      if (!codeEl || !header) return;
 
       const lang = detectLanguage(container, codeEl, header);
 
@@ -165,7 +170,6 @@ export function initCodeSave(showToast: (msg: string) => void): void {
         lineHeight: '1',
         cursor: 'pointer',
         userSelect: 'none',
-        willChange: 'transform',
         boxShadow: '0 1px 2px rgba(60, 64, 67, 0.05)',
         transition:
           'background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease',
@@ -767,15 +771,26 @@ header.appendChild(triggerBtn);
   };
 
   
-const handleCodeHoverOrFocus = (ev: Event) => {
+let lastCheckedPre: HTMLPreElement | null = null;
+  const handleCodeHoverOrFocus = (ev: Event) => {
     const target = ev.target as HTMLElement | null;
-    if (!target) return;
+    if (!target || target.nodeType !== 1) return;
+    if (lastCheckedPre && lastCheckedPre.contains(target)) return;
     const pre = target.closest('pre');
     if (!pre) return;
+    lastCheckedPre = pre;
+    if (pre.dataset.vexelSaveBound === '1') return;
     const container = pre.closest<HTMLElement>('[data-hveid]') || pre.parentElement;
-    if (container && !container.hasAttribute('data-vexel-save')) {
-      mountSaveButton(container);
+    if (!container || container.hasAttribute('data-vexel-save')) {
+      pre.dataset.vexelSaveBound = '1';
+      return;
     }
+    window.requestAnimationFrame(() => {
+      mountSaveButton(container);
+      if (container.hasAttribute('data-vexel-save')) {
+        pre.dataset.vexelSaveBound = '1';
+      }
+    });
   };
 
   document.addEventListener('pointerover', handleCodeHoverOrFocus, { capture: true, passive: true });
