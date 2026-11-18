@@ -275,6 +275,7 @@ const plateObserver = new ResizeObserver(() => {
 if (isOpen) positionPopover();
 });
 function mountDockIntoInput(): void {
+if (dockHost.isConnected && dockHost.parentElement?.classList.contains('o8Wipc')) return;
 const input = activeInput && document.contains(activeInput) ? activeInput : findVisibleInput();
 if (!input) return;
 activeInput = input;
@@ -319,8 +320,9 @@ const plate = findInputPlate(input);
 const rect = plate.getBoundingClientRect();
 if (rect.width === 0 || rect.height === 0) return;
 const targetWidth = Math.max(360, Math.min(680, Math.round(rect.width)));
-popover.style.width = targetWidth + 'px';
+const widthStr = targetWidth + 'px';
 const popHeight = popover.offsetHeight || 360;
+if (popover.style.width !== widthStr) popover.style.width = widthStr;
 const topAbove = rect.top - popHeight - 10;
 const finalTop =
 topAbove >= 12 ? topAbove : Math.min(window.innerHeight - popHeight - 12, rect.bottom + 10);
@@ -1256,9 +1258,14 @@ if (!path.includes(popover) && !path.includes(dockHost) && !resolveEditable(e.ta
 closeMenu();
 }
 });
+let paletteResizeRaf = 0;
 window.addEventListener('resize', () => {
+if (paletteResizeRaf) return;
+paletteResizeRaf = window.requestAnimationFrame(() => {
+paletteResizeRaf = 0;
 mountDockIntoInput();
-positionPopover();
+if (isOpen) positionPopover();
+});
 }, { passive: true });
 document.addEventListener('scroll', positionPopover, { capture: true, passive: true });
 document.addEventListener('focusin', () => {

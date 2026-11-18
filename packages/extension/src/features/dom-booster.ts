@@ -38,7 +38,9 @@ export function scrollToLastUserPrompt(smooth = false): boolean {
 export function initDomBooster(): void {
   injectInstantVirtualizationCSS()
 
-  // Native Blink event: records exact rendered height as turns enter viewport (zero MutationObserver)
+  // Native Blink event: batch height reads then style writes in one rAF to prevent resize layout thrashing
+  const pendingTurns = new Set<HTMLElement>()
+  let measureScheduled = false
   document.addEventListener(
     'contentvisibilityautostatechange',
     (ev: Event) => {
@@ -46,9 +48,22 @@ export function initDomBooster(): void {
       if (!target || target.getAttribute('data-scope-id') !== 'turn') return
       const skipped = (ev as Event & { skipped?: boolean }).skipped
       if (!skipped) {
-        const h = target.offsetHeight
-        if (h > 40) {
-          target.style.containIntrinsicSize = `auto ${h}px`
+        pendingTurns.add(target)
+        if (!measureScheduled) {
+          measureScheduled = true
+          window.requestAnimationFrame(() => {
+            measureScheduled = false
+            const updates: Array<[HTMLElement, number]> = []
+            for (const el of pendingTurns) {
+              if (!el.isConnected) continue
+              const h = el.offsetHeight
+              if (h > 40) updates.push([el, h])
+            }
+            pendingTurns.clear()
+            for (const [el, h] of updates) {
+              el.style.containIntrinsicSize = `auto ${h}px`
+            }
+          })
         }
       }
     },

@@ -453,15 +453,18 @@ railScroll.scrollTo({ top: desiredTop, behavior: instant ? 'auto' : 'smooth' });
 const updateCurrentTurn = (instant = false) => {
 if (turnEntries.length === 0) return;
 const mid = window.innerHeight * 0.42;
-let bestIdx = 0;
-let bestDist = Infinity;
-for (let i = 0; i < turnEntries.length; i++) {
-const rect = turnEntries[i].target.getBoundingClientRect();
-const dist = Math.abs(rect.top - mid);
-if (dist < bestDist) {
-bestDist = dist;
-bestIdx = i;
+let lo = 0;
+let hi = turnEntries.length - 1;
+while (lo < hi) {
+const m = (lo + hi) >> 1;
+if (turnEntries[m].target.getBoundingClientRect().top < mid) lo = m + 1;
+else hi = m;
 }
+let bestIdx = lo;
+if (lo > 0) {
+const dPrev = Math.abs(turnEntries[lo - 1].target.getBoundingClientRect().top - mid);
+const dCurr = Math.abs(turnEntries[lo].target.getBoundingClientRect().top - mid);
+if (dPrev < dCurr) bestIdx = lo - 1;
 }
 if (bestIdx !== currentIdx || instant) {
 currentIdx = bestIdx;
@@ -562,13 +565,18 @@ scrollTicking = false;
 },
 { passive: true }
 );
+let railResizeRaf = 0;
 window.addEventListener(
 'resize',
 () => {
+if (railResizeRaf) return;
+railResizeRaf = window.requestAnimationFrame(() => {
+railResizeRaf = 0;
 const isOverflow = railScroll.scrollHeight > railScroll.clientHeight;
 rail.classList.toggle('overflowing', isOverflow);
 railScroll.classList.toggle('overflowing', isOverflow);
 syncThumb();
+});
 },
 { passive: true }
 );
