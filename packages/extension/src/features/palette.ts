@@ -316,7 +316,7 @@ function findSemanticDockTarget(plate: HTMLElement, input: HTMLElement): {
     return r.width >= 12 && r.height >= 12;
   }) as HTMLElement[];
 
-  // 1. Mode IA actif : boîte à 2 niveaux ("Posez une question" en haut, barre "+" / micro en bas)
+  // 1. Mode IA actif : barre d'outils inférieure ("footer" dans la grille de la boîte de saisie)
   const bottomControls = controls.filter((el) => {
     const r = el.getBoundingClientRect();
     return (
@@ -327,19 +327,35 @@ function findSemanticDockTarget(plate: HTMLElement, input: HTMLElement): {
 
   if (bottomControls.length > 0) {
     bottomControls.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
-    const leftMostBtn = bottomControls.find(() => true)!;
-    let row: HTMLElement | null = leftMostBtn.parentElement;
+    const plusBtn = bottomControls.find(() => true)!;
+
+    // Chercher le conteneur flex enfant direct d'un conteneur CSS Grid (ex: footer de .esoFne, z-index: 1)
+    let row: HTMLElement | null = plusBtn.parentElement;
+    let firstFlexRow: HTMLElement | null = null;
     while (row && row !== plate) {
       const cs = window.getComputedStyle(row);
-      if (cs.display.includes('flex') && row.getBoundingClientRect().width >= 120) {
-        const btnBranch = Array.from(row.children).find((ch) => ch !== dockHost && ch.contains(leftMostBtn));
-        return {
-          container: row,
-          before: btnBranch ? btnBranch.nextSibling : null,
-          inlineSearch: false,
-        };
+      const parentCs = row.parentElement ? window.getComputedStyle(row.parentElement) : null;
+      if (cs.display.includes('flex')) {
+        if (!firstFlexRow) firstFlexRow = row;
+        if (parentCs && parentCs.display.includes('grid')) {
+          const btnBranch = Array.from(row.children).find((ch) => ch !== dockHost && ch.contains(plusBtn));
+          return {
+            container: row,
+            before: btnBranch ? btnBranch.nextSibling : null,
+            inlineSearch: false,
+          };
+        }
       }
       row = row.parentElement;
+    }
+
+    if (firstFlexRow) {
+      const btnBranch = Array.from(firstFlexRow.children).find((ch) => ch !== dockHost && ch.contains(plusBtn));
+      return {
+        container: firstFlexRow,
+        before: btnBranch ? btnBranch.nextSibling : null,
+        inlineSearch: false,
+      };
     }
   }
 
@@ -371,10 +387,7 @@ function findSemanticDockTarget(plate: HTMLElement, input: HTMLElement): {
 }
 
 function mountDockIntoInput(): void {
-  const input =
-    isTrulyVisibleInput(activeInput)
-      ? activeInput
-      : findVisibleInput();
+  const input = isTrulyVisibleInput(activeInput) ? activeInput : findVisibleInput();
   if (!input) return;
   activeInput = input;
   const plate = findInputPlate(input);
