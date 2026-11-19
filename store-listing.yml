@@ -1,135 +1,209 @@
-# Schéma de métadonnées Chrome Web Store pour Vexel
-# Compatible avec l auto-remplissage sur https://google.com
-
-schemaVersion: "1.0.0"
-targetConsoleUrl: "https://google.com"
-
+schemaVersion: 1.0.0
+targetConsoleUrl: https://google.com
 manifestSync:
-  manifestPath: "packages/extension/public/manifest.json"
-  name: "Vexel"
-  shortDescription: "Command Palette locale (~/.agents/skills), anti-troncation et acceleration DOM."
-  version: "0.2.2"
-
+  manifestPath: packages/extension/public/manifest.json
+  name: Vexel
+  shortDescription: Command Palette locale (~/.agents/skills), anti-troncation et
+    acceleration DOM.
+  version: 0.2.2
 storeListing:
-  category: "Developer Tools"
-  defaultLocale: "en"
-  supportUrl: "https://github.com"
-  homepageUrl: "https://github.com"
-
+  category: Developer Tools
+  defaultLocale: en
+  supportUrl: https://github.com
+  homepageUrl: https://github.com
   locales:
     en:
-      title: "Vexel"
-      summary: "Command Palette locale (~/.agents/skills), anti-troncation et acceleration DOM."
-      detailedDescription: |
-        Vexel upgrades Google AI Mode into a fast, keyboard-first engineering workspace connected directly to your codebase — with zero cloud relays and zero telemetry.
+      title: Vexel
+      summary: Command Palette locale (~/.agents/skills), anti-troncation et
+        acceleration DOM.
+      detailedDescription: >
+        Vexel upgrades Google AI Mode into a fast, keyboard-first engineering
+        workspace connected directly to your codebase — with zero cloud relays
+        and zero telemetry.
+
 
         KEY FEATURES
+
         ────────────────────────────────────────
+
 
         1. SLASH COMMANDS & ENGINEERING SKILLS (/)
-        • Type "/" in the Google AI Mode prompt box to trigger reusable engineering prompts and custom SKILL.md workflows (code review, architecture audit, test generation, refactoring).
-        • Supports instant keyboard navigation and one-click installation from skills.sh.
+
+        • Type "/" in the Google AI Mode prompt box to trigger reusable
+        engineering prompts and custom SKILL.md workflows (code review,
+        architecture audit, test generation, refactoring).
+
+        • Supports instant keyboard navigation and one-click installation from
+        skills.sh.
+
 
         2. REPOSITORY CONTEXT (@) — ZERO-SERVER OR LOCAL BRIDGE
-        • Type "@" to browse your project files or pack an entire directory into clean context without leaving Google AI Mode.
-        • Zero-Server Mode: Uses Chrome native File System Access API directly on your device — no terminal or background process required.
-        • Optional Bridge (@vexel/bridge): Connects over localhost (127.0.0.1) for instant git diff injection and workspace synchronization.
+
+        • Type "@" to browse your project files or pack an entire directory into
+        clean context without leaving Google AI Mode.
+
+        • Zero-Server Mode: Uses Chrome native File System Access API directly
+        on your device — no terminal or background process required.
+
+        • Optional Bridge (@vexel/bridge): Connects over localhost (127.0.0.1)
+        for instant git diff injection and workspace synchronization.
+
 
         3. ONE-CLICK "SAVE TO FILE" ON CODE BLOCKS
+
         • Hover any generated code block to reveal a "Save to file" trigger.
-        • Automatically infers the target file path from language tags or header comments, offers folder autocomplete, and writes directly to disk.
+
+        • Automatically infers the target file path from language tags or header
+        comments, offers folder autocomplete, and writes directly to disk.
+
 
         4. AUTO-CONVERT LONG PASTES TO CLEAN ATTACHMENTS
-        • Pasting large logs, stack traces, or multi-file snippets automatically converts them into neat file attachments instead of overflowing the prompt box.
+
+        • Pasting large logs, stack traces, or multi-file snippets automatically
+        converts them into neat file attachments instead of overflowing the
+        prompt box.
+
 
         5. HIGH-SPEED THREAD VIRTUALIZATION & TIMELINE RAIL
-        • Keeps long, multi-turn Google AI Mode sessions responsive using native CSS content-visibility virtualization.
-        • Includes a floating timeline rail, one-click Clean Thread Copy, and full Markdown export.
+
+        • Keeps long, multi-turn Google AI Mode sessions responsive using native
+        CSS content-visibility virtualization.
+
+        • Includes a floating timeline rail, one-click Clean Thread Copy, and
+        full Markdown export.
+
 
         PRIVACY BY DESIGN
-        ────────────────────────────────────────
-        ✓ Zero analytics, zero tracking, zero external servers.
-        ✓ All preferences and directory handles stay strictly on your machine.
-        ✓ Optional bridge communication is bound exclusively to 127.0.0.1 with token authentication.
 
+        ────────────────────────────────────────
+
+        ✓ Zero analytics, zero tracking, zero external servers.
+
+        ✓ All preferences and directory handles stay strictly on your machine.
+
+        ✓ Optional bridge communication is bound exclusively to 127.0.0.1 with
+        token authentication.
     fr:
-      title: "Vexel — Workspace local pour Google AI Mode"
-      summary: "Transformez Google AI Mode en workspace local : commandes /, fichiers @, sauvegarde directe de code et virtualisation rapide."
-      detailedDescription: |
-        Vexel transforme Google AI Mode en un environnement d ingénierie rapide, pilotable au clavier et connecté directement à votre dépôt — sans serveur relais ni télémétrie.
+      title: Vexel — Workspace local pour Google AI Mode
+      summary: "Transformez Google AI Mode en workspace local : commandes /, fichiers
+        @, sauvegarde directe de code et virtualisation rapide."
+      detailedDescription: >
+        Vexel transforme Google AI Mode en un environnement d ingénierie rapide,
+        pilotable au clavier et connecté directement à votre dépôt — sans
+        serveur relais ni télémétrie.
+
 
         FONCTIONNALITÉS CLÉS
+
         ────────────────────────────────────────
+
 
         1. COMMANDES SLASH & SKILLS D INGÉNIERIE (/)
-        • Tapez "/" dans la zone de saisie Google AI Mode pour déclencher des prompts réutilisables et des workflows SKILL.md (revue de code, audit d architecture, tests, refactoring).
-        • Navigation clavier instantanée et installation en un clic depuis skills.sh.
+
+        • Tapez "/" dans la zone de saisie Google AI Mode pour déclencher des
+        prompts réutilisables et des workflows SKILL.md (revue de code, audit d
+        architecture, tests, refactoring).
+
+        • Navigation clavier instantanée et installation en un clic depuis
+        skills.sh.
+
 
         2. CONTEXTE DE DÉPÔT (@) — ZÉRO-SERVEUR OU BRIDGE LOCAL
-        • Tapez "@" pour parcourir les fichiers de votre projet ou packer un dossier complet sans quitter Google AI Mode.
-        • Mode Zéro-Serveur : Utilise l API native File System Access de Chrome directement sur votre machine — aucun terminal requis.
-        • Bridge optionnel (@vexel/bridge) : Se connecte sur localhost (127.0.0.1) pour injecter vos git diff et synchroniser votre espace de travail.
+
+        • Tapez "@" pour parcourir les fichiers de votre projet ou packer un
+        dossier complet sans quitter Google AI Mode.
+
+        • Mode Zéro-Serveur : Utilise l API native File System Access de Chrome
+        directement sur votre machine — aucun terminal requis.
+
+        • Bridge optionnel (@vexel/bridge) : Se connecte sur localhost
+        (127.0.0.1) pour injecter vos git diff et synchroniser votre espace de
+        travail.
+
 
         3. SAUVEGARDE DIRECTE "SAVE TO FILE" SUR LES BLOCS DE CODE
-        • Survolez n importe quel bloc de code généré pour afficher le bouton "Save to file".
-        • Détecte automatiquement le chemin cible depuis le langage ou les commentaires d en-tête, avec autocomplétion des dossiers.
+
+        • Survolez n importe quel bloc de code généré pour afficher le bouton
+        "Save to file".
+
+        • Détecte automatiquement le chemin cible depuis le langage ou les
+        commentaires d en-tête, avec autocomplétion des dossiers.
+
 
         4. CONVERSION AUTOMATIQUE DES LONGS COLLAGES EN PIÈCES JOINTES
-        • Coller de longs logs, stack traces ou extraits multi-fichiers les convertit automatiquement en pièces jointes propres.
+
+        • Coller de longs logs, stack traces ou extraits multi-fichiers les
+        convertit automatiquement en pièces jointes propres.
+
 
         5. VIRTUALISATION HAUTE VITESSE & RAIL DE NAVIGATION
-        • Maintient la fluidité des longues conversations grâce à la virtualisation CSS native content-visibility.
-        • Inclut une barre de navigation flottante, la copie propre du fil et l export Markdown complet.
+
+        • Maintient la fluidité des longues conversations grâce à la
+        virtualisation CSS native content-visibility.
+
+        • Inclut une barre de navigation flottante, la copie propre du fil et l
+        export Markdown complet.
+
 
         CONFIDENTIALITÉ PAR CONCEPTION
+
         ────────────────────────────────────────
+
         ✓ Zéro analytique, zéro suivi, zéro serveur externe.
-        ✓ Toutes vos préférences et accès dossiers restent strictement sur votre appareil.
-        ✓ Le bridge est limité exclusivement à 127.0.0.1 avec authentification par jeton.
 
+        ✓ Toutes vos préférences et accès dossiers restent strictement sur votre
+        appareil.
+
+        ✓ Le bridge est limité exclusivement à 127.0.0.1 avec authentification
+        par jeton.
 assets:
-  packageZip: "release/vexel-extension-store.zip"
-  icon128: "packages/extension/public/icons/icon-128.png"
+  packageZip: release/vexel-extension-store.zip
+  icon128: packages/extension/public/icons/icon-128.png
   screenshots:
-    - path: "docs/assets/01-onboarding-hero.png"
-      caption: "Interactive onboarding and instant setup inside Google AI Mode"
-    - path: "docs/assets/04-slash-skills-palette.png"
-      caption: "Type / to trigger engineering skills and reusable SKILL.md workflows"
-    - path: "docs/assets/06-at-files-workspace.png"
-      caption: "Type @ to browse local project files or pack folders with zero server"
-    - path: "docs/assets/07-code-save-popover.png"
-      caption: "Hover any code block to save directly to disk with inferred paths"
-    - path: "docs/assets/08-long-thread-fast.png"
-      caption: "High-speed CSS content-visibility virtualization and floating timeline rail"
-
+    - path: docs/assets/store-01-slash-skills.png
+      caption: Turn Google AI Mode into a local coding workspace with / engineering
+        skills
+    - path: docs/assets/store-02-at-repo-context.png
+      caption: Type @ to browse local project files or pack folders with zero server
+    - path: docs/assets/store-03-save-to-file.png
+      caption: Hover any code block to save directly to disk with inferred paths
+    - path: docs/assets/store-04-paste-attachments.png
+      caption: Auto-convert large logs and stack traces into clean file attachments
+    - path: docs/assets/store-05-fast-virtualization.png
+      caption: High-speed CSS content-visibility virtualization and floating timeline
+        rail
+  smallPromoTile: docs/assets/store-promo-small-440x280.png
+  marqueePromoTile: docs/assets/store-promo-marquee-1400x560.png
 privacyPractices:
   singlePurpose: >
-    Enhances Google AI Mode with local file context injection (@),
-    reusable slash prompt skills (/), direct code-block saving to local files,
-    and conversation navigation tools.
+    Enhances Google AI Mode with local file context injection (@), reusable
+    slash prompt skills (/), direct code-block saving to local files, and
+    conversation navigation tools.
   permissionJustifications:
     storage: >
       Stores user onboarding completion status and local workspace preferences
       strictly on the user device via chrome.storage.local.
-    "https://google.com*": >
-      Injects the Vexel command palette, code-block save triggers, thread timeline rail,
-      and CSS virtualization enhancements on Google AI Mode pages.
-    "http://127.0.0*": >
-      Communicates exclusively with the user optional local @vexel/bridge CLI process
-      on the loopback interface to read project files, git diffs, and write saved code blocks.
+    https://google.com*: >
+      Injects the Vexel command palette, code-block save triggers, thread
+      timeline rail, and CSS virtualization enhancements on Google AI Mode
+      pages.
+    http://127.0.0*: >
+      Communicates exclusively with the user optional local @vexel/bridge CLI
+      process on the loopback interface to read project files, git diffs, and
+      write saved code blocks.
   collectsUserData: false
-  privacyPolicyUrl: "https://github.com/blob/main/PRIVACY.md"
+  privacyPolicyUrl: https://github.com/blob/main/PRIVACY.md
   certifications:
     noThirdPartyTransfers: true
     noUnrelatedUse: true
     noCreditworthinessUse: true
-
 distribution:
-  visibility: "public"
-  regions: "all"
-
+  visibility: public
+  regions: all
 releaseNotes:
-  "0.2.2": >
-    Release 0.2.2: / slash command palette with SKILL.md support, @ local file & folder packer
-    (Zero-Server File System Access API + optional localhost bridge), 1-click Save to file on code blocks,
-    large-paste auto-attachment, timeline rail, Markdown export, and content-visibility thread virtualization.
+  0.2.2: >
+    Release 0.2.2: / slash command palette with SKILL.md support, @ local file &
+    folder packer (Zero-Server File System Access API + optional localhost
+    bridge), 1-click Save to file on code blocks, large-paste auto-attachment,
+    timeline rail, Markdown export, and content-visibility thread
+    virtualization.
