@@ -293,11 +293,31 @@ if (dockHost.parentElement !== toolbarRow) {
 dockHost.style.position = '';
 dockHost.style.top = '';
 dockHost.style.left = '';
+dockHost.style.alignSelf = '';
+dockHost.style.marginRight = '';
 const chipsContainer = toolbarRow.querySelector('.rJkohe');
 if (chipsContainer) {
 toolbarRow.insertBefore(dockHost, chipsContainer);
 } else {
 toolbarRow.appendChild(dockHost);
+}
+animate(dockBtn, { opacity: 1, scale: 1 }, { type: 'spring', stiffness: 460, damping: 32 });
+}
+return;
+}
+const searchRow = plate.querySelector('.SDkEP') || (plate.classList.contains('SDkEP') ? plate : null);
+if (searchRow) {
+if (dockHost.parentElement !== searchRow) {
+dockHost.style.position = '';
+dockHost.style.top = '';
+dockHost.style.left = '';
+dockHost.style.alignSelf = 'center';
+dockHost.style.marginRight = '4px';
+const rightTools = searchRow.querySelector('.dRYYxd');
+if (rightTools) {
+searchRow.insertBefore(dockHost, rightTools);
+} else {
+searchRow.appendChild(dockHost);
 }
 animate(dockBtn, { opacity: 1, scale: 1 }, { type: 'spring', stiffness: 460, damping: 32 });
 }
