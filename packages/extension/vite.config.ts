@@ -1,7 +1,9 @@
 import { defineConfig } from 'vite'
 import { resolve } from 'path'
+import { lingui } from '@lingui/vite-plugin'
 
 export default defineConfig({
+  plugins: [lingui({ macroTransform: true })],
   build: {
     outDir: 'dist',
     emptyOutDir: true,
