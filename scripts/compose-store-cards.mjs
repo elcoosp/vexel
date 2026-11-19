@@ -28,7 +28,7 @@ const SLIDES = [
     subtitle: 'Summon reusable engineering skills and custom SKILL.md workflows in one keystroke.',
     accent: '#60A5FA',
     sources: ['04-slash-skills-palette@2x.png', '04-slash-skills-palette.png'],
-    alignBottom: false,
+    cropTopPct: 0,
   },
   {
     outName: 'store-02-at-repo-context.png',
@@ -37,7 +37,7 @@ const SLIDES = [
     subtitle: 'Connect any local repository via Chrome File System Access API or optional localhost bridge.',
     accent: '#34D399',
     sources: ['06-at-files-workspace@2x.png', '06-at-files-workspace.png'],
-    alignBottom: false,
+    cropTopPct: 0,
   },
   {
     outName: 'store-03-save-to-file.png',
@@ -46,7 +46,7 @@ const SLIDES = [
     subtitle: 'Auto-infers target file paths from comments & language tags with folder autocomplete.',
     accent: '#A78BFA',
     sources: ['07-code-save-popover@2x.png', '07-code-save-popover.png'],
-    alignBottom: false,
+    cropTopPct: 28,
   },
   {
     outName: 'store-04-paste-attachments.png',
@@ -55,22 +55,24 @@ const SLIDES = [
     subtitle: 'Paste multi-thousand-line stack traces without overflowing the prompt box.',
     accent: '#FBBF24',
     sources: ['03-paste-to-file.png'],
-    alignBottom: true,
+    cropTopPct: 0,
   },
   {
     outName: 'store-05-fast-virtualization.png',
-    badge: 'ZERO-LAG ENGINE',
-    title: 'Instant Long Threads & Floating Timeline Rail',
-    subtitle: 'Native CSS content-visibility virtualization keeps 50+ turn sessions silky smooth.',
+    badge: 'KEYBOARD-FIRST WORKFLOW',
+    title: 'Instant Shortcuts, Timeline Rail & Markdown Export',
+    subtitle: 'Navigate long sessions at zero lag with CSS content-visibility virtualization.',
     accent: '#38BDF8',
-    sources: ['08-long-thread-fast.png'],
-    alignBottom: true,
+    sources: ['01b-onboarding-shortcuts.png', '08-long-thread-fast.png'],
+    cropTopPct: 0,
   },
 ];
 
 function renderCardHtml(slide, imgUri) {
   const displayUrl = ['https', '://', 'www.', 'google.', 'com/search?udm=50'].join('');
-  const alignMode = slide.alignBottom ? 'flex-end' : 'flex-start';
+  const imgStyle = slide.cropTopPct
+    ? 'width: 100%; height: ' + (100 + slide.cropTopPct) + '%; margin-top: -' + (slide.cropTopPct * 0.62) + '%; object-fit: cover; object-position: top;'
+    : 'width: 100%; height: 100%; object-fit: contain;';
 
   return [
     '<!doctype html><html><head><meta charset="utf-8"><style>',
@@ -82,48 +84,48 @@ function renderCardHtml(slide, imgUri) {
     '              linear-gradient(160deg, #090E1A 0%, #0F172A 55%, #111827 100%);',
     '  color: #F8FAFC;',
     '  display: flex; flex-direction: column; align-items: center;',
-    '  padding: 34px 56px 0;',
+    '  padding: 18px 40px 0;',
     '}',
-    '.header { text-align: center; max-width: 1040px; margin-bottom: 24px; }',
+    '.header { text-align: center; max-width: 1060px; margin-bottom: 12px; }',
     '.pill {',
-    '  display: inline-flex; align-items: center; gap: 8px;',
-    '  padding: 5px 14px; border-radius: 999px;',
-    '  font-size: 12px; font-weight: 700; letter-spacing: 0.08em;',
+    '  display: inline-flex; align-items: center; gap: 7px;',
+    '  padding: 4px 12px; border-radius: 999px;',
+    '  font-size: 11px; font-weight: 700; letter-spacing: 0.08em;',
     '  background: rgba(255,255,255,0.07);',
     '  border: 1px solid rgba(255,255,255,0.14);',
     '  color: ' + slide.accent + ';',
-    '  margin-bottom: 12px;',
+    '  margin-bottom: 7px;',
     '}',
-    '.dot { width: 7px; height: 7px; border-radius: 50%; background: ' + slide.accent + '; }',
+    '.dot { width: 6px; height: 6px; border-radius: 50%; background: ' + slide.accent + '; }',
     'h1 {',
-    '  font-size: 36px; font-weight: 800; letter-spacing: -0.025em; line-height: 1.15;',
-    '  color: #FFFFFF; margin-bottom: 8px;',
+    '  font-size: 30px; font-weight: 800; letter-spacing: -0.025em; line-height: 1.12;',
+    '  color: #FFFFFF; margin-bottom: 5px;',
     '}',
     '.sub {',
-    '  font-size: 17px; font-weight: 450; color: #94A3B8; line-height: 1.4;',
+    '  font-size: 15px; font-weight: 450; color: #94A3B8; line-height: 1.3;',
     '}',
     '.window {',
-    '  width: 1168px; flex: 1;',
+    '  width: 1059px; flex: 1;',
     '  background: #FFFFFF;',
-    '  border-radius: 16px 16px 0 0;',
+    '  border-radius: 14px 14px 0 0;',
     '  border: 1px solid rgba(255,255,255,0.18);',
     '  border-bottom: none;',
     '  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(15, 23, 42, 0.5);',
     '  overflow: hidden; display: flex; flex-direction: column;',
     '}',
     '.chrome-bar {',
-    '  height: 36px; background: #F1F5F9; border-bottom: 1px solid #E2E8F0;',
-    '  display: flex; align-items: center; padding: 0 16px; gap: 8px; flex-shrink: 0;',
+    '  height: 28px; background: #F1F5F9; border-bottom: 1px solid #E2E8F0;',
+    '  display: flex; align-items: center; padding: 0 14px; gap: 7px; flex-shrink: 0;',
     '}',
-    '.tl { width: 11px; height: 11px; border-radius: 50%; }',
+    '.tl { width: 10px; height: 10px; border-radius: 50%; }',
     '.tl-r { background: #FF5F56; } .tl-y { background: #FFBD2E; } .tl-g { background: #27C93F; }',
     '.url-pill {',
-    '  margin: 0 auto; padding: 3px 18px; border-radius: 999px;',
+    '  margin: 0 auto; padding: 2px 16px; border-radius: 999px;',
     '  background: #FFFFFF; border: 1px solid #E2E8F0;',
-    '  font-size: 11.5px; font-weight: 500; color: #475569;',
+    '  font-size: 11px; font-weight: 500; color: #475569;',
     '}',
-    '.shot-wrap { flex: 1; overflow: hidden; background: #FFFFFF; display: flex; align-items: ' + alignMode + '; }',
-    '.shot-wrap img { width: 100%; height: auto; display: block; }',
+    '.shot-wrap { width: 1059px; height: 662px; overflow: hidden; background: #FFFFFF; }',
+    '.shot-wrap img { ' + imgStyle + ' display: block; }',
     '</style></head><body>',
     '<div class="header">',
     '  <div class="pill"><span class="dot"></span><span>' + slide.badge + '</span></div>',
@@ -212,13 +214,11 @@ try {
   await smallPage.setContent(renderPromoTileHtml(440, 280, iconUri, true), { waitUntil: 'load' });
   await smallPage.screenshot({ path: path.join(ASSETS_DIR, 'store-promo-small-440x280.png') });
   await smallPage.close();
-  console.log('✓ Generated 440x280 Small Promo Tile: store-promo-small-440x280.png');
 
 const marqueePage = await browser.newPage({ viewport: { width: 1400, height: 560 }, deviceScaleFactor: 1 });
 await marqueePage.setContent(renderPromoTileHtml(1400, 560, iconUri, false), { waitUntil: 'load' });
 await marqueePage.screenshot({ path: path.join(ASSETS_DIR, 'store-promo-marquee-1400x560.png') });
 await marqueePage.close();
-console.log('✓ Generated 1400x560 Marquee Promo Tile: store-promo-marquee-1400x560.png');
 } finally {
 await browser.close();
 }
