@@ -16,35 +16,24 @@ function getUserTurnElements(): HTMLElement[] {
   const results: HTMLElement[] = [];
 
   const turnBlocks = document.querySelectorAll<HTMLElement>(
-    '[data-scope-id="turn"], [jsname="CS7uPe"], [data-turn-id]'
+    '.CKgc1d[data-scope-id="turn"], [jsname="CS7uPe"], [data-turn-id]'
   );
 
   for (let i = 0; i < turnBlocks.length; i++) {
     const block = turnBlocks[i];
     const userEl =
-      block.querySelector<HTMLElement>('[jsname="eFVkfb"], [data-user-query]') ||
-      (Array.from(block.children).find(
-        (ch) => !ch.matches('[data-subtree="aimc"], style, script') && (ch.textContent || '').trim().length > 0
-      ) as HTMLElement | undefined) ||
-      null;
+      block.querySelector<HTMLElement>(
+        '[jsname="eFVkfb"], .VndcI.veK2kb, .tbIZh.Odbbif, [data-user-query], .ryAKYc'
+      ) || null;
     if (userEl && !seen.has(userEl)) {
       seen.add(userEl);
       results.push(userEl);
     }
   }
 
-  if (results.length === 0) {
-    const aiBlocks = document.querySelectorAll<HTMLElement>('[data-subtree="aimc"]');
-    for (let i = 0; i < aiBlocks.length; i++) {
-      const prev = aiBlocks[i].previousElementSibling as HTMLElement | null;
-      if (prev && (prev.textContent || '').trim().length > 0 && !seen.has(prev)) {
-        seen.add(prev);
-        results.push(prev);
-      }
-    }
-  }
-
-  const standalone = document.querySelectorAll<HTMLElement>('[jsname="eFVkfb"], [data-user-query]');
+  const standalone = document.querySelectorAll<HTMLElement>(
+    '[jsname="eFVkfb"], .VndcI.veK2kb, .tbIZh.Odbbif, [data-user-query]'
+  );
   for (let i = 0; i < standalone.length; i++) {
     const el = standalone[i];
     if (seen.has(el)) continue;
@@ -67,7 +56,7 @@ function getUserTurnElements(): HTMLElement[] {
 function extractTurns(): ThreadTurn[] {
   const turns: ThreadTurn[] = [];
   const turnBlocks = Array.from(
-    document.querySelectorAll<HTMLElement>('[data-scope-id="turn"], [jsname="CS7uPe"]')
+    document.querySelectorAll<HTMLElement>('.CKgc1d[data-scope-id="turn"], [jsname="CS7uPe"]')
   );
 
   if (turnBlocks.length > 0) {
@@ -495,7 +484,7 @@ wrap.className = 'tick-wrap';
 const dot = document.createElement('div');
 dot.className = 'tick';
 wrap.appendChild(dot);
-const turnRoot = (el.closest('[data-scope-id="turn"], [jsname="CS7uPe"], [data-turn-id]') || el) as HTMLElement;
+const turnRoot = (el.closest('.CKgc1d') || el) as HTMLElement;
 turnEntries.push({ wrap, target: turnRoot });
 const badgeLabel = '#' + (idx + 1);
 wrap.addEventListener('pointerenter', () => {
@@ -512,7 +501,6 @@ turnRoot.scrollIntoView({ behavior: 'smooth', block: 'start' });
 railInner.appendChild(wrap);
 };
 const refreshToc = () => {
-if (!host.isConnected && document.body) document.body.appendChild(host);
 const userEls = getUserTurnElements();
 const nextItems: Array<{ el: HTMLElement; preview: string }> = [];
 for (let i = 0; i < userEls.length; i++) {
@@ -631,15 +619,7 @@ true
 );
 window.addEventListener('popstate', () => scheduleToc(200));
 window.addEventListener('load', () => scheduleToc(200), { once: true });
-  document.addEventListener('aimRenderComplete', () => scheduleToc(80), true);
-  const nav = (window as unknown as { navigation?: EventTarget }).navigation;
-  if (nav) {
-    nav.addEventListener('navigatesuccess', () => {
-      scheduleToc(300);
-      scheduleToc(1200);
-    });
-  }
   window.setTimeout(() => refreshToc(), 800);
   window.setTimeout(() => refreshToc(), 2200);
-  scheduleToc(100);
+scheduleToc(100);
 }
