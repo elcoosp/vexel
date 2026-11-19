@@ -230,6 +230,7 @@ try {
   });
 
   const page = await context.newPage();
+  await context.addInitScript(() => { try { localStorage.setItem('vexel:locale', 'en'); localStorage.setItem('vexel:popup-locale', 'en'); } catch {} });
   await page.setViewportSize({ width: 1280, height: 800 });
 
   await page.goto('https://google.com?udm=50&q=stripe-webhook-hardening', { waitUntil: 'domcontentloaded' });

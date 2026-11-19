@@ -27,8 +27,8 @@ const SLIDES = [
     title: 'Turn Google AI Mode into a Local Coding Workspace',
     subtitle: 'Summon reusable engineering skills and custom SKILL.md workflows in one keystroke.',
     accent: '#60A5FA',
-    sources: ['04-slash-skills-palette@2x.png', '04-slash-skills-palette.png'],
-    cropTopPct: 0,
+    sources: ['04-slash-skills-palette.png', '04-slash-skills-palette@2x.png'],
+    cropTopPct: 14,
   },
   {
     outName: 'store-02-at-repo-context.png',
@@ -36,8 +36,8 @@ const SLIDES = [
     title: 'Browse Files & Pack Folders with Zero Server',
     subtitle: 'Connect any local repository via Chrome File System Access API or optional localhost bridge.',
     accent: '#34D399',
-    sources: ['06-at-files-workspace@2x.png', '06-at-files-workspace.png'],
-    cropTopPct: 0,
+    sources: ['06-at-files-workspace.png', '06-at-files-workspace@2x.png'],
+    cropTopPct: 14,
   },
   {
     outName: 'store-03-save-to-file.png',
@@ -71,8 +71,8 @@ const SLIDES = [
 function renderCardHtml(slide, imgUri) {
   const displayUrl = ['https', '://', 'www.', 'google.', 'com/search?udm=50'].join('');
   const imgStyle = slide.cropTopPct
-    ? 'width: 100%; height: ' + (100 + slide.cropTopPct) + '%; margin-top: -' + (slide.cropTopPct * 0.62) + '%; object-fit: cover; object-position: top;'
-    : 'width: 100%; height: 100%; object-fit: contain;';
+    ? 'width: 100%; height: ' + (100 + slide.cropTopPct) + '%; margin-top: -' + (slide.cropTopPct * 0.85) + '%; object-fit: cover; object-position: top;'
+    : 'width: 100%; height: 100%; object-fit: contain; object-position: center center;';
 
   return [
     '<!doctype html><html><head><meta charset="utf-8"><style>',
@@ -84,9 +84,9 @@ function renderCardHtml(slide, imgUri) {
     '              linear-gradient(160deg, #090E1A 0%, #0F172A 55%, #111827 100%);',
     '  color: #F8FAFC;',
     '  display: flex; flex-direction: column; align-items: center;',
-    '  padding: 18px 40px 0;',
+    '  padding: 14px 40px 0;',
     '}',
-    '.header { text-align: center; max-width: 1060px; margin-bottom: 12px; }',
+    '.header { text-align: center; max-width: 1060px; margin-bottom: 10px; }',
     '.pill {',
     '  display: inline-flex; align-items: center; gap: 7px;',
     '  padding: 4px 12px; border-radius: 999px;',
@@ -124,7 +124,7 @@ function renderCardHtml(slide, imgUri) {
     '  background: #FFFFFF; border: 1px solid #E2E8F0;',
     '  font-size: 11px; font-weight: 500; color: #475569;',
     '}',
-    '.shot-wrap { width: 1059px; height: 662px; overflow: hidden; background: #FFFFFF; }',
+    '.shot-wrap { width: 100%; flex: 1; min-height: 0; overflow: hidden; background: #FFFFFF; display: flex; align-items: center; justify-content: center; }',
     '.shot-wrap img { ' + imgStyle + ' display: block; }',
     '</style></head><body>',
     '<div class="header">',

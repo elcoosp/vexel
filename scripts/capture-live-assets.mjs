@@ -712,6 +712,7 @@ async function main() {
   if (!context) throw new Error('No browser context over CDP');
   page = context.pages()[0] || (await context.newPage());
   await page.bringToFront();
+  await context.addInitScript(() => { try { localStorage.setItem('vexel:locale', 'en'); localStorage.setItem('vexel:popup-locale', 'en'); } catch {} });
   await page.setViewportSize({ width: VW, height: VH });
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'https://www.google.com' }).catch(() => { });
   cdp = await context.newCDPSession(page);

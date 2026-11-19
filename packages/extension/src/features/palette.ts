@@ -147,7 +147,8 @@ const headerRight = document.createElement('div');
   btnTour.title = t`Interactive welcome tour & local folder setup`;
   const btnLang = document.createElement('button');
   btnLang.type = 'button';
-  btnLang.className = 'pill-btn';
+  btnLang.className = 'export-btn';
+  Object.assign(btnLang.style, { minWidth: 'auto', padding: '5px 9px' });
   const syncLangBtn = () => {
     const cur = detectLocale();
     btnLang.textContent = cur.toUpperCase();
@@ -187,7 +188,7 @@ const headerRight = document.createElement('div');
       window.setTimeout(setCopyIdle, 1600);
     }
   });
-  headerRight.append(btnCopy, btnExport, btnTour);
+  headerRight.append(btnLang, btnCopy, btnExport, btnTour);
   header.append(tabs, headerRight);
 popover.appendChild(header);
 const breadcrumbsEl = document.createElement('div');
@@ -377,20 +378,21 @@ const rect = plate.getBoundingClientRect();
 if (rect.width === 0 || rect.height === 0) return;
 const targetWidth = Math.max(360, Math.min(680, Math.round(rect.width)));
 const widthStr = targetWidth + 'px';
-const popHeight = popover.offsetHeight || 360;
 if (popover.style.width !== widthStr) popover.style.width = widthStr;
-const topAbove = rect.top - popHeight - 10;
-const finalTop =
-topAbove >= 12 ? topAbove : Math.min(window.innerHeight - popHeight - 12, rect.bottom + 10);
+const availAbove = Math.max(0, rect.top - 22);
+const availBelow = Math.max(0, window.innerHeight - rect.bottom - 22);
+const placeAbove = availAbove >= 280 || availAbove >= availBelow;
+const chosenMax = Math.max(180, Math.min(440, placeAbove ? availAbove : availBelow));
+popover.style.maxHeight = chosenMax + "px";
 const alignedLeft = rect.left + (rect.width - targetWidth) / 2;
 const finalLeft = Math.max(12, Math.min(window.innerWidth - targetWidth - 12, alignedLeft));
-if (topAbove >= 12) {
-      popover.style.top = 'auto';
-      popover.style.bottom = Math.round(window.innerHeight - rect.top + 10) + 'px';
-    } else {
-      popover.style.bottom = 'auto';
-      popover.style.top = Math.round(finalTop) + 'px';
-    }
+if (placeAbove) {
+  popover.style.top = 'auto';
+  popover.style.bottom = Math.round(window.innerHeight - rect.top + 10) + 'px';
+} else {
+  popover.style.bottom = 'auto';
+  popover.style.top = Math.round(rect.bottom + 10) + 'px';
+}
     popover.style.left = Math.round(finalLeft) + 'px';
 }
 let heightAnim: { stop?: () => void; finished?: Promise<unknown> } | null = null;
@@ -699,10 +701,13 @@ row.className = 'item-row';
 const titleEl = document.createElement('span');
 titleEl.className = 'item-title';
 titleEl.append(iconEl, document.createTextNode(title));
-const badge = document.createElement('span');
-badge.className = isDirBadge ? 'badge dir' : 'badge';
-badge.textContent = badgeText;
-row.append(titleEl, badge);
+row.append(titleEl);
+if (badgeText) {
+  const badge = document.createElement('span');
+  badge.className = isDirBadge ? 'badge dir' : 'badge';
+  badge.textContent = badgeText;
+  row.append(badge);
+}
 item.appendChild(row);
 if (subText) {
 const sub = document.createElement('div');
