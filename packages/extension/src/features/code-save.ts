@@ -1,3 +1,5 @@
+import { t } from '@lingui/core/macro';
+import '../i18n';
 import { browseLocalFs, writeLocalFsFile } from './local-fs';
 import { animate } from 'motion';
 import { createLucideIcon, createFileOrFolderIcon } from './icons';
@@ -141,7 +143,7 @@ export function initCodeSave(showToast: (msg: string) => void): void {
       const triggerBtn = document.createElement('button');
       triggerBtn.type = 'button';
       triggerBtn.setAttribute('data-vexel-ui', 'true');
-      triggerBtn.title = 'Save code block to local file via Vexel Bridge';
+      triggerBtn.title = t`Save code block to local file via Vexel Bridge`;
 
       const iconWrap = document.createElement('span');
       iconWrap.style.display = 'inline-flex';
@@ -149,7 +151,7 @@ export function initCodeSave(showToast: (msg: string) => void): void {
       iconWrap.appendChild(createLucideIcon('download', 12, 'currentColor'));
 
       const labelSpan = document.createElement('span');
-      labelSpan.textContent = 'Save to file';
+      labelSpan.textContent = t`Save to file`;
 
       triggerBtn.append(iconWrap, labelSpan);
       Object.assign(triggerBtn.style, {
@@ -324,7 +326,7 @@ const folderGlyph = createLucideIcon('folder', 13, '#1a73e8');
 const input = document.createElement('input');
 input.type = 'text';
 input.value = suggested;
-input.placeholder = 'folder/filename.ext';
+input.placeholder = t`folder/filename.ext`;
 Object.assign(input.style, {
 flex: '1',
 minWidth: '0',
@@ -349,7 +351,7 @@ inputShell.style.boxShadow = 'none';
 inputShell.append(folderGlyph, input);
 const saveBtn = document.createElement('button');
 saveBtn.type = 'button';
-saveBtn.textContent = 'Save';
+saveBtn.textContent = t`Save`;
 Object.assign(saveBtn.style, {
 height: '32px',
 padding: '0 14px',
@@ -373,7 +375,7 @@ if (!saveBtn.disabled) saveBtn.style.backgroundColor = '#1a73e8';
 });
 const cancelBtn = document.createElement('button');
 cancelBtn.type = 'button';
-cancelBtn.textContent = 'Cancel';
+cancelBtn.textContent = t`Cancel`;
 Object.assign(cancelBtn.style, {
 height: '32px',
 padding: '0 11px',
@@ -476,7 +478,7 @@ createFileOrFolderIcon(entry.name, entry.isDir, 13),
 document.createTextNode(entry.isDir ? entry.name + '/' : entry.name)
 );
 const hintBadge = document.createElement('span');
-hintBadge.textContent = entry.isDir ? 'Folder' : 'Overwrite';
+hintBadge.textContent = entry.isDir ? t`Folder` : t`Overwrite`;
 Object.assign(hintBadge.style, {
 fontSize: '10px',
 fontWeight: '600',
@@ -554,9 +556,9 @@ chrome.runtime.sendMessage({ type: 'BROWSE_DIR', dir, query: '' }, async (res) =
                   fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
                 });
                 const txt = document.createElement('span');
-                txt.textContent = (dir || 'new folder') + '/';
+                txt.textContent = (dir || t`new folder`) + '/';
                 const badge = document.createElement('span');
-                badge.textContent = 'New folder on save';
+                badge.textContent = t`New folder on save`;
                 Object.assign(badge.style, {
                   fontSize: '10px',
                   fontWeight: '600',
@@ -588,7 +590,7 @@ gap: '5px',
 paddingLeft: '2px',
 });
 const chipsLabel = document.createElement('span');
-chipsLabel.textContent = 'Recent:';
+chipsLabel.textContent = t`Recent:`;
 Object.assign(chipsLabel.style, {
 fontSize: '11px',
 fontWeight: '500',
@@ -649,12 +651,12 @@ const hasValidFileExt = (p: string): boolean => {
             inputShell.style.boxShadow = '0 0 0 3px rgba(197, 34, 31, 0.14)';
             animate(inputShell, { x: Array(-4, 4, -3, 3, 0) }, { duration: 0.24 });
             const suggestedExt = EXT_BY_LANG[lang] || 'txt';
-            showToast('Add a file extension first (e.g. .' + suggestedExt + ')');
+            showToast(t`Add a file extension first (e.g. .${suggestedExt})`);
             input.focus();
             return;
           }
 saveBtn.disabled = true;
-saveBtn.textContent = 'Saving...';
+saveBtn.textContent = t`Saving...`;
 const fileBody = codeEl.textContent || '';
           chrome.runtime.sendMessage(
             { type: 'WRITE_FILE', relPath, content: fileBody },
@@ -663,19 +665,21 @@ const fileBody = codeEl.textContent || '';
                 const localRes = await writeLocalFsFile(relPath, fileBody);
                 if (!localRes.ok) {
                   saveBtn.disabled = false;
-                  saveBtn.textContent = 'Save';
-                  showToast(localRes.error || res?.data?.error || 'Failed to write file');
+                  saveBtn.textContent = t`Save`;
+                  showToast(localRes.error || res?.data?.error || t`Failed to write file`);
                   return;
                 }
                 saveBtn.style.backgroundColor = '#137333';
-                saveBtn.textContent = 'Saved ✓';
-                showToast('Saved locally: ' + relPath + ' (' + localRes.bytes + ' B)');
+                saveBtn.textContent = t`Saved ✓`;
+                const localBytes = localRes.bytes ?? 0;
+                showToast(t`Saved locally: ${relPath} (${localBytes} B)`);
                 window.setTimeout(() => closeDrawer(), 420);
                 return;
               }
               saveBtn.style.backgroundColor = '#137333';
-              saveBtn.textContent = 'Saved ✓';
-              showToast('Saved ' + relPath + ' (' + res.data.bytes + ' B)');
+              saveBtn.textContent = t`Saved ✓`;
+              const remoteBytes = res.data.bytes ?? 0;
+              showToast(t`Saved ${relPath} (${remoteBytes} B)`);
               window.setTimeout(() => closeDrawer(), 420);
             }
           );
