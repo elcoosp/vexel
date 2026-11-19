@@ -66,14 +66,14 @@ try {
   await onboardingHost.waitFor({ state: 'attached', timeout: 5000 });
 
   const step1Title = await onboardingHost.evaluate((el) => el.shadowRoot?.querySelector('.title')?.textContent);
-  assert.ok(step1Title?.includes('Type / anywhere'), 'Onboarding Step 1 should render');
+  assert.ok(step1Title && /Type \/ anywhere|Tapez \/ n'importe où/.test(step1Title), 'Onboarding Step 1 should render');
 
   await onboardingHost.evaluate((el) => {
     const chips = Array.from(el.shadowRoot?.querySelectorAll('.demo-chip') || []);
     chips.at(1)?.click();
   });
   const previewText = await onboardingHost.evaluate((el) => el.shadowRoot?.querySelector('.demo-preview')?.textContent);
-  assert.ok(previewText?.includes('Maps data flow'), 'Switching skill chip should update preview text');
+  assert.ok(previewText && /Maps data flow|Cartographie le flux/.test(previewText), 'Switching skill chip should update preview text');
 
   // Complete onboarding (Step 1 -> 2 -> 3 -> Close)
   await onboardingHost.evaluate((el) => (el.shadowRoot?.querySelector('.btn-primary'))?.click());
@@ -116,10 +116,10 @@ await page.waitForTimeout(200);
 const filesTabState = await paletteHost.evaluate((el) => {
 const sr = el.shadowRoot;
 const isFilesTabActive = Array.from(sr?.querySelectorAll('.tab') || []).some(
-(t) => t.classList.contains('active') && t.textContent?.includes('Fichiers')
+(t) => t.classList.contains('active') && /Files|Fichiers/.test(t.textContent || '')
 );
 const hasOpenFolderBtn = Array.from(sr?.querySelectorAll('button') || []).some(
-(b) => b.textContent?.includes('Open Local Folder')
+(b) => /Open Local Folder|Ouvrir un dossier local/.test(b.textContent || '')
 );
 const itemCount = sr?.querySelectorAll('.item').length || 0;
 const hasRedundantFileBadge = Array.from(sr?.querySelectorAll('.badge') || []).some(
@@ -132,7 +132,7 @@ assert.equal(filesTabState.hasOpenFolderBtn || filesTabState.itemCount > 0, true
 assert.equal(filesTabState.hasRedundantFileBadge, false, 'File rows must not render redundant File badge');
 // Click "Copy" (Copy Clean Thread) in palette header
 await paletteHost.evaluate((el) => {
-const copyBtn = Array.from(el.shadowRoot?.querySelectorAll('button') || []).find((b) => b.textContent?.trim() === 'Copy');
+const copyBtn = Array.from(el.shadowRoot?.querySelectorAll('button') || []).find((b) => /^(Copy|Copier)$/.test(b.textContent?.trim() || ''));
 copyBtn?.click();
 });
 await page.waitForTimeout(150);
@@ -149,10 +149,10 @@ await onboardingHost.waitFor({ state: 'detached', timeout: 3000 });
 // 5. Hover  code block, verify "Save to file" button + inferred path "// src/math/sum.ts"
 const codeBlock = page.locator('pre code');
 await codeBlock.hover();
-const saveTrigger = page.locator('button[data-vexel-ui="true"]', { hasText: 'Save to file' });
+const saveTrigger = page.locator('button[data-vexel-ui="true"]', { hasText: /Save to file|Enregistrer dans un fichier/ });
 await saveTrigger.waitFor({ state: 'visible', timeout: 3000 });
 await saveTrigger.click();
-const pathInput = page.locator('input[placeholder="folder/filename.ext"]');
+const pathInput = page.locator('input[placeholder="folder/filename.ext"], input[placeholder="dossier/nom-fichier.ext"]');
 await pathInput.waitFor({ state: 'visible', timeout: 3000 });
 const inferredPath = await pathInput.inputValue();
 assert.equal(inferredPath, 'src/math/sum.ts', 'Code-save popover must auto-infer file path from header comment');
