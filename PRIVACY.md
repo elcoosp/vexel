@@ -24,7 +24,7 @@ Vexel ("the Extension") turns Google AI Mode (`https://google.com*`) into a loca
 
 ## Analytics & Third Parties
 
-Vexel contains **zero** analytics SDKs, **zero** tracking pixels, **zero** advertisements, and makes **zero** network requests to any remote server.
+Vexel contains **zero** third-party analytics SDKs, **zero** tracking pixels, and **zero** advertisements, and sends **no** data to any Vexel-operated server. Prompts and attached context are transmitted exclusively to Google AI Mode (`https://google.com`) under Google's Privacy Policy.
 
 ## Contact
 
