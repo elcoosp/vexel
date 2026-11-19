@@ -501,6 +501,7 @@ turnRoot.scrollIntoView({ behavior: 'smooth', block: 'start' });
 railInner.appendChild(wrap);
 };
 const refreshToc = () => {
+if (!host.isConnected && document.body) document.body.appendChild(host);
 const userEls = getUserTurnElements();
 const nextItems: Array<{ el: HTMLElement; preview: string }> = [];
 for (let i = 0; i < userEls.length; i++) {
@@ -615,7 +616,26 @@ true
 );
 window.addEventListener('popstate', () => scheduleToc(200));
 window.addEventListener('load', () => scheduleToc(200), { once: true });
+  let tocMutPending = false;
+  const tocObserver = new MutationObserver((mutations) => {
+    if (tocMutPending) return;
+    for (let i = 0; i < mutations.length; i++) {
+      const m = mutations[i];
+      if (m.target === host || (m.target instanceof Node && host.contains(m.target))) continue;
+      if (m.addedNodes.length > 0 || m.removedNodes.length > 0) {
+        tocMutPending = true;
+        window.requestAnimationFrame(() => {
+          tocMutPending = false;
+          scheduleToc(250);
+        });
+        break;
+      }
+    }
+  });
+  if (document.body) {
+    tocObserver.observe(document.body, { childList: true, subtree: true });
+  }
   window.setTimeout(() => refreshToc(), 800);
   window.setTimeout(() => refreshToc(), 2200);
-scheduleToc(100);
+  scheduleToc(100);
 }
