@@ -1,3 +1,5 @@
+import { t, plural } from '@lingui/core/macro';
+import '../i18n';
 import { browseLocalFs, packLocalFsFolder, pickLocalFolder, readLocalFsFile } from './local-fs';
 import { openOnboardingModal } from './onboarding';
 import { animate } from 'motion';
@@ -76,7 +78,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
   const dockBtn = document.createElement('button');
   dockBtn.type = 'button';
   dockBtn.className = 'dock-btn';
-  dockBtn.title = 'Vexel — Skills (/) et Fichiers (@)';
+  dockBtn.title = t`Vexel — Skills (/) & Files (@)`;
   const zapIcon = createLucideIcon('zap', 13, '#1a73e8');
   dockBtn.append(zapIcon, document.createTextNode('Vexel'));
 
@@ -121,18 +123,18 @@ tabPill.className = 'tab-pill';
 const tabSkills = document.createElement('button');
 tabSkills.type = 'button';
 tabSkills.className = 'tab active';
-tabSkills.append(createLucideIcon('sparkles', 12), document.createTextNode('Skills'));
+tabSkills.append(createLucideIcon('sparkles', 12), document.createTextNode(t`Skills`));
 const tabFiles = document.createElement('button');
 tabFiles.type = 'button';
 tabFiles.className = 'tab';
-tabFiles.append(createLucideIcon('folder', 12), document.createTextNode('Fichiers'));
+tabFiles.append(createLucideIcon('folder', 12), document.createTextNode(t`Files`));
 tabs.append(tabPill, tabSkills, tabFiles);
 const btnExport = document.createElement('button');
 btnExport.type = 'button';
 btnExport.className = 'export-btn';
 const setExportIdle = () => {
 btnExport.classList.remove('done');
-btnExport.replaceChildren(createLucideIcon('download', 12), document.createTextNode('Exporter .md'));
+btnExport.replaceChildren(createLucideIcon('download', 12), document.createTextNode(t`Export .md`));
 };
 setExportIdle();
 const headerRight = document.createElement('div');
@@ -142,7 +144,7 @@ const headerRight = document.createElement('div');
   const btnTour = document.createElement('button');
   btnTour.type = 'button';
   btnTour.className = 'export-btn';
-  btnTour.title = 'Interactive welcome tour & local folder setup';
+  btnTour.title = t`Interactive welcome tour & local folder setup`;
   btnTour.textContent = '?';
   Object.assign(btnTour.style, { width: '28px', height: '28px', minWidth: '28px', padding: '0', borderRadius: '999px', justifyContent: 'center' });
   btnTour.addEventListener('click', () => {
@@ -152,10 +154,10 @@ const headerRight = document.createElement('div');
   const btnCopy = document.createElement('button');
   btnCopy.type = 'button';
   btnCopy.className = 'export-btn';
-  btnCopy.title = 'Copy clean Markdown thread to clipboard';
+  btnCopy.title = t`Copy clean Markdown thread to clipboard`;
   const setCopyIdle = () => {
     btnCopy.classList.remove('done');
-    btnCopy.replaceChildren(createLucideIcon('copy', 12), document.createTextNode('Copy'));
+    btnCopy.replaceChildren(createLucideIcon('copy', 12), document.createTextNode(t`Copy`));
   };
   setCopyIdle();
   btnCopy.addEventListener('click', async () => {
@@ -163,7 +165,7 @@ const headerRight = document.createElement('div');
     const ok = await copyCleanThread(showToast);
     if (ok) {
       btnCopy.classList.add('done');
-      btnCopy.replaceChildren(createLucideIcon('check', 12, '#137333'), document.createTextNode('Copied'));
+      btnCopy.replaceChildren(createLucideIcon('check', 12, '#137333'), document.createTextNode(t`Copied`));
       window.setTimeout(setCopyIdle, 1600);
     }
   });
@@ -177,7 +179,7 @@ const searchRow = document.createElement('div');
 searchRow.className = 'search-row';
 const filterInput = document.createElement('input');
 filterInput.type = 'text';
-filterInput.placeholder = 'Rechercher un skill ou un fichier...';
+filterInput.placeholder = t`Search a skill or file...`;
 filterInput.autocomplete = 'off';
 searchRow.appendChild(filterInput);
 popover.appendChild(searchRow);
@@ -190,9 +192,9 @@ popover.appendChild(listEl);
 const footer = document.createElement('div');
 footer.className = 'footer';
 const statusText = document.createElement('span');
-statusText.textContent = '0 element';
+statusText.textContent = plural(0, { one: '# item', other: '# items' });
 const hints = document.createElement('span');
-hints.textContent = 'Navigate: arrows | Insert: Enter | Parent: left';
+hints.textContent = t`Navigate: arrows | Insert: Enter | Parent: left`;
 footer.append(statusText, hints);
 popover.appendChild(footer);
 shadow.appendChild(popover);
@@ -382,7 +384,7 @@ breadcrumbsEl.appendChild(rootBtn);
 if (isZeroServerFs) {
   const switchBtn = document.createElement('button');
   switchBtn.type = 'button';
-  switchBtn.textContent = 'Switch folder';
+  switchBtn.textContent = t`Switch folder`;
   Object.assign(switchBtn.style, {
     marginLeft: 'auto',
     border: '1px solid #dadce0',
@@ -401,7 +403,8 @@ if (isZeroServerFs) {
     if (h) {
       recentEntries = [];
       try { localStorage.removeItem(RECENT_FILES_KEY); } catch {}
-      showToast('Connected folder: ' + h.name);
+      const folderName = h.name;
+      showToast(t`Connected folder: ${folderName}`);
       browseDir('', '');
     }
   });
@@ -440,10 +443,10 @@ const parent = idx === -1 ? '' : currentDir.slice(0, idx);
 navigateToDir(parent);
 }
 function fetchSkills(): void {
-setEmptyMessage('Loading skills...');
+setEmptyMessage(t`Loading skills...`);
 chrome.runtime.sendMessage({ type: 'FETCH_SKILLS' }, (res) => {
 if (chrome.runtime.lastError || !res?.ok) {
-setEmptyMessage('Local bridge unreachable (127.0.0.1:49152)');
+setEmptyMessage(t`Local bridge unreachable (127.0.0.1:49152)`);
 return;
 }
 skills = res.data?.skills || [];
@@ -463,11 +466,11 @@ chrome.runtime.sendMessage({ type: 'BROWSE_DIR', dir, query }, async (res) => {
             const wrap = document.createElement('div');
             Object.assign(wrap.style, { padding: '22px 16px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' });
             const msg = document.createElement('div');
-            msg.textContent = 'Connect a local project folder to browse, pack & save files—zero server required.';
+            msg.textContent = t`Connect a local project folder to browse, pack & save files—zero server required.`;
             Object.assign(msg.style, { fontSize: '12.5px', color: '#5f6368', maxWidth: '300px', lineHeight: '1.45' });
             const pickBtn = document.createElement('button');
             pickBtn.type = 'button';
-            pickBtn.textContent = 'Open Local Folder';
+            pickBtn.textContent = t`Open Local Folder`;
             Object.assign(pickBtn.style, { padding: '7px 14px', borderRadius: '999px', border: 'none', background: '#1a73e8', color: '#fff', fontSize: '12.5px', fontWeight: '600', cursor: 'pointer' });
             pickBtn.addEventListener('mousedown', async (e) => {
               e.preventDefault();
@@ -482,10 +485,10 @@ chrome.runtime.sendMessage({ type: 'BROWSE_DIR', dir, query }, async (res) => {
             });
             wrap.append(msg, pickBtn);
             listEl.appendChild(wrap);
-            statusText.textContent = 'Zero-server mode';
+            statusText.textContent = t`Zero-server mode`;
             return;
           }
-          rootLabel = local.rootLabel || 'Folder';
+          rootLabel = local.rootLabel || t`Folder`;
           currentDir = local.dir || '';
           const rawEntries: BrowseEntry[] = local.entries || [];
           if (!query && currentDir) {
@@ -533,12 +536,12 @@ syncSegmentedPill(instantPill);
 filterInput.value = initialQuery;
 renderBreadcrumbs();
 if (mode === 'skills') {
-filterInput.placeholder = 'Filter skills...';
+filterInput.placeholder = t`Filter skills...`;
 if (skills.length === 0) fetchSkills();
 else applyFilter(initialQuery);
 } else if (mode === 'files') {
-filterInput.placeholder = 'Filter this folder or search files...';
-setEmptyMessage('Loading files...');
+filterInput.placeholder = t`Filter this folder or search files...`;
+setEmptyMessage(t`Loading files...`);
 browseDir(currentDir, initialQuery);
 }
 window.requestAnimationFrame(positionPopover);
@@ -671,9 +674,11 @@ rowElements = [];
 const frag = document.createDocumentFragment();
 frag.appendChild(rowHighlight);
 if (mode === 'refs' && activeSkill) {
-statusText.textContent = filteredRefs.length + ' ref(s) — ' + activeSkill.name;
+const refCount = filteredRefs.length;
+const skillTitle = activeSkill.name;
+statusText.textContent = plural(refCount, { one: `# ref — ${skillTitle}`, other: `# refs — ${skillTitle}` });
 if (filteredRefs.length === 0) {
-setEmptyMessage('No matching references.');
+setEmptyMessage(t`No matching references.`);
 return;
 }
 for (let i = 0; i < filteredRefs.length; i++) {
@@ -685,7 +690,9 @@ frag.appendChild(row);
 }
 }
 } else if (mode === 'skills') {
-statusText.textContent = filteredSkills.length + ' local' + (remoteSkills.length ? ' • ' + remoteSkills.length + ' on skills.sh' : '');
+const localCount = filteredSkills.length;
+const remoteCount = remoteSkills.length;
+statusText.textContent = remoteCount > 0 ? t`${localCount} local • ${remoteCount} on skills.sh` : t`${localCount} local`;
 if (isLoadingSkills && filteredSkills.length === 0) {
 listEl.replaceChildren();
 const box = document.createElement('div');
@@ -694,13 +701,13 @@ const inner = document.createElement('span');
 inner.className = 'empty-loading';
 const sp = document.createElement('span');
 sp.className = 'vexel-spinner';
-inner.append(sp, document.createTextNode('Loading skills...'));
+inner.append(sp, document.createTextNode(t`Loading skills...`));
 box.appendChild(inner);
 listEl.appendChild(box);
 return;
 }
 if (filteredSkills.length === 0 && remoteSkills.length === 0 && !isSearchingRemote) {
-setEmptyMessage('No matching skills.');
+setEmptyMessage(t`No matching skills.`);
 return;
 }
 let rowIdx = 0;
@@ -709,7 +716,7 @@ const s = filteredSkills.slice(i, i + 1).find(() => true);
 if (s) {
 const metaParts: string[] = [];
 if (s.sourceRepo) metaParts.push(s.sourceRepo);
-if (s.refCount > 0) metaParts.push(s.refCount + ' refs');
+if (s.refCount > 0) metaParts.push(plural(s.refCount, { one: '# ref', other: '# refs' }));
 metaParts.push(formatChars(s.smartLength));
 const cleanDesc = s.description && !/^[>|]-?$/.test(s.description.trim()) ? s.description : '';
 const row = createRow(rowIdx++, createLucideIcon('sparkles', 13, '#1a73e8'), s.name, metaParts.join(' • '), false, cleanDesc);
@@ -719,13 +726,13 @@ if (!s.isBuiltin) {
 const delBtn = document.createElement('button');
 delBtn.type = 'button';
 delBtn.className = 'del-btn' + (isRemoving ? ' removing' : isConfirming ? ' confirm' : '');
-delBtn.title = isConfirming ? 'Click again to delete permanently' : 'Uninstall skill';
+delBtn.title = isConfirming ? t`Click again to delete permanently` : t`Uninstall skill`;
 if (isRemoving) {
   const sp = document.createElement('span');
   sp.className = 'vexel-spinner danger';
-  delBtn.append(sp, document.createTextNode('Removing...'));
+  delBtn.append(sp, document.createTextNode(t`Removing...`));
 } else if (isConfirming) {
-  delBtn.textContent = 'Confirm?';
+  delBtn.textContent = t`Confirm?`;
 } else {
   delBtn.textContent = '✕';
 }
@@ -748,20 +755,24 @@ delBtn.addEventListener('mousedown', (ev) => {
   confirmDeleteId = null;
   removingSkills.add(s.id);
   renderList();
-  statusText.textContent = 'Removing ' + s.name + '...';
+  const removingName = s.name;
+  statusText.textContent = t`Removing ${removingName}...`;
   chrome.runtime.sendMessage({ type: 'REMOVE_LOCAL_SKILL', id: s.id, dir: (s as any).dir || '' }, (res) => {
     removingSkills.delete(s.id);
     if (!res?.ok || res?.data?.ok === false) {
       renderList();
-      const errMsg = res?.data?.error || res?.error || 'remove error';
-      statusText.textContent = 'Remove failed: ' + errMsg;
-      showToast('Remove failed: ' + errMsg);
+      const errMsg = res?.data?.error || res?.error || t`remove error`;
+      statusText.textContent = t`Remove failed: ${errMsg}`;
+      showToast(t`Remove failed: ${errMsg}`);
       return;
     }
-    showToast('✓ Skill "' + s.name + '" removed!');
+    const removedName = s.name;
+    showToast(t`✓ Skill "${removedName}" removed!`);
     skills = skills.filter((x) => x.id !== s.id);
     filteredSkills = filteredSkills.filter((x) => x.id !== s.id);
-    statusText.textContent = filteredSkills.length + ' local' + (remoteSkills.length ? ' • ' + remoteSkills.length + ' on skills.sh' : '');
+    const remLocal = filteredSkills.length;
+    const remRemote = remoteSkills.length;
+    statusText.textContent = remRemote > 0 ? t`${remLocal} local • ${remRemote} on skills.sh` : t`${remLocal} local`;
     const currentRow = delBtn.closest('.item') as HTMLElement | null;
     if (currentRow) {
       const h = currentRow.offsetHeight;
@@ -800,16 +811,17 @@ const wrap = document.createElement('span');
 wrap.className = 'section-loading';
 const sp = document.createElement('span');
 sp.className = 'vexel-spinner';
-wrap.append(sp, document.createTextNode('Searching skills.sh...'));
+wrap.append(sp, document.createTextNode(t`Searching skills.sh...`));
 sec.appendChild(wrap);
 } else {
-sec.textContent = 'Available on skills.sh';
+sec.textContent = t`Available on skills.sh`;
 }
 frag.appendChild(sec);
 for (let i = 0; i < remoteSkills.length; i++) {
 const r = remoteSkills.slice(i, i + 1).find(() => true);
 if (!r) continue;
-const metaLabel = [r.repo, r.installs ? r.installs + ' installs' : ''].filter(Boolean).join(' • ');
+const installsCount = r.installs;
+const metaLabel = [r.repo, installsCount ? t`${installsCount} installs` : ''].filter(Boolean).join(' • ');
 const isInstalling = installingSkills.has(r.repo + '/' + r.name);
 const cleanRemoteDesc = r.description && !r.description.includes(' installs') && !/^[>|]-?$/.test(r.description.trim()) ? r.description : undefined;
 const row = createRow(
@@ -827,10 +839,10 @@ if (isInstalling) {
   actionBtn.className = 'installing-btn';
   const spinner = document.createElement('span');
   spinner.className = 'vexel-spinner';
-  actionBtn.append(spinner, document.createTextNode('Loading...'));
+  actionBtn.append(spinner, document.createTextNode(t`Loading...`));
 } else {
   actionBtn.className = 'install-btn';
-  actionBtn.append(createLucideIcon('download', 12, '#ffffff'), document.createTextNode('Install'));
+  actionBtn.append(createLucideIcon('download', 12, '#ffffff'), document.createTextNode(t`Install`));
 }
 if (headerRow) headerRow.appendChild(actionBtn);
 rowElements.push(row);
@@ -848,10 +860,10 @@ const filteredRecents = isZeroServerFs
   ? activeRecents.filter((r) => browseEntries.some((b) => b.relPath === r.relPath))
   : activeRecents;
 visibleFileItems = [...filteredRecents, ...dirItems];
-statusText.textContent = visibleFileItems.length + ' item(s)';
+statusText.textContent = plural(visibleFileItems.length, { one: '# item', other: '# items' });
 
 if (visibleFileItems.length === 0) {
-setEmptyMessage('Empty folder or no matching files.');
+setEmptyMessage(t`Empty folder or no matching files.`);
 return;
 }
 
@@ -873,21 +885,22 @@ if (badgeEl) badgeEl.remove();
 const packBtn = document.createElement('button');
 packBtn.type = 'button';
 packBtn.className = 'pack-btn';
-packBtn.title = 'Recursively pack non-gitignored files into context';
-packBtn.append(createLucideIcon('folder', 11, 'currentColor'), document.createTextNode('Pack'));
+packBtn.title = t`Recursively pack non-gitignored files into context`;
+packBtn.append(createLucideIcon('folder', 11, 'currentColor'), document.createTextNode(t`Pack`));
 packBtn.addEventListener('mousedown', (ev) => {
 ev.preventDefault();
 ev.stopPropagation();
 const stripNow = hasInlineTrigger ? triggerTextLength : 0;
 recordRecentEntry(entry);
 closeMenu();
-showToast('Packing ' + entry.name + '/...');
+const dirName = entry.name;
+showToast(t`Packing ${dirName}/...`);
 chrome.runtime.sendMessage({ type: 'PACK_FOLDER', relPath: entry.relPath }, async (res) => {
           let packData = res?.ok && res.data?.ok ? res.data : null;
           if (!packData) {
             const localPack = await packLocalFsFolder(entry.relPath);
             if (!localPack.ok) {
-              showToast(localPack.error || res?.data?.error || 'Unable to pack folder');
+              showToast(localPack.error || res?.data?.error || t`Unable to pack folder`);
               return;
             }
             packData = localPack;
@@ -916,11 +929,11 @@ if (filteredRecents.length > 0) {
 const sec = document.createElement('div');
 sec.className = 'section-label';
 const lbl = document.createElement('span');
-lbl.textContent = 'Recently Used';
+lbl.textContent = t`Recently Used`;
 const clearBtn = document.createElement('button');
 clearBtn.type = 'button';
 clearBtn.className = 'section-clear';
-clearBtn.textContent = 'Clear';
+clearBtn.textContent = t`Clear`;
 clearBtn.addEventListener('mousedown', (ev) => {
 ev.preventDefault();
 ev.stopPropagation();
@@ -941,7 +954,7 @@ frag.appendChild(row);
 if (dirItems.length > 0) {
 const browseSec = document.createElement('div');
 browseSec.className = 'section-label';
-browseSec.textContent = 'Browse';
+browseSec.textContent = t`Browse`;
 frag.appendChild(browseSec);
 }
 }
@@ -950,7 +963,7 @@ for (let i = 0; i < dirItems.length; i++) {
 const entry = dirItems[i];
 const isGitDiff = entry.relPath === '__git_diff__';
 const showSub = isGitDiff
-  ? 'Inject staged + unstaged repository changes'
+  ? t`Inject staged + unstaged repository changes`
   : filterInput.value.trim().length > 0
   ? entry.relPath
   : undefined;
@@ -1009,7 +1022,7 @@ const target = activeInput || findVisibleInput();
 const charsToStrip = hasInlineTrigger ? triggerTextLength : 0;
 if (!target) {
 navigator.clipboard.writeText(content);
-showToast(toastMsg + ' (copied)');
+showToast(t`${toastMsg} (copied)`);
 return;
 }
 if (charsToStrip > 0) removeTriggerChars(target, charsToStrip);
@@ -1045,7 +1058,7 @@ triggerTextLength = charsToStrip;
 injectContent(
 '## Reference (' + skillName + ') : ' + ref.relPath + '\n\n' + ref.content,
 ref.relPath.split('/').join('-'),
-'Reference "' + ref.relPath + '" added'
+t`Reference "${ref.relPath}" added`
 );
 hasInlineTrigger = false;
 triggerTextLength = 0;
@@ -1059,19 +1072,22 @@ const key = remote.repo + '/' + remote.name;
 if (installingSkills.has(key)) return;
 installingSkills.add(key);
 renderList();
-statusText.textContent = 'Installing ' + remote.name + ' via npx...';
-showToast('Installing ' + remote.name + ' (' + remote.repo + ')...');
+const instName = remote.name;
+const instRepo = remote.repo;
+statusText.textContent = t`Installing ${instName} via npx...`;
+showToast(t`Installing ${instName} (${instRepo})...`);
 chrome.runtime.sendMessage({ type: 'INSTALL_REMOTE_SKILL', repo: remote.repo, name: remote.name }, (res) => {
 installingSkills.delete(key);
 if (!res?.ok || res?.data?.ok === false) {
 renderList();
-const errMsg = res?.data?.error || res?.error || 'npx error';
-statusText.textContent = 'Install failed: ' + errMsg;
-showToast('Install failed: ' + errMsg);
+const errMsg = res?.data?.error || res?.error || t`npx error`;
+statusText.textContent = t`Install failed: ${errMsg}`;
+showToast(t`Install failed: ${errMsg}`);
 return;
 }
-showToast('✓ Skill "' + remote.name + '" installed!');
-statusText.textContent = '✓ "' + remote.name + '" installed!';
+const doneName = remote.name;
+showToast(t`✓ Skill "${doneName}" installed!`);
+statusText.textContent = t`✓ "${doneName}" installed!`;
 remoteSkills = remoteSkills.filter((x) => x.name !== remote.name);
 fetchSkills();
 });
@@ -1083,7 +1099,8 @@ closeMenu();
 hasInlineTrigger = charsToStrip > 0;
 triggerTextLength = charsToStrip;
 const payload = fullBundle ? skill.fullContent : skill.smartContent;
-injectContent(payload, skill.id + '.md', 'Skill "' + skill.name + '" added');
+const addedSkill = skill.name;
+injectContent(payload, skill.id + '.md', t`Skill "${addedSkill}" added`);
 hasInlineTrigger = false;
 triggerTextLength = 0;
 return;
@@ -1093,10 +1110,10 @@ const entry = visibleFileItems[idx] || browseEntries[idx];
 if (!entry) return;
 if (entry.relPath === 'git_diff') {
 closeMenu();
-showToast('Packing Git diff...');
+showToast(t`Packing Git diff...`);
 chrome.runtime.sendMessage({ type: 'FETCH_GIT_DIFF', dir: currentDir }, (res) => {
 if (!res?.ok || !res.data?.ok) {
-showToast(res?.data?.error || 'No git repository found here');
+showToast(res?.data?.error || t`No git repository found here`);
 return;
 }
 const target = activeInput || findVisibleInput();
@@ -1118,7 +1135,8 @@ chrome.runtime.sendMessage({ type: 'FETCH_FILE_CONTENT', relPath: entry.relPath 
         if (fileText === null) {
           const localFile = await readLocalFsFile(entry.relPath);
           if (!localFile.ok || typeof localFile.content !== 'string') {
-            showToast('Unable to read ' + entry.relPath);
+            const failedPath = entry.relPath;
+            showToast(t`Unable to read ${failedPath}`);
             return;
           }
           fileText = localFile.content;
@@ -1245,7 +1263,7 @@ btnExport.addEventListener('click', () => {
 animate(btnExport, { scale: [0.95, 1] }, { type: 'spring', stiffness: 550, damping: 28 });
 exportConversationMarkdown(showToast);
 btnExport.classList.add('done');
-btnExport.replaceChildren(createLucideIcon('check', 12, '#137333'), document.createTextNode('Exporté'));
+btnExport.replaceChildren(createLucideIcon('check', 12, '#137333'), document.createTextNode(t`Exported`));
 window.setTimeout(() => {
 setExportIdle();
 }, 1600);
