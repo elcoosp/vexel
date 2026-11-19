@@ -437,11 +437,14 @@ function mountDockIntoInput(): void {
 
 function positionPopover(): void {
   if (!isOpen) return;
-const input = activeInput && document.contains(activeInput) ? activeInput : findVisibleInput();
-if (!input) return;
-const plate = findInputPlate(input);
-const rect = plate.getBoundingClientRect();
-if (rect.width === 0 || rect.height === 0) return;
+  const input = isTrulyVisibleInput(activeInput) ? activeInput : findVisibleInput();
+  if (input) activeInput = input;
+  const anchorEl = input ? findInputPlate(input) : dockHost;
+  let rect = anchorEl.getBoundingClientRect();
+  if ((rect.width === 0 || rect.height === 0) && dockHost.isConnected) {
+    rect = dockHost.getBoundingClientRect();
+  }
+  if (rect.width === 0 || rect.height === 0) return;
 const targetWidth = Math.max(360, Math.min(680, Math.round(rect.width)));
 const widthStr = targetWidth + 'px';
 const popHeight = popover.offsetHeight || 360;
@@ -1371,6 +1374,8 @@ selectCurrentItem(selectedIndex, e.metaKey || e.ctrlKey);
 },
 true
 );
+dockHost.addEventListener('pointerdown', (e) => e.stopPropagation());
+dockHost.addEventListener('mousedown', (e) => e.stopPropagation());
 dockBtn.addEventListener('click', (e) => {
 e.preventDefault();
 e.stopPropagation();
