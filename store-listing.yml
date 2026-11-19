@@ -93,12 +93,14 @@ assets:
   screenshots:
     - path: "docs/assets/01-onboarding-hero.png"
       caption: "Interactive onboarding and instant setup inside Google AI Mode"
-    - path: "docs/assets/02-slash-skills-palette.png"
+    - path: "docs/assets/04-slash-skills-palette.png"
       caption: "Type / to trigger engineering skills and reusable SKILL.md workflows"
-    - path: "docs/assets/03-at-files-workspace.png"
+    - path: "docs/assets/06-at-files-workspace.png"
       caption: "Type @ to browse local project files or pack folders with zero server"
-    - path: "docs/assets/04-code-save-popover.png"
+    - path: "docs/assets/07-code-save-popover.png"
       caption: "Hover any code block to save directly to disk with inferred paths"
+    - path: "docs/assets/08-long-thread-fast.png"
+      caption: "High-speed CSS content-visibility virtualization and floating timeline rail"
 
 privacyPractices:
   singlePurpose: >
