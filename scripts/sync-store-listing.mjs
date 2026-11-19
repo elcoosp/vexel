@@ -222,6 +222,16 @@ async function injectListingIntoPage(page, listing, primaryLocale) {
     )
   );
 
+  const zipFullPath = listing.assets?.packageZip ? path.join(ROOT, listing.assets.packageZip) : null;
+  if (zipFullPath && fs.existsSync(zipFullPath)) {
+    const zipInputs = page.locator('input[type="file"][accept*="zip"], input[type="file"]:not([accept*="image"])');
+    if ((await zipInputs.count()) > 0) {
+      await zipInputs.first().setInputFiles(zipFullPath);
+      console.log("  ✓ Package ZIP uploadé : " + listing.assets.packageZip);
+      results.push(true);
+    }
+  }
+
   const validShots = (listing.assets?.screenshots || [])
     .map((s) => path.join(ROOT, s.path))
     .filter((p) => fs.existsSync(p));
@@ -342,9 +352,25 @@ console.log('⏳ Connecte-toi à ton compte Google / résous le CAPTCHA si néce
 await page.waitForURL(new RegExp("chrome\\.google\\.com/webstore/devconsole/[^/]+/[^/]+"), {
 timeout: 0,
 });
-console.log('\n✍️  Injection automatique des champs détectés sur la page courante...');
+console.log('\n✍️  Injection automatique active sur tous les onglets (Package, Fiche Store, Confidentialité)...');
+const zipFile = listing.assets?.packageZip ? path.join(ROOT, listing.assets.packageZip) : null;
+if (zipFile && fs.existsSync(zipFile)) {
+  page.on('filechooser', async (chooser) => {
+    const isImage = (chooser.isMultiple() || false);
+    if (!isImage) {
+      await chooser.setFiles(zipFile).catch(() => {});
+      console.log('  ✓ Package ZIP fourni au sélecteur de fichier : ' + listing.assets.packageZip);
+    }
+  });
+}
 await page.waitForTimeout(1500);
 await injectListingIntoPage(page, listing, primaryLocale);
+page.on('framenavigated', async (frame) => {
+  if (frame === page.mainFrame()) {
+    await page.waitForTimeout(1200);
+    await injectListingIntoPage(page, listing, primaryLocale).catch(() => {});
+  }
+});
 console.log('\n🎉 Synchronisation terminée ! Vérifie les onglets dans Chrome et clique sur "Enregistrer le brouillon".');
 console.log('   (Ferme simplement la fenêtre Chrome quand tu as terminé.)');
 await new Promise((resolve) => context.on('close', resolve));
