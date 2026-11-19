@@ -1,0 +1,483 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-11-20 00:25+0100\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: zh-CN\n"
+
+#. placeholder {0}: 0
+#. placeholder {0}: visibleFileItems.length
+#: src/features/palette.ts:215
+#: src/features/palette.ts:923
+msgid "{0, plural, one {# item} other {# items}}"
+msgstr "{0, plural, other {# 项}}"
+
+#. placeholder {0}: s.refCount
+#: src/features/palette.ts:779
+msgid "{0, plural, one {# ref} other {# refs}}"
+msgstr "{0, plural, other {# 个引用}}"
+
+#: src/features/palette.ts:884
+msgid "{installsCount} installs"
+msgstr "{installsCount} 次安装"
+
+#: src/features/palette.ts:755
+msgid "{localCount} local"
+msgstr "{localCount} 个本地"
+
+#: src/features/palette.ts:755
+msgid "{localCount} local • {remoteCount} on skills.sh"
+msgstr "{localCount} 个本地 • skills.sh 上 {remoteCount} 个"
+
+#: src/features/palette.ts:739
+msgid "{refCount, plural, one {# ref — {skillTitle}} other {# refs — {skillTitle}}}"
+msgstr "{refCount, plural, other {# 个引用 — {skillTitle}}}"
+
+#: src/features/palette.ts:835
+msgid "{remLocal} local"
+msgstr "{remLocal} 个本地"
+
+#: src/features/palette.ts:835
+msgid "{remLocal} local • {remRemote} on skills.sh"
+msgstr "{remLocal} 个本地 • skills.sh 上 {remRemote} 个"
+
+#: src/features/palette.ts:1085
+msgid "{toastMsg} (copied)"
+msgstr "{toastMsg}（已复制）"
+
+#: src/features/palette.ts:1150
+msgid "✓ \"{doneName}\" installed!"
+msgstr "✓ “{doneName}” 已安装！"
+
+#: src/features/palette.ts:1149
+msgid "✓ Skill \"{doneName}\" installed!"
+msgstr "✓ 技能 “{doneName}” 已安装！"
+
+#: src/features/palette.ts:830
+msgid "✓ Skill \"{removedName}\" removed!"
+msgstr "✓ 技能 “{removedName}” 已移除！"
+
+#: src/features/code-save.ts:654
+msgid "Add a file extension first (e.g. .{suggestedExt})"
+msgstr "请先添加文件扩展名（例如 .{suggestedExt}）"
+
+#: src/features/onboarding.ts:231
+msgid "Attach file or Pack folder"
+msgstr "附加文件或打包文件夹"
+
+#: src/features/onboarding.ts:197
+msgid "Attach files & pack entire folders with @"
+msgstr "使用 @ 附加文件并打包整个文件夹"
+
+#: src/features/file-upload.ts:27
+#: src/features/file-upload.ts:40
+msgid "Attached file: {fileName} ({formattedLen} chars)"
+msgstr "已附加文件：{fileName}（{formattedLen} 字符）"
+
+#: src/features/palette.ts:877
+msgid "Available on skills.sh"
+msgstr "可在 skills.sh 获取"
+
+#: src/features/onboarding.ts:101
+msgid "Back"
+msgstr "返回"
+
+#: src/features/palette.ts:1017
+msgid "Browse"
+msgstr "浏览"
+
+#: src/features/onboarding.ts:224
+msgid "Built for effortless keyboard flow"
+msgstr "专为流畅的键盘操作流而打造"
+
+#: src/features/code-save.ts:378
+msgid "Cancel"
+msgstr "取消"
+
+#: src/features/thread-tools.ts:301
+msgid "Clean thread copied to clipboard ({kb} KB)"
+msgstr "已将整洁对话复制到剪贴板（{kb} KB）"
+
+#: src/features/palette.ts:996
+msgid "Clear"
+msgstr "清除"
+
+#: src/features/palette.ts:789
+msgid "Click again to delete permanently"
+msgstr "再次点击以永久删除"
+
+#: src/features/thread-tools.ts:304
+msgid "Clipboard write blocked"
+msgstr "剪贴板写入被阻止"
+
+#: src/features/palette.ts:795
+msgid "Confirm?"
+msgstr "确认？"
+
+#: src/features/palette.ts:526
+msgid "Connect a local project folder to browse, pack & save files—zero server required."
+msgstr "连接本地项目文件夹以浏览、打包和保存文件——无需启动服务器。"
+
+#: src/features/onboarding.ts:208
+msgid "Connect a Project Folder"
+msgstr "连接项目文件夹"
+
+#: src/features/onboarding.ts:199
+msgid "Connect any local folder directly in Chrome—no terminal or background server needed. Pack codebases or write AI code blocks straight to disk."
+msgstr "直接在 Chrome 中连接任意本地文件夹——无需终端或后台服务。打包代码库或将 AI 代码块直接写入磁盘。"
+
+#: src/features/onboarding.ts:217
+#: src/features/palette.ts:464
+msgid "Connected folder: {folderName}"
+msgstr "已连接文件夹：{folderName}"
+
+#: src/features/onboarding.ts:207
+msgid "Connected: {connectedFolderName} (click to switch)"
+msgstr "已连接：{connectedFolderName}（点击切换）"
+
+#: src/features/onboarding.ts:141
+msgid "Continue"
+msgstr "继续"
+
+#: src/features/thread-tools.ts:327
+msgid "Conversation exported ({kb} KB)"
+msgstr "对话已导出（{kb} KB）"
+
+#: src/features/palette.ts:188
+msgid "Copied"
+msgstr "已复制"
+
+#: src/features/palette.ts:180
+msgid "Copy"
+msgstr "复制"
+
+#: src/features/palette.ts:177
+msgid "Copy clean Markdown thread to clipboard"
+msgstr "复制整洁的 Markdown 对话到剪贴板"
+
+#: src/features/builtin-skills.ts:49
+msgid "Design pragmatic, scalable system architecture with clear trade-offs and data flow."
+msgstr "设计务实、可扩展的系统架构，明确技术权衡与数据流向。"
+
+#: src/features/palette.ts:926
+msgid "Empty folder or no matching files."
+msgstr "空文件夹或无匹配文件。"
+
+#: src/features/onboarding.ts:226
+msgid "Every action is designed to stay out of your way until the exact millisecond you need it."
+msgstr "每个操作都在你需要的那一毫秒之前保持隐身，绝不打扰。"
+
+#: src/features/palette.ts:137
+msgid "Export .md"
+msgstr "导出 .md"
+
+#: src/features/palette.ts:1326
+msgid "Exported"
+msgstr "已导出"
+
+#: src/features/code-save.ts:669
+msgid "Failed to write file"
+msgstr "写入文件失败"
+
+#: src/features/palette.ts:130
+msgid "Files"
+msgstr "文件"
+
+#: src/features/palette.ts:596
+msgid "Filter skills..."
+msgstr "筛选技能..."
+
+#: src/features/palette.ts:600
+msgid "Filter this folder or search files..."
+msgstr "筛选此文件夹或搜索文件..."
+
+#: src/features/code-save.ts:481
+#: src/features/palette.ts:548
+msgid "Folder"
+msgstr "文件夹"
+
+#: src/features/code-save.ts:329
+msgid "folder/filename.ext"
+msgstr "folder/filename.ext"
+
+#: src/features/builtin-skills.ts:75
+msgid "Generate high-signal unit and integration tests covering happy paths, boundaries, and failures."
+msgstr "生成高价值的单元测试和集成测试，覆盖正常路径、边界条件和异常情况。"
+
+#: src/features/onboarding.ts:232
+msgid "Hover any code block to write"
+msgstr "悬停任意代码块即可写入本地"
+
+#: src/features/palette.ts:1026
+msgid "Inject staged + unstaged repository changes"
+msgstr "注入暂存区与未暂存的仓库变更"
+
+#: src/features/onboarding.ts:167
+msgid "Injects a senior code review checklist: edge cases, async race conditions, security & minimal patches."
+msgstr "注入资深代码审查清单：边界情况、异步竞态条件、安全性与最小化补丁。"
+
+#: src/features/onboarding.ts:230
+msgid "Insert prompt skill"
+msgstr "插入提示词技能"
+
+#: src/features/palette.ts:905
+msgid "Install"
+msgstr "安装"
+
+#: src/features/palette.ts:1144
+#: src/features/palette.ts:1145
+msgid "Install failed: {errMsg}"
+msgstr "安装失败：{errMsg}"
+
+#: src/features/palette.ts:1138
+msgid "Installing {instName} ({instRepo})..."
+msgstr "正在安装 {instName}（{instRepo}）..."
+
+#: src/features/palette.ts:1137
+msgid "Installing {instName} via npx..."
+msgstr "正在通过 npx 安装 {instName}..."
+
+#: src/features/palette.ts:147
+msgid "Interactive welcome tour & local folder setup"
+msgstr "交互式欢迎导览与本地文件夹设置"
+
+#: src/features/onboarding.ts:171
+msgid "Isolates root cause, reproduces failure mode, and writes a surgical regression test."
+msgstr "定位根本原因、复现故障模式并编写精准的回归测试。"
+
+#: src/features/onboarding.ts:233
+msgid "Jump to last user prompt"
+msgstr "跳转到最后一条用户提问"
+
+#: src/features/palette.ts:601
+msgid "Loading files..."
+msgstr "正在加载文件..."
+
+#: src/features/palette.ts:503
+#: src/features/palette.ts:764
+msgid "Loading skills..."
+msgstr "正在加载技能..."
+
+#: src/features/palette.ts:902
+msgid "Loading..."
+msgstr "加载中..."
+
+#: src/features/palette.ts:506
+msgid "Local bridge unreachable (127.0.0.1:49152)"
+msgstr "无法连接本地桥接服务 (127.0.0.1:49152)"
+
+#: src/features/onboarding.ts:169
+msgid "Maps data flow, state boundaries, and bottlenecks in plain, structured diagrams."
+msgstr "以清晰的结构化图表梳理数据流、状态边界与性能瓶颈。"
+
+#: src/features/palette.ts:217
+msgid "Navigate: arrows | Insert: Enter | Parent: left"
+msgstr "导航：方向键 | 插入：Enter | 上级目录：左方向键"
+
+#: src/features/code-save.ts:559
+msgid "new folder"
+msgstr "新建文件夹"
+
+#: src/features/code-save.ts:561
+msgid "New folder on save"
+msgstr "保存时新建文件夹"
+
+#: src/features/thread-tools.ts:295
+#: src/features/thread-tools.ts:312
+msgid "No conversation turns found"
+msgstr "未找到对话轮次"
+
+#: src/features/palette.ts:1176
+msgid "No git repository found here"
+msgstr "此处未找到 Git 仓库"
+
+#: src/features/palette.ts:741
+msgid "No matching references."
+msgstr "没有匹配的引用。"
+
+#: src/features/palette.ts:770
+msgid "No matching skills."
+msgstr "没有匹配的技能。"
+
+#: src/features/palette.ts:1143
+msgid "npx error"
+msgstr "npx 错误"
+
+#: src/features/palette.ts:530
+msgid "Open Local Folder"
+msgstr "打开本地文件夹"
+
+#: src/features/builtin-skills.ts:88
+msgid "Optimize slow SQL queries, composite indexes, and execution plans."
+msgstr "优化慢 SQL 查询、复合索引与执行计划。"
+
+#: src/features/code-save.ts:481
+msgid "Overwrite"
+msgstr "覆盖"
+
+#: src/features/palette.ts:949
+msgid "Pack"
+msgstr "打包"
+
+#: src/features/palette.ts:957
+msgid "Packing {dirName}/..."
+msgstr "正在打包 {dirName}/..."
+
+#: src/features/palette.ts:1173
+msgid "Packing Git diff..."
+msgstr "正在打包 Git diff..."
+
+#: src/features/code-save.ts:593
+msgid "Recent:"
+msgstr "最近："
+
+#: src/features/palette.ts:992
+msgid "Recently Used"
+msgstr "最近使用"
+
+#: src/features/palette.ts:948
+msgid "Recursively pack non-gitignored files into context"
+msgstr "递归打包未被 gitignore 忽略的文件到上下文"
+
+#. placeholder {0}: ref.relPath
+#: src/features/palette.ts:1121
+msgid "Reference \"{0}\" added"
+msgstr "已添加引用 “{0}”"
+
+#: src/features/palette.ts:824
+msgid "remove error"
+msgstr "移除错误"
+
+#: src/features/palette.ts:825
+#: src/features/palette.ts:826
+msgid "Remove failed: {errMsg}"
+msgstr "移除失败：{errMsg}"
+
+#: src/features/palette.ts:819
+msgid "Removing {removingName}..."
+msgstr "正在移除 {removingName}..."
+
+#: src/features/palette.ts:793
+msgid "Removing..."
+msgstr "正在移除..."
+
+#: src/features/code-save.ts:354
+#: src/features/code-save.ts:668
+msgid "Save"
+msgstr "保存"
+
+#: src/features/code-save.ts:146
+msgid "Save code block to local file via Vexel Bridge"
+msgstr "通过 Vexel Bridge 将代码块保存到本地文件"
+
+#: src/features/code-save.ts:154
+#: src/features/onboarding.ts:232
+msgid "Save to file"
+msgstr "保存到文件"
+
+#: src/features/code-save.ts:682
+msgid "Saved {relPath} ({remoteBytes} B)"
+msgstr "已保存 {relPath}（{remoteBytes} B）"
+
+#: src/features/code-save.ts:673
+#: src/features/code-save.ts:680
+msgid "Saved ✓"
+msgstr "已保存 ✓"
+
+#: src/features/code-save.ts:675
+msgid "Saved locally: {relPath} ({localBytes} B)"
+msgstr "已保存到本地：{relPath}（{localBytes} B）"
+
+#: src/features/code-save.ts:659
+msgid "Saving..."
+msgstr "正在保存..."
+
+#: src/features/palette.ts:202
+msgid "Search a skill or file..."
+msgstr "搜索技能或文件..."
+
+#: src/features/palette.ts:874
+msgid "Searching skills.sh..."
+msgstr "正在搜索 skills.sh..."
+
+#: src/features/builtin-skills.ts:22
+msgid "Senior code review focusing on bugs, security edge cases, race conditions, and maintainability."
+msgstr "资深代码审查，聚焦 Bug、安全边界、竞态条件与可维护性。"
+
+#: src/features/builtin-skills.ts:62
+msgid "Simplify complex functions, remove dead code, and improve type safety without behavior changes."
+msgstr "在不改变行为的前提下，将复杂函数重构为整洁、地道且易于测试的模块。"
+
+#: src/features/palette.ts:1163
+msgid "Skill \"{addedSkill}\" added"
+msgstr "已插入技能 “{addedSkill}”"
+
+#: src/features/palette.ts:126
+msgid "Skills"
+msgstr "技能"
+
+#: src/features/onboarding.ts:77
+msgid "Skip"
+msgstr "跳过"
+
+#: src/features/onboarding.ts:141
+msgid "Start using Vexel"
+msgstr "开始使用 Vexel"
+
+#: src/features/onboarding.ts:158
+msgid "Step 1 of 3 · Instant Prompts"
+msgstr "第 1 步，共 3 步 · 即时提示词"
+
+#: src/features/onboarding.ts:196
+msgid "Step 2 of 3 · Zero-Server Workspace"
+msgstr "第 2 步，共 3 步 · 无服务器工作区"
+
+#: src/features/onboarding.ts:223
+msgid "Step 3 of 3 · Flow & Speed"
+msgstr "第 3 步，共 3 步 · 流畅与速度"
+
+#: src/features/palette.ts:444
+msgid "Switch folder"
+msgstr "切换文件夹"
+
+#: src/features/builtin-skills.ts:36
+msgid "Systematic root-cause diagnosis from stack traces, logs, and code without guesswork."
+msgstr "基于堆栈跟踪、日志和代码进行系统性根因诊断，拒绝盲目猜测。"
+
+#: src/features/onboarding.ts:161
+msgid "Turn repetitive engineering prompts into one-keystroke slash commands—ready out of the box with zero setup."
+msgstr "将重复的工程提示词转化为一键斜杠命令——开箱即用，无需配置。"
+
+#: src/features/onboarding.ts:159
+msgid "Type / anywhere to summon reusable skills"
+msgstr "在任意位置输入 / 即可调用可复用技能"
+
+#: src/features/palette.ts:963
+msgid "Unable to pack folder"
+msgstr "无法打包文件夹"
+
+#: src/features/palette.ts:1199
+msgid "Unable to read {failedPath}"
+msgstr "无法读取 {failedPath}"
+
+#: src/features/palette.ts:789
+msgid "Uninstall skill"
+msgstr "卸载技能"
+
+#: src/features/palette.ts:81
+msgid "Vexel — Skills (/) & Files (@)"
+msgstr "Vexel — 技能 (/) 与文件 (@)"
+
+#: src/content.ts:14
+msgid "Vexel: {message}"
+msgstr "Vexel：{message}"
+
+#: src/features/onboarding.ts:72
+msgid "Welcome to Vexel"
+msgstr "欢迎使用 Vexel"
+
+#: src/features/palette.ts:545
+msgid "Zero-server mode"
+msgstr "无服务器模式"

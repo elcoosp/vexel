@@ -1,0 +1,483 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-11-20 00:25+0100\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: pt-BR\n"
+
+#. placeholder {0}: 0
+#. placeholder {0}: visibleFileItems.length
+#: src/features/palette.ts:215
+#: src/features/palette.ts:923
+msgid "{0, plural, one {# item} other {# items}}"
+msgstr "{0, plural, one {# item} other {# itens}}"
+
+#. placeholder {0}: s.refCount
+#: src/features/palette.ts:779
+msgid "{0, plural, one {# ref} other {# refs}}"
+msgstr "{0, plural, one {# ref} other {# refs}}"
+
+#: src/features/palette.ts:884
+msgid "{installsCount} installs"
+msgstr "{installsCount} instalações"
+
+#: src/features/palette.ts:755
+msgid "{localCount} local"
+msgstr "{localCount} locais"
+
+#: src/features/palette.ts:755
+msgid "{localCount} local • {remoteCount} on skills.sh"
+msgstr "{localCount} locais • {remoteCount} no skills.sh"
+
+#: src/features/palette.ts:739
+msgid "{refCount, plural, one {# ref — {skillTitle}} other {# refs — {skillTitle}}}"
+msgstr "{refCount, plural, one {# ref — {skillTitle}} other {# refs — {skillTitle}}}"
+
+#: src/features/palette.ts:835
+msgid "{remLocal} local"
+msgstr "{remLocal} locais"
+
+#: src/features/palette.ts:835
+msgid "{remLocal} local • {remRemote} on skills.sh"
+msgstr "{remLocal} locais • {remRemote} no skills.sh"
+
+#: src/features/palette.ts:1085
+msgid "{toastMsg} (copied)"
+msgstr "{toastMsg} (copiado)"
+
+#: src/features/palette.ts:1150
+msgid "✓ \"{doneName}\" installed!"
+msgstr "✓ \"{doneName}\" instalado!"
+
+#: src/features/palette.ts:1149
+msgid "✓ Skill \"{doneName}\" installed!"
+msgstr "✓ Skill \"{doneName}\" instalado!"
+
+#: src/features/palette.ts:830
+msgid "✓ Skill \"{removedName}\" removed!"
+msgstr "✓ Skill \"{removedName}\" removido!"
+
+#: src/features/code-save.ts:654
+msgid "Add a file extension first (e.g. .{suggestedExt})"
+msgstr "Adicione primeiro uma extensão de arquivo (ex.: .{suggestedExt})"
+
+#: src/features/onboarding.ts:231
+msgid "Attach file or Pack folder"
+msgstr "Anexar arquivo ou empacotar pasta"
+
+#: src/features/onboarding.ts:197
+msgid "Attach files & pack entire folders with @"
+msgstr "Anexe arquivos e empacote pastas inteiras com @"
+
+#: src/features/file-upload.ts:27
+#: src/features/file-upload.ts:40
+msgid "Attached file: {fileName} ({formattedLen} chars)"
+msgstr "Arquivo anexado: {fileName} ({formattedLen} caracteres)"
+
+#: src/features/palette.ts:877
+msgid "Available on skills.sh"
+msgstr "Disponível no skills.sh"
+
+#: src/features/onboarding.ts:101
+msgid "Back"
+msgstr "Voltar"
+
+#: src/features/palette.ts:1017
+msgid "Browse"
+msgstr "Explorar"
+
+#: src/features/onboarding.ts:224
+msgid "Built for effortless keyboard flow"
+msgstr "Feito para um fluxo rápido pelo teclado"
+
+#: src/features/code-save.ts:378
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: src/features/thread-tools.ts:301
+msgid "Clean thread copied to clipboard ({kb} KB)"
+msgstr "Conversa limpa copiada para a área de transferência ({kb} KB)"
+
+#: src/features/palette.ts:996
+msgid "Clear"
+msgstr "Limpar"
+
+#: src/features/palette.ts:789
+msgid "Click again to delete permanently"
+msgstr "Clique novamente para excluir permanentemente"
+
+#: src/features/thread-tools.ts:304
+msgid "Clipboard write blocked"
+msgstr "Gravação na área de transferência bloqueada"
+
+#: src/features/palette.ts:795
+msgid "Confirm?"
+msgstr "Confirmar?"
+
+#: src/features/palette.ts:526
+msgid "Connect a local project folder to browse, pack & save files—zero server required."
+msgstr "Conecte uma pasta local para navegar, empacotar e salvar arquivos — sem servidor."
+
+#: src/features/onboarding.ts:208
+msgid "Connect a Project Folder"
+msgstr "Conectar uma pasta de projeto"
+
+#: src/features/onboarding.ts:199
+msgid "Connect any local folder directly in Chrome—no terminal or background server needed. Pack codebases or write AI code blocks straight to disk."
+msgstr "Conecte qualquer pasta local diretamente no Chrome — sem terminal ou servidor em segundo plano. Empacote repositórios ou salve blocos de código no disco."
+
+#: src/features/onboarding.ts:217
+#: src/features/palette.ts:464
+msgid "Connected folder: {folderName}"
+msgstr "Pasta conectada: {folderName}"
+
+#: src/features/onboarding.ts:207
+msgid "Connected: {connectedFolderName} (click to switch)"
+msgstr "Conectada: {connectedFolderName} (clique para trocar)"
+
+#: src/features/onboarding.ts:141
+msgid "Continue"
+msgstr "Continuar"
+
+#: src/features/thread-tools.ts:327
+msgid "Conversation exported ({kb} KB)"
+msgstr "Conversa exportada ({kb} KB)"
+
+#: src/features/palette.ts:188
+msgid "Copied"
+msgstr "Copiado"
+
+#: src/features/palette.ts:180
+msgid "Copy"
+msgstr "Copiar"
+
+#: src/features/palette.ts:177
+msgid "Copy clean Markdown thread to clipboard"
+msgstr "Copiar conversa em Markdown limpo"
+
+#: src/features/builtin-skills.ts:49
+msgid "Design pragmatic, scalable system architecture with clear trade-offs and data flow."
+msgstr "Projetar arquitetura de sistema pragmática e escalável com trade-offs claros e fluxo de dados."
+
+#: src/features/palette.ts:926
+msgid "Empty folder or no matching files."
+msgstr "Pasta vazia ou nenhum arquivo correspondente."
+
+#: src/features/onboarding.ts:226
+msgid "Every action is designed to stay out of your way until the exact millisecond you need it."
+msgstr "Cada ação fica fora do caminho até o exato milissegundo em que você precisa dela."
+
+#: src/features/palette.ts:137
+msgid "Export .md"
+msgstr "Exportar .md"
+
+#: src/features/palette.ts:1326
+msgid "Exported"
+msgstr "Exportado"
+
+#: src/features/code-save.ts:669
+msgid "Failed to write file"
+msgstr "Falha ao gravar arquivo"
+
+#: src/features/palette.ts:130
+msgid "Files"
+msgstr "Arquivos"
+
+#: src/features/palette.ts:596
+msgid "Filter skills..."
+msgstr "Filtrar skills..."
+
+#: src/features/palette.ts:600
+msgid "Filter this folder or search files..."
+msgstr "Filtrar esta pasta ou buscar arquivos..."
+
+#: src/features/code-save.ts:481
+#: src/features/palette.ts:548
+msgid "Folder"
+msgstr "Pasta"
+
+#: src/features/code-save.ts:329
+msgid "folder/filename.ext"
+msgstr "pasta/nome-arquivo.ext"
+
+#: src/features/builtin-skills.ts:75
+msgid "Generate high-signal unit and integration tests covering happy paths, boundaries, and failures."
+msgstr "Gerar testes unitários e de integração relevantes cobrindo fluxos principais, limites e falhas."
+
+#: src/features/onboarding.ts:232
+msgid "Hover any code block to write"
+msgstr "Passe o cursor sobre qualquer bloco de código para salvar"
+
+#: src/features/palette.ts:1026
+msgid "Inject staged + unstaged repository changes"
+msgstr "Injetar alterações staged + unstaged do repositório"
+
+#: src/features/onboarding.ts:167
+msgid "Injects a senior code review checklist: edge cases, async race conditions, security & minimal patches."
+msgstr "Injeta um checklist sênior de revisão de código: casos extremos, race conditions, segurança e patches mínimos."
+
+#: src/features/onboarding.ts:230
+msgid "Insert prompt skill"
+msgstr "Inserir skill de prompt"
+
+#: src/features/palette.ts:905
+msgid "Install"
+msgstr "Instalar"
+
+#: src/features/palette.ts:1144
+#: src/features/palette.ts:1145
+msgid "Install failed: {errMsg}"
+msgstr "Falha na instalação: {errMsg}"
+
+#: src/features/palette.ts:1138
+msgid "Installing {instName} ({instRepo})..."
+msgstr "Instalando {instName} ({instRepo})..."
+
+#: src/features/palette.ts:1137
+msgid "Installing {instName} via npx..."
+msgstr "Instalando {instName} via npx..."
+
+#: src/features/palette.ts:147
+msgid "Interactive welcome tour & local folder setup"
+msgstr "Tour interativo de boas-vindas e configuração de pasta local"
+
+#: src/features/onboarding.ts:171
+msgid "Isolates root cause, reproduces failure mode, and writes a surgical regression test."
+msgstr "Isola a causa raiz, reproduz a falha e escreve um teste de regressão preciso."
+
+#: src/features/onboarding.ts:233
+msgid "Jump to last user prompt"
+msgstr "Ir para o último prompt do usuário"
+
+#: src/features/palette.ts:601
+msgid "Loading files..."
+msgstr "Carregando arquivos..."
+
+#: src/features/palette.ts:503
+#: src/features/palette.ts:764
+msgid "Loading skills..."
+msgstr "Carregando skills..."
+
+#: src/features/palette.ts:902
+msgid "Loading..."
+msgstr "Carregando..."
+
+#: src/features/palette.ts:506
+msgid "Local bridge unreachable (127.0.0.1:49152)"
+msgstr "Bridge local inacessível (127.0.0.1:49152)"
+
+#: src/features/onboarding.ts:169
+msgid "Maps data flow, state boundaries, and bottlenecks in plain, structured diagrams."
+msgstr "Mapeia fluxo de dados, limites de estado e gargalos em diagramas claros e estruturados."
+
+#: src/features/palette.ts:217
+msgid "Navigate: arrows | Insert: Enter | Parent: left"
+msgstr "Navegar: setas | Inserir: Enter | Pasta pai: esquerda"
+
+#: src/features/code-save.ts:559
+msgid "new folder"
+msgstr "nova pasta"
+
+#: src/features/code-save.ts:561
+msgid "New folder on save"
+msgstr "Nova pasta ao salvar"
+
+#: src/features/thread-tools.ts:295
+#: src/features/thread-tools.ts:312
+msgid "No conversation turns found"
+msgstr "Nenhum turno de conversa encontrado"
+
+#: src/features/palette.ts:1176
+msgid "No git repository found here"
+msgstr "Nenhum repositório Git encontrado aqui"
+
+#: src/features/palette.ts:741
+msgid "No matching references."
+msgstr "Nenhuma referência correspondente."
+
+#: src/features/palette.ts:770
+msgid "No matching skills."
+msgstr "Nenhum skill correspondente."
+
+#: src/features/palette.ts:1143
+msgid "npx error"
+msgstr "erro do npx"
+
+#: src/features/palette.ts:530
+msgid "Open Local Folder"
+msgstr "Abrir pasta local"
+
+#: src/features/builtin-skills.ts:88
+msgid "Optimize slow SQL queries, composite indexes, and execution plans."
+msgstr "Otimizar consultas SQL lentas, índices compostos e planos de execução."
+
+#: src/features/code-save.ts:481
+msgid "Overwrite"
+msgstr "Sobrescrever"
+
+#: src/features/palette.ts:949
+msgid "Pack"
+msgstr "Empacotar"
+
+#: src/features/palette.ts:957
+msgid "Packing {dirName}/..."
+msgstr "Empacotando {dirName}/..."
+
+#: src/features/palette.ts:1173
+msgid "Packing Git diff..."
+msgstr "Empacotando diff do Git..."
+
+#: src/features/code-save.ts:593
+msgid "Recent:"
+msgstr "Recente:"
+
+#: src/features/palette.ts:992
+msgid "Recently Used"
+msgstr "Usados recentemente"
+
+#: src/features/palette.ts:948
+msgid "Recursively pack non-gitignored files into context"
+msgstr "Empacotar recursivamente no contexto arquivos não ignorados pelo Git"
+
+#. placeholder {0}: ref.relPath
+#: src/features/palette.ts:1121
+msgid "Reference \"{0}\" added"
+msgstr "Referência \"{0}\" adicionada"
+
+#: src/features/palette.ts:824
+msgid "remove error"
+msgstr "erro ao remover"
+
+#: src/features/palette.ts:825
+#: src/features/palette.ts:826
+msgid "Remove failed: {errMsg}"
+msgstr "Falha ao remover: {errMsg}"
+
+#: src/features/palette.ts:819
+msgid "Removing {removingName}..."
+msgstr "Removendo {removingName}..."
+
+#: src/features/palette.ts:793
+msgid "Removing..."
+msgstr "Removendo..."
+
+#: src/features/code-save.ts:354
+#: src/features/code-save.ts:668
+msgid "Save"
+msgstr "Salvar"
+
+#: src/features/code-save.ts:146
+msgid "Save code block to local file via Vexel Bridge"
+msgstr "Salvar bloco de código em arquivo local via Vexel Bridge"
+
+#: src/features/code-save.ts:154
+#: src/features/onboarding.ts:232
+msgid "Save to file"
+msgstr "Salvar em arquivo"
+
+#: src/features/code-save.ts:682
+msgid "Saved {relPath} ({remoteBytes} B)"
+msgstr "Salvo {relPath} ({remoteBytes} B)"
+
+#: src/features/code-save.ts:673
+#: src/features/code-save.ts:680
+msgid "Saved ✓"
+msgstr "Salvo ✓"
+
+#: src/features/code-save.ts:675
+msgid "Saved locally: {relPath} ({localBytes} B)"
+msgstr "Salvo localmente: {relPath} ({localBytes} B)"
+
+#: src/features/code-save.ts:659
+msgid "Saving..."
+msgstr "Salvando..."
+
+#: src/features/palette.ts:202
+msgid "Search a skill or file..."
+msgstr "Buscar um skill ou arquivo..."
+
+#: src/features/palette.ts:874
+msgid "Searching skills.sh..."
+msgstr "Buscando no skills.sh..."
+
+#: src/features/builtin-skills.ts:22
+msgid "Senior code review focusing on bugs, security edge cases, race conditions, and maintainability."
+msgstr "Revisão sênior de código focada em bugs, casos extremos de segurança, race conditions e manutenibilidade."
+
+#: src/features/builtin-skills.ts:62
+msgid "Simplify complex functions, remove dead code, and improve type safety without behavior changes."
+msgstr "Transforma funções complexas em módulos limpos, idiomáticos e testáveis sem alterar o comportamento."
+
+#: src/features/palette.ts:1163
+msgid "Skill \"{addedSkill}\" added"
+msgstr "Skill \"{addedSkill}\" adicionado"
+
+#: src/features/palette.ts:126
+msgid "Skills"
+msgstr "Skills"
+
+#: src/features/onboarding.ts:77
+msgid "Skip"
+msgstr "Pular"
+
+#: src/features/onboarding.ts:141
+msgid "Start using Vexel"
+msgstr "Começar a usar Vexel"
+
+#: src/features/onboarding.ts:158
+msgid "Step 1 of 3 · Instant Prompts"
+msgstr "Passo 1 de 3 · Prompts instantâneos"
+
+#: src/features/onboarding.ts:196
+msgid "Step 2 of 3 · Zero-Server Workspace"
+msgstr "Passo 2 de 3 · Workspace sem servidor"
+
+#: src/features/onboarding.ts:223
+msgid "Step 3 of 3 · Flow & Speed"
+msgstr "Passo 3 de 3 · Fluxo e velocidade"
+
+#: src/features/palette.ts:444
+msgid "Switch folder"
+msgstr "Trocar pasta"
+
+#: src/features/builtin-skills.ts:36
+msgid "Systematic root-cause diagnosis from stack traces, logs, and code without guesswork."
+msgstr "Diagnóstico sistemático de causa raiz a partir de stack traces, logs e código sem suposições."
+
+#: src/features/onboarding.ts:161
+msgid "Turn repetitive engineering prompts into one-keystroke slash commands—ready out of the box with zero setup."
+msgstr "Transforme prompts repetitivos em comandos slash com uma tecla — prontos para usar sem configuração."
+
+#: src/features/onboarding.ts:159
+msgid "Type / anywhere to summon reusable skills"
+msgstr "Digite / em qualquer lugar para chamar skills reutilizáveis"
+
+#: src/features/palette.ts:963
+msgid "Unable to pack folder"
+msgstr "Não foi possível empacotar a pasta"
+
+#: src/features/palette.ts:1199
+msgid "Unable to read {failedPath}"
+msgstr "Não foi possível ler {failedPath}"
+
+#: src/features/palette.ts:789
+msgid "Uninstall skill"
+msgstr "Desinstalar skill"
+
+#: src/features/palette.ts:81
+msgid "Vexel — Skills (/) & Files (@)"
+msgstr "Vexel — Skills (/) e Arquivos (@)"
+
+#: src/content.ts:14
+msgid "Vexel: {message}"
+msgstr "Vexel: {message}"
+
+#: src/features/onboarding.ts:72
+msgid "Welcome to Vexel"
+msgstr "Bem-vindo ao Vexel"
+
+#: src/features/palette.ts:545
+msgid "Zero-server mode"
+msgstr "Modo sem servidor"

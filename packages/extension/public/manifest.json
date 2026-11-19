@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Vexel",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Local coding workspace for Google AI Mode: / slash skills, @ repo context, 1-click Save to file & fast virtualization.",
   "permissions": [
     "clipboardWrite",

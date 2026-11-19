@@ -1,0 +1,8 @@
+{
+  "extName": {
+    "message": "Vexel — Google AI Mode 本地编程工作区"
+  },
+  "extDescription": {
+    "message": "将 Google AI Mode 升级为本地编程工作区：/ 快捷指令、@ 仓库文件上下文、一键保存到本地文件及 Markdown 导出。"
+  }
+}

@@ -9,53 +9,53 @@ msgstr ""
 
 #. placeholder {0}: 0
 #. placeholder {0}: visibleFileItems.length
-#: src/features/palette.ts:195
-#: src/features/palette.ts:863
+#: src/features/palette.ts:215
+#: src/features/palette.ts:923
 msgid "{0, plural, one {# item} other {# items}}"
 msgstr "{0, plural, one {# elemento} other {# elementos}}"
 
 #. placeholder {0}: s.refCount
-#: src/features/palette.ts:719
+#: src/features/palette.ts:779
 msgid "{0, plural, one {# ref} other {# refs}}"
 msgstr "{0, plural, one {# ref.} other {# refs.}}"
 
-#: src/features/palette.ts:824
+#: src/features/palette.ts:884
 msgid "{installsCount} installs"
 msgstr "{installsCount} instalaciones"
 
-#: src/features/palette.ts:695
+#: src/features/palette.ts:755
 msgid "{localCount} local"
 msgstr "{localCount} locales"
 
-#: src/features/palette.ts:695
+#: src/features/palette.ts:755
 msgid "{localCount} local • {remoteCount} on skills.sh"
 msgstr "{localCount} locales • {remoteCount} en skills.sh"
 
-#: src/features/palette.ts:679
+#: src/features/palette.ts:739
 msgid "{refCount, plural, one {# ref — {skillTitle}} other {# refs — {skillTitle}}}"
 msgstr "{refCount, plural, one {# ref. — {skillTitle}} other {# refs. — {skillTitle}}}"
 
-#: src/features/palette.ts:775
+#: src/features/palette.ts:835
 msgid "{remLocal} local"
 msgstr "{remLocal} locales"
 
-#: src/features/palette.ts:775
+#: src/features/palette.ts:835
 msgid "{remLocal} local • {remRemote} on skills.sh"
 msgstr "{remLocal} locales • {remRemote} en skills.sh"
 
-#: src/features/palette.ts:1025
+#: src/features/palette.ts:1085
 msgid "{toastMsg} (copied)"
 msgstr "{toastMsg} (copiado)"
 
-#: src/features/palette.ts:1090
+#: src/features/palette.ts:1150
 msgid "✓ \"{doneName}\" installed!"
 msgstr "✓ ¡\"{doneName}\" instalado!"
 
-#: src/features/palette.ts:1089
+#: src/features/palette.ts:1149
 msgid "✓ Skill \"{doneName}\" installed!"
 msgstr "✓ ¡Skill \"{doneName}\" instalado!"
 
-#: src/features/palette.ts:770
+#: src/features/palette.ts:830
 msgid "✓ Skill \"{removedName}\" removed!"
 msgstr "✓ ¡Skill \"{removedName}\" eliminado!"
 
@@ -76,7 +76,7 @@ msgstr "Adjunta archivos y empaqueta carpetas completas con @"
 msgid "Attached file: {fileName} ({formattedLen} chars)"
 msgstr "Archivo adjunto: {fileName} ({formattedLen} caracteres)"
 
-#: src/features/palette.ts:817
+#: src/features/palette.ts:877
 msgid "Available on skills.sh"
 msgstr "Disponible en skills.sh"
 
@@ -84,7 +84,7 @@ msgstr "Disponible en skills.sh"
 msgid "Back"
 msgstr "Volver"
 
-#: src/features/palette.ts:957
+#: src/features/palette.ts:1017
 msgid "Browse"
 msgstr "Explorar"
 
@@ -100,11 +100,11 @@ msgstr "Cancelar"
 msgid "Clean thread copied to clipboard ({kb} KB)"
 msgstr "Hilo copiado limpio al portapapeles ({kb} KB)"
 
-#: src/features/palette.ts:936
+#: src/features/palette.ts:996
 msgid "Clear"
 msgstr "Limpiar"
 
-#: src/features/palette.ts:729
+#: src/features/palette.ts:789
 msgid "Click again to delete permanently"
 msgstr "Haz clic de nuevo para eliminar permanentemente"
 
@@ -112,11 +112,11 @@ msgstr "Haz clic de nuevo para eliminar permanentemente"
 msgid "Clipboard write blocked"
 msgstr "Escritura en el portapapeles bloqueada"
 
-#: src/features/palette.ts:735
+#: src/features/palette.ts:795
 msgid "Confirm?"
 msgstr "¿Confirmar?"
 
-#: src/features/palette.ts:469
+#: src/features/palette.ts:526
 msgid "Connect a local project folder to browse, pack & save files—zero server required."
 msgstr "Conecta una carpeta local para explorar, empaquetar y guardar archivos — sin servidor."
 
@@ -129,7 +129,7 @@ msgid "Connect any local folder directly in Chrome—no terminal or background s
 msgstr "Conecta cualquier carpeta local directamente en Chrome — sin terminal ni servidor en segundo plano. Empaqueta repositorios o guarda bloques de código IA en el disco."
 
 #: src/features/onboarding.ts:217
-#: src/features/palette.ts:407
+#: src/features/palette.ts:464
 msgid "Connected folder: {folderName}"
 msgstr "Carpeta conectada: {folderName}"
 
@@ -145,15 +145,15 @@ msgstr "Continuar"
 msgid "Conversation exported ({kb} KB)"
 msgstr "Conversación exportada ({kb} KB)"
 
-#: src/features/palette.ts:168
+#: src/features/palette.ts:188
 msgid "Copied"
 msgstr "Copiado"
 
-#: src/features/palette.ts:160
+#: src/features/palette.ts:180
 msgid "Copy"
 msgstr "Copiar"
 
-#: src/features/palette.ts:157
+#: src/features/palette.ts:177
 msgid "Copy clean Markdown thread to clipboard"
 msgstr "Copiar hilo Markdown limpio al portapapeles"
 
@@ -161,7 +161,7 @@ msgstr "Copiar hilo Markdown limpio al portapapeles"
 msgid "Design pragmatic, scalable system architecture with clear trade-offs and data flow."
 msgstr "Diseñar una arquitectura de sistema pragmática y escalable con compromisos claros y flujo de datos."
 
-#: src/features/palette.ts:866
+#: src/features/palette.ts:926
 msgid "Empty folder or no matching files."
 msgstr "Carpeta vacía o sin archivos coincidentes."
 
@@ -173,7 +173,7 @@ msgstr "Cada acción permanece fuera de tu camino hasta el milisegundo exacto en
 msgid "Export .md"
 msgstr "Exportar .md"
 
-#: src/features/palette.ts:1266
+#: src/features/palette.ts:1326
 msgid "Exported"
 msgstr "Exportado"
 
@@ -185,16 +185,16 @@ msgstr "Error al escribir el archivo"
 msgid "Files"
 msgstr "Archivos"
 
-#: src/features/palette.ts:539
+#: src/features/palette.ts:596
 msgid "Filter skills..."
 msgstr "Filtrar skills..."
 
-#: src/features/palette.ts:543
+#: src/features/palette.ts:600
 msgid "Filter this folder or search files..."
 msgstr "Filtrar esta carpeta o buscar archivos..."
 
 #: src/features/code-save.ts:481
-#: src/features/palette.ts:491
+#: src/features/palette.ts:548
 msgid "Folder"
 msgstr "Carpeta"
 
@@ -210,7 +210,7 @@ msgstr "Generar pruebas unitarias y de integración de alta señal cubriendo cas
 msgid "Hover any code block to write"
 msgstr "Pasa el cursor sobre un bloque de código para guardarlo"
 
-#: src/features/palette.ts:966
+#: src/features/palette.ts:1026
 msgid "Inject staged + unstaged repository changes"
 msgstr "Inyectar cambios preparados y no preparados del repositorio"
 
@@ -222,20 +222,20 @@ msgstr "Inyecta una lista de revisión de código senior: casos límite, condici
 msgid "Insert prompt skill"
 msgstr "Insertar skill de prompt"
 
-#: src/features/palette.ts:845
+#: src/features/palette.ts:905
 msgid "Install"
 msgstr "Instalar"
 
-#: src/features/palette.ts:1084
-#: src/features/palette.ts:1085
+#: src/features/palette.ts:1144
+#: src/features/palette.ts:1145
 msgid "Install failed: {errMsg}"
 msgstr "Error de instalación: {errMsg}"
 
-#: src/features/palette.ts:1078
+#: src/features/palette.ts:1138
 msgid "Installing {instName} ({instRepo})..."
 msgstr "Instalando {instName} ({instRepo})..."
 
-#: src/features/palette.ts:1077
+#: src/features/palette.ts:1137
 msgid "Installing {instName} via npx..."
 msgstr "Instalando {instName} mediante npx..."
 
@@ -251,20 +251,20 @@ msgstr "Aísla la causa raíz, reproduce el fallo y escribe una prueba de regres
 msgid "Jump to last user prompt"
 msgstr "Ir al último prompt del usuario"
 
-#: src/features/palette.ts:544
+#: src/features/palette.ts:601
 msgid "Loading files..."
 msgstr "Cargando archivos..."
 
-#: src/features/palette.ts:446
-#: src/features/palette.ts:704
+#: src/features/palette.ts:503
+#: src/features/palette.ts:764
 msgid "Loading skills..."
 msgstr "Cargando skills..."
 
-#: src/features/palette.ts:842
+#: src/features/palette.ts:902
 msgid "Loading..."
 msgstr "Cargando..."
 
-#: src/features/palette.ts:449
+#: src/features/palette.ts:506
 msgid "Local bridge unreachable (127.0.0.1:49152)"
 msgstr "Puente local inaccesible (127.0.0.1:49152)"
 
@@ -272,7 +272,7 @@ msgstr "Puente local inaccesible (127.0.0.1:49152)"
 msgid "Maps data flow, state boundaries, and bottlenecks in plain, structured diagrams."
 msgstr "Mapea el flujo de datos, los límites de estado y los cuellos de botella en diagramas claros."
 
-#: src/features/palette.ts:197
+#: src/features/palette.ts:217
 msgid "Navigate: arrows | Insert: Enter | Parent: left"
 msgstr "Navegar: flechas | Insertar: Intro | Superior: izquierda"
 
@@ -289,23 +289,23 @@ msgstr "Nueva carpeta al guardar"
 msgid "No conversation turns found"
 msgstr "No se encontraron turnos de conversación"
 
-#: src/features/palette.ts:1116
+#: src/features/palette.ts:1176
 msgid "No git repository found here"
 msgstr "No se encontró ningún repositorio Git aquí"
 
-#: src/features/palette.ts:681
+#: src/features/palette.ts:741
 msgid "No matching references."
 msgstr "No hay referencias coincidentes."
 
-#: src/features/palette.ts:710
+#: src/features/palette.ts:770
 msgid "No matching skills."
 msgstr "No hay skills coincidentes."
 
-#: src/features/palette.ts:1083
+#: src/features/palette.ts:1143
 msgid "npx error"
 msgstr "error de npx"
 
-#: src/features/palette.ts:473
+#: src/features/palette.ts:530
 msgid "Open Local Folder"
 msgstr "Abrir carpeta local"
 
@@ -317,15 +317,15 @@ msgstr "Optimizar consultas SQL lentas, índices compuestos y planes de ejecuci�
 msgid "Overwrite"
 msgstr "Sobrescribir"
 
-#: src/features/palette.ts:889
+#: src/features/palette.ts:949
 msgid "Pack"
 msgstr "Empaquetar"
 
-#: src/features/palette.ts:897
+#: src/features/palette.ts:957
 msgid "Packing {dirName}/..."
 msgstr "Empaquetando {dirName}/..."
 
-#: src/features/palette.ts:1113
+#: src/features/palette.ts:1173
 msgid "Packing Git diff..."
 msgstr "Empaquetando diff de Git..."
 
@@ -333,33 +333,33 @@ msgstr "Empaquetando diff de Git..."
 msgid "Recent:"
 msgstr "Reciente:"
 
-#: src/features/palette.ts:932
+#: src/features/palette.ts:992
 msgid "Recently Used"
 msgstr "Usados recientemente"
 
-#: src/features/palette.ts:888
+#: src/features/palette.ts:948
 msgid "Recursively pack non-gitignored files into context"
 msgstr "Empaquetar recursivamente en el contexto los archivos no ignorados por Git"
 
 #. placeholder {0}: ref.relPath
-#: src/features/palette.ts:1061
+#: src/features/palette.ts:1121
 msgid "Reference \"{0}\" added"
 msgstr "Referencia \"{0}\" añadida"
 
-#: src/features/palette.ts:764
+#: src/features/palette.ts:824
 msgid "remove error"
 msgstr "error al eliminar"
 
-#: src/features/palette.ts:765
-#: src/features/palette.ts:766
+#: src/features/palette.ts:825
+#: src/features/palette.ts:826
 msgid "Remove failed: {errMsg}"
 msgstr "Error al eliminar: {errMsg}"
 
-#: src/features/palette.ts:759
+#: src/features/palette.ts:819
 msgid "Removing {removingName}..."
 msgstr "Eliminando {removingName}..."
 
-#: src/features/palette.ts:733
+#: src/features/palette.ts:793
 msgid "Removing..."
 msgstr "Eliminando..."
 
@@ -394,11 +394,11 @@ msgstr "Guardado localmente: {relPath} ({localBytes} B)"
 msgid "Saving..."
 msgstr "Guardando..."
 
-#: src/features/palette.ts:182
+#: src/features/palette.ts:202
 msgid "Search a skill or file..."
 msgstr "Buscar un skill o archivo..."
 
-#: src/features/palette.ts:814
+#: src/features/palette.ts:874
 msgid "Searching skills.sh..."
 msgstr "Buscando en skills.sh..."
 
@@ -410,7 +410,7 @@ msgstr "Revisión de código senior centrada en errores, casos límite de seguri
 msgid "Simplify complex functions, remove dead code, and improve type safety without behavior changes."
 msgstr "Simplificar funciones complejas, eliminar código muerto y mejorar la seguridad de tipos sin cambiar el comportamiento."
 
-#: src/features/palette.ts:1103
+#: src/features/palette.ts:1163
 msgid "Skill \"{addedSkill}\" added"
 msgstr "Skill \"{addedSkill}\" añadido"
 
@@ -438,7 +438,7 @@ msgstr "Paso 2 de 3 · Espacio sin servidor"
 msgid "Step 3 of 3 · Flow & Speed"
 msgstr "Paso 3 de 3 · Flujo y velocidad"
 
-#: src/features/palette.ts:387
+#: src/features/palette.ts:444
 msgid "Switch folder"
 msgstr "Cambiar carpeta"
 
@@ -454,15 +454,15 @@ msgstr "Convierte prompts repetitivos en comandos slash de una sola tecla — li
 msgid "Type / anywhere to summon reusable skills"
 msgstr "Escribe / en cualquier lugar para invocar skills reutilizables"
 
-#: src/features/palette.ts:903
+#: src/features/palette.ts:963
 msgid "Unable to pack folder"
 msgstr "No se pudo empaquetar la carpeta"
 
-#: src/features/palette.ts:1139
+#: src/features/palette.ts:1199
 msgid "Unable to read {failedPath}"
 msgstr "No se pudo leer {failedPath}"
 
-#: src/features/palette.ts:729
+#: src/features/palette.ts:789
 msgid "Uninstall skill"
 msgstr "Desinstalar skill"
 
@@ -478,6 +478,6 @@ msgstr "Vexel: {message}"
 msgid "Welcome to Vexel"
 msgstr "Bienvenido a Vexel"
 
-#: src/features/palette.ts:488
+#: src/features/palette.ts:545
 msgid "Zero-server mode"
 msgstr "Modo sin servidor"

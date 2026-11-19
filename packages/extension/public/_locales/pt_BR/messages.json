@@ -1,0 +1,8 @@
+{
+  "extName": {
+    "message": "Vexel — Workspace Local de Código para Google AI Mode"
+  },
+  "extDescription": {
+    "message": "Transforme o Google AI Mode em um workspace local: comandos /, contexto de repositório @, salvar arquivos em 1 clique e exportar Markdown."
+  }
+}

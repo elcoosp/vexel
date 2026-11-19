@@ -115,7 +115,7 @@ Scroll through a multi-turn session as normal. Vexel virtualizes off-screen turn
 
 Vexel uses **Lingui v6** (`@lingui/core`, `@lingui/cli`, `@lingui/vite-plugin`) with ICU MessageFormat plurals and automatic browser UI language detection (`chrome.i18n.getUILanguage()` / `navigator.language`).
 
-- **Supported locales**: English (`en`), French (`fr`), Spanish (`es`), and German (`de`).
+- **Supported locales**: English (`en`), French (`fr`), Spanish (`es`), German (`de`), Portuguese (`pt-BR`), Japanese (`ja`), Simplified Chinese (`zh-CN`), and Korean (`ko`).
 - **Manual locale override**: Set `localStorage.setItem('vexel:locale', 'fr')` (or `'en'` / `'es'` / `'de'`) in DevTools to switch languages immediately.
 - **Catalog workflow**:
   ```bash

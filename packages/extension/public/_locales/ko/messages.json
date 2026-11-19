@@ -1,0 +1,8 @@
+{
+  "extName": {
+    "message": "Vexel — Google AI Mode용 로컬 코딩 워크스페이스"
+  },
+  "extDescription": {
+    "message": "Google AI Mode를 로컬 코딩 워크스페이스로 업그레이드: / 슬래시 명령, @ 로컬 저장소 컨텍스트, 원클릭 파일 저장 및 Markdown 내보내기."
+  }
+}

@@ -1,5 +1,5 @@
 import { t, plural } from '@lingui/core/macro';
-import { detectLocale, setLocale } from '../i18n';
+import { detectLocale, setLocale, SUPPORTED_LOCALES } from '../i18n';
 import { browseLocalFs, packLocalFsFolder, pickLocalFolder, readLocalFsFile } from './local-fs';
 import { openOnboardingModal } from './onboarding';
 import { animate } from 'motion';
@@ -151,14 +151,15 @@ const headerRight = document.createElement('div');
   Object.assign(btnLang.style, { minWidth: 'auto', padding: '5px 9px' });
   const syncLangBtn = () => {
     const cur = detectLocale();
-    btnLang.textContent = cur.toUpperCase();
-    btnLang.title = cur === 'en' ? 'Switch language to French (FR)' : 'Passer l’interface en anglais (EN)';
+    btnLang.textContent = cur.split('-')[0].toUpperCase();
+    btnLang.title = 'Language: ' + cur + ' (click to cycle)';
   };
   syncLangBtn();
   btnLang.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    const next = detectLocale() === 'en' ? 'fr' : 'en';
+    const idx = SUPPORTED_LOCALES.indexOf(detectLocale());
+    const next = SUPPORTED_LOCALES[(idx + 1) % SUPPORTED_LOCALES.length];
     try { localStorage.setItem('vexel:locale', next); } catch {}
     setLocale(next);
     syncLangBtn();
