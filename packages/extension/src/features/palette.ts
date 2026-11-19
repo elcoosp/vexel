@@ -536,7 +536,7 @@ navigateToDir(parent);
 }
 function fetchSkills(): void {
 setEmptyMessage(t`Loading skills...`);
-chrome.runtime.sendMessage({ type: 'FETCH_SKILLS' }, (res) => {
+chrome?.runtime?.sendMessage?.({ type: 'FETCH_SKILLS' }, (res) => {
 if (chrome.runtime.lastError || !res?.ok) {
 setEmptyMessage(t`Local bridge unreachable (127.0.0.1:49152)`);
 return;
@@ -549,7 +549,7 @@ function browseDir(dir: string, query: string): void {
 if (fileFetchTimer) window.clearTimeout(fileFetchTimer);
 fileFetchTimer = window.setTimeout(
 () => {
-chrome.runtime.sendMessage({ type: 'BROWSE_DIR', dir, query }, async (res) => {
+chrome?.runtime?.sendMessage?.({ type: 'BROWSE_DIR', dir, query }, async (res) => {
         if (chrome.runtime.lastError || !res?.ok) {
           isZeroServerFs = true;
           const local = await browseLocalFs(dir, query, false);
@@ -699,7 +699,7 @@ if (q.length >= 2) {
 isSearchingRemote = true;
 renderList();
 remoteTimer = window.setTimeout(() => {
-chrome.runtime.sendMessage({ type: 'SEARCH_REMOTE_SKILLS', query: q }, (res) => {
+chrome?.runtime?.sendMessage?.({ type: 'SEARCH_REMOTE_SKILLS', query: q }, (res) => {
 isSearchingRemote = false;
 if (!res?.ok) {
 if (mode === 'skills') renderList();
@@ -849,7 +849,7 @@ delBtn.addEventListener('mousedown', (ev) => {
   renderList();
   const removingName = s.name;
   statusText.textContent = t`Removing ${removingName}...`;
-  chrome.runtime.sendMessage({ type: 'REMOVE_LOCAL_SKILL', id: s.id, dir: (s as any).dir || '' }, (res) => {
+  chrome?.runtime?.sendMessage?.({ type: 'REMOVE_LOCAL_SKILL', id: s.id, dir: (s as any).dir || '' }, (res) => {
     removingSkills.delete(s.id);
     if (!res?.ok || res?.data?.ok === false) {
       renderList();
@@ -987,7 +987,7 @@ recordRecentEntry(entry);
 closeMenu();
 const dirName = entry.name;
 showToast(t`Packing ${dirName}/...`);
-chrome.runtime.sendMessage({ type: 'PACK_FOLDER', relPath: entry.relPath }, async (res) => {
+chrome?.runtime?.sendMessage?.({ type: 'PACK_FOLDER', relPath: entry.relPath }, async (res) => {
           let packData = res?.ok && res.data?.ok ? res.data : null;
           if (!packData) {
             const localPack = await packLocalFsFolder(entry.relPath);
@@ -1168,7 +1168,7 @@ const instName = remote.name;
 const instRepo = remote.repo;
 statusText.textContent = t`Installing ${instName} via npx...`;
 showToast(t`Installing ${instName} (${instRepo})...`);
-chrome.runtime.sendMessage({ type: 'INSTALL_REMOTE_SKILL', repo: remote.repo, name: remote.name }, (res) => {
+chrome?.runtime?.sendMessage?.({ type: 'INSTALL_REMOTE_SKILL', repo: remote.repo, name: remote.name }, (res) => {
 installingSkills.delete(key);
 if (!res?.ok || res?.data?.ok === false) {
 renderList();
@@ -1203,7 +1203,7 @@ if (!entry) return;
 if (entry.relPath === 'git_diff') {
 closeMenu();
 showToast(t`Packing Git diff...`);
-chrome.runtime.sendMessage({ type: 'FETCH_GIT_DIFF', dir: currentDir }, (res) => {
+chrome?.runtime?.sendMessage?.({ type: 'FETCH_GIT_DIFF', dir: currentDir }, (res) => {
 if (!res?.ok || !res.data?.ok) {
 showToast(res?.data?.error || t`No git repository found here`);
 return;
@@ -1222,7 +1222,7 @@ navigateToDir(entry.relPath);
 return;
 }
 closeMenu();
-chrome.runtime.sendMessage({ type: 'FETCH_FILE_CONTENT', relPath: entry.relPath }, async (res) => {
+chrome?.runtime?.sendMessage?.({ type: 'FETCH_FILE_CONTENT', relPath: entry.relPath }, async (res) => {
         let fileText = res?.ok && res.data ? res.data.content : null;
         if (fileText === null) {
           const localFile = await readLocalFsFile(entry.relPath);

@@ -525,7 +525,7 @@ if (dir === lastQueriedDir) {
 filterAndShowAc(cachedDirEntries, partial);
 return;
 }
-chrome.runtime.sendMessage({ type: 'BROWSE_DIR', dir, query: '' }, async (res) => {
+chrome?.runtime?.sendMessage?.({ type: 'BROWSE_DIR', dir, query: '' }, async (res) => {
               const lastErr = chrome.runtime.lastError?.message;
               if (lastErr || !res?.ok) {
                 const local = await browseLocalFs(dir, '', false);
@@ -658,7 +658,7 @@ const hasValidFileExt = (p: string): boolean => {
 saveBtn.disabled = true;
 saveBtn.textContent = t`Saving...`;
 const fileBody = codeEl.textContent || '';
-          chrome.runtime.sendMessage(
+          chrome?.runtime?.sendMessage?.(
             { type: 'WRITE_FILE', relPath, content: fileBody },
             async (res) => {
               if (!res?.ok || !res.data?.ok) {
