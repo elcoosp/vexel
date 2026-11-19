@@ -5,14 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite build --watch",
-    "build": "tsc && vite build"
+    "build": "lingui compile && tsc && vite build"
   },
   "devDependencies": {
+    "@lingui/cli": "^6.12.0",
+    "@lingui/vite-plugin": "^6.12.0",
     "@types/chrome": "^0.3.7",
     "typescript": "^7.0.2",
     "vite": "^8.3.8"
   },
   "dependencies": {
+    "@lingui/core": "^6.12.0",
     "motion": "^14.14.0"
   }
 }
