@@ -28,4 +28,4 @@ Vexel contains **zero** analytics SDKs, **zero** tracking pixels, **zero** adver
 
 ## Contact
 
-For privacy questions or security reports, open an issue on the official GitHub repository: https://github.com
+For privacy questions or security reports, open an issue on the official GitHub repository: https://github.com/issues
