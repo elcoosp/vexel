@@ -405,7 +405,8 @@ function mountDockIntoInput(): void {
       dockHost.parentElement !== target.container ||
       (target.before !== null && dockHost.nextSibling !== target.before);
     if (needsMove) {
-      dockHost.style.position = '';
+      dockHost.style.position = 'relative';
+      dockHost.style.zIndex = '5';
       dockHost.style.top = '';
       dockHost.style.left = '';
       dockHost.style.flexShrink = '0';
@@ -676,7 +677,7 @@ hasInlineTrigger = tokenLen > 0;
 triggerTextLength = tokenLen;
 isOpen = true;
 dockBtn.classList.add('active');
-if (!popHost.isConnected) (document.body || document.documentElement).appendChild(popHost); popover.style.opacity = '1'; popover.style.transform = 'translateY(0px) scale(1)'; popover.classList.add('open');
+if (!popHost.isConnected) (document.body || document.documentElement).appendChild(popHost); popover.classList.add('open');
 animate(zapIcon, { rotate: [0, -14, 10, 0] }, { duration: 0.32 });
 switchMode(initialMode, initialQuery, wasClosed);
 positionPopover();
