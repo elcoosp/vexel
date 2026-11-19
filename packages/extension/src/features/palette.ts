@@ -304,7 +304,7 @@ function findSemanticDockTarget(plate: HTMLElement, input: HTMLElement): {
     return r.width > 0 && r.height > 0;
   }) as HTMLElement[];
 
-  // 1. Barre d'outils sous la zone de saisie (Mode IA / conversation)
+  // 1. Barre d'outils sous la zone de saisie (Mode IA actif)
   const bottomControls = controls.filter((el) => el.getBoundingClientRect().top >= inputRect.bottom - 6);
   if (bottomControls.length > 0) {
     const first = bottomControls[0];
@@ -312,7 +312,6 @@ function findSemanticDockTarget(plate: HTMLElement, input: HTMLElement): {
     while (row && row !== plate) {
       const cs = window.getComputedStyle(row);
       if (cs.display.includes('flex') && row.getBoundingClientRect().width >= 200) {
-        // Insérer après le premier enfant de contrôle (ex: bouton "+") si présent
         const firstDirectChild = Array.from(row.children).find((ch) => ch !== dockHost && ch.contains(first));
         return {
           container: row,
@@ -324,12 +323,13 @@ function findSemanticDockTarget(plate: HTMLElement, input: HTMLElement): {
     }
   }
 
-  // 2. Barre de recherche mono-ligne (page d'accueil Google)
+  // 2. Barre de recherche mono-ligne (page d'accueil Google) : viser le conteneur flex horizontal sans wrap
   let row: HTMLElement | null = input.parentElement;
   while (row && row !== plate.parentElement) {
     const cs = window.getComputedStyle(row);
-    const hasRightControls = controls.some((el) => el.getBoundingClientRect().left >= inputRect.right - 20);
-    if (cs.display.includes('flex') && hasRightControls) {
+    const hasLeftPlus = controls.some((el) => el.getBoundingClientRect().right <= inputRect.left + 12);
+    const hasRightTools = controls.some((el) => el.getBoundingClientRect().left >= inputRect.right - 20);
+    if (cs.display.includes('flex') && cs.flexWrap !== 'wrap' && (hasLeftPlus || hasRightTools)) {
       const inputBranch = Array.from(row.children).find((ch) => ch !== dockHost && ch.contains(input));
       if (inputBranch) {
         return {
@@ -365,8 +365,10 @@ function mountDockIntoInput(): void {
       dockHost.style.position = '';
       dockHost.style.top = '';
       dockHost.style.left = '';
+      dockHost.style.flexShrink = '0';
       dockHost.style.alignSelf = target.inlineSearch ? 'center' : '';
-      dockHost.style.marginRight = target.inlineSearch ? '4px' : '';
+      dockHost.style.marginLeft = target.inlineSearch ? '0px' : '';
+      dockHost.style.marginRight = target.inlineSearch ? '6px' : '';
       target.container.insertBefore(dockHost, target.before);
       animate(dockBtn, { opacity: 1, scale: 1 }, { type: 'spring', stiffness: 460, damping: 32 });
     }
@@ -380,7 +382,9 @@ function mountDockIntoInput(): void {
   if (rect.width > 0 && rect.height > 0) {
     dockHost.style.position = 'fixed';
     dockHost.style.zIndex = '2147483645';
+    dockHost.style.flexShrink = '';
     dockHost.style.alignSelf = '';
+    dockHost.style.marginLeft = '';
     dockHost.style.marginRight = '';
     dockHost.style.top = rect.bottom + 8 + 'px';
     dockHost.style.left = Math.max(12, rect.right - 122) + 'px';
