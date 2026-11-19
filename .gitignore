@@ -13,3 +13,4 @@ scripts/.demo-workspace/
 *.webm
 *.gif
 .cws-profile/
+packages/extension/src/locales/**/*.js
