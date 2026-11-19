@@ -1,3 +1,5 @@
+import { t } from '@lingui/core/macro'
+import './i18n'
 import { initOnboarding } from './features/onboarding'
 import { initCodeSave } from './features/code-save'
 import { initDomBooster } from './features/dom-booster'
@@ -9,7 +11,7 @@ function showToast(message: string): void {
   const target = document.body || document.documentElement
   if (!target) return
   const toast = document.createElement('div')
-  toast.textContent = 'Vexel : ' + message
+  toast.textContent = t`Vexel: ${message}`
   Object.assign(toast.style, {
     position: 'fixed',
     bottom: '24px',
