@@ -208,7 +208,7 @@ function elementToMarkdown(root: HTMLElement, role: 'user' | 'assistant'): strin
   });
 
   // Strip Google AI disclaimer footer block
-  clone.querySelectorAll('a[href*="://google.com"], a[href*="://google.com"]').forEach((a) => {
+  clone.querySelectorAll('a[href*="://google.com"], a[href*="://://google.com"]').forEach((a) => {
     a.parentElement?.remove();
   });
 

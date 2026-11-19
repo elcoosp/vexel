@@ -257,13 +257,22 @@ const ce = node.closest('[contenteditable="true"]') as HTMLElement | null;
 if (ce) return ce;
 return isEditableElement(node) ? node : null;
 }
-function findVisibleInput(): HTMLElement | null {
-const inputs = document.querySelectorAll('textarea, [contenteditable="true"]');
-for (let i = 0; i < inputs.length; i++) {
-const el = inputs.item(i) as HTMLElement;
-if (el.offsetParent !== null) return el;
+function isTrulyVisibleInput(el: HTMLElement | null): el is HTMLElement {
+  if (!el || !document.contains(el) || el.offsetParent === null) return false;
+  if (el.closest('[data-vexel-ui]') || el.id?.startsWith('vexel-')) return false;
+  const r = el.getBoundingClientRect();
+  return r.width >= 120 && r.height >= 16 && r.bottom > 0 && r.top < window.innerHeight;
 }
-return null;
+
+function findVisibleInput(): HTMLElement | null {
+  const active = resolveEditable(document.activeElement);
+  if (isTrulyVisibleInput(active)) return active;
+
+  const inputs = Array.from(document.querySelectorAll('textarea, [contenteditable="true"]')) as HTMLElement[];
+  const visible = inputs.filter((el) => isTrulyVisibleInput(el));
+  if (visible.length === 0) return null;
+  // Préférer le dernier champ visible (celui du panneau Mode IA actif plutôt que la barre Search cachée derrière)
+  return visible.slice(-1).find(() => true) || null;
 }
 function findInputPlate(input: HTMLElement): HTMLElement {
   const aimPlate = input.closest('[data-xid="aim-mars-input-plate"]') as HTMLElement | null;
@@ -363,7 +372,7 @@ function findSemanticDockTarget(plate: HTMLElement, input: HTMLElement): {
 
 function mountDockIntoInput(): void {
   const input =
-    activeInput && document.contains(activeInput) && activeInput.offsetParent !== null
+    isTrulyVisibleInput(activeInput)
       ? activeInput
       : findVisibleInput();
   if (!input) return;
