@@ -480,7 +480,7 @@ async function waitToast(substr, timeout) {
   return page.waitForFunction(s => {
     return Array.from(document.querySelectorAll('body > div')).some(d => {
       const t = d.textContent || '';
-      return t.startsWith('Vexel :') && t.includes(s) && d.style.position === 'fixed';
+      return (t.startsWith('Vexel:') || t.startsWith('Vexel :')) && t.includes(s) && d.style.position === 'fixed';
     });
   }, substr, { timeout }).then(() => true).catch(() => false);
 }
@@ -720,9 +720,12 @@ async function main() {
   console.log('- Preparing page (consent, anti-bot, extension) before recording...');
   await page.goto(AIM_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForTimeout(1200);
-  await dismissConsent(14000);
+  await dismissConsent(10000);
+  if (INTERACTIVE) {
+    await pause('Solve any Google captcha and sign in inside the Chrome window, then press Enter here');
+    await dismissConsent(5000);
+  }
   await ensureNotBlocked(st, 'landing');
-  if (INTERACTIVE) await pause('Sign in to Google in the window if you want (signed-in sessions get far fewer anti-bot challenges)');
   const signedOut = await page.getByRole('link', { name: 'Sign in' }).first().isVisible().catch(() => false);
   if (signedOut) {
     console.log('- NOTE: signed-out session. For fewer anti-bot challenges run once with INTERACTIVE=1 and sign in; the profile persists.');
@@ -801,7 +804,7 @@ async function main() {
       const mod = process.platform === 'darwin' ? 4 : 2;
       await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'v', code: 'KeyV', windowsVirtualKeyCode: 86, nativeVirtualKeyCode: 86, modifiers: mod, commands: ['paste'] });
       await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'v', code: 'KeyV', windowsVirtualKeyCode: 86, nativeVirtualKeyCode: 86, modifiers: mod });
-      ok = await waitToast('Fichier joint', 2500);
+      ok = await waitToast('attached', 2500);
     } catch { }
     if (!ok) {
       await page.evaluate(t => {
@@ -810,7 +813,7 @@ async function main() {
         dt.setData('text/plain', t);
         el.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: dt }));
       }, pasteLog);
-      ok = await waitToast('Fichier joint', 4000);
+      ok = await waitToast('attached', 4000);
     }
     if (!ok) throw new Error('paste interception toast not seen (AI Mode variant may lack input[type=file])');
     await shot('03-paste-to-file');

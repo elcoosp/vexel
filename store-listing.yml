@@ -3,19 +3,19 @@ targetConsoleUrl: https://google.com
 manifestSync:
   manifestPath: packages/extension/public/manifest.json
   name: Vexel
-  shortDescription: Command Palette locale (~/.agents/skills), anti-troncation et
-    acceleration DOM.
+  shortDescription: "Local coding workspace for Google AI Mode: / slash skills, @
+    repo context, 1-click Save to file & fast virtualization."
   version: 0.2.2
 storeListing:
   category: Developer Tools
   defaultLocale: en
-  supportUrl: https://github.com
+  supportUrl: https://github.com/issues
   homepageUrl: https://github.com
   locales:
     en:
       title: Vexel
-      summary: Command Palette locale (~/.agents/skills), anti-troncation et
-        acceleration DOM.
+      summary: "Local coding workspace for Google AI Mode: / slash skills, @ repo
+        context, 1-click Save to file & fast virtualization."
       detailedDescription: >
         Vexel upgrades Google AI Mode into a fast, keyboard-first engineering
         workspace connected directly to your codebase — with zero cloud relays
@@ -158,7 +158,8 @@ storeListing:
         par jeton.
     es:
       title: Vexel — Workspace local Google AI Mode
-      summary: "Convierte Google AI Mode en un espacio local: comandos /, archivos @, guardado directo de código y virtualización rápida."
+      summary: "Convierte Google AI Mode en un espacio local: comandos /, archivos @,
+        guardado directo de código y virtualización rápida."
       detailedDescription: >
         Vexel transforma Google AI Mode en un entorno de ingeniería rápido,
         controlado por teclado y conectado directamente a tu repositorio — sin
@@ -222,14 +223,15 @@ storeListing:
 
         ✓ Cero analíticas, cero rastreo, cero servidores externos.
 
-        ✓ Todas tus preferencias y accesos a carpetas permanecen estrictamente en
-        tu dispositivo.
+        ✓ Todas tus preferencias y accesos a carpetas permanecen estrictamente
+        en tu dispositivo.
 
         ✓ El bridge está limitado exclusivamente a 127.0.0.1 con autenticación
         por token.
     de:
       title: Vexel — Lokaler Workspace für Google AI
-      summary: "Lokale Befehlspalette (/), Projektdateien (@), direktes Speichern von Codeblöcken und schnelle DOM-Virtualisierung."
+      summary: Lokale Befehlspalette (/), Projektdateien (@), direktes Speichern von
+        Codeblöcken und schnelle DOM-Virtualisierung.
       detailedDescription: >
         Vexel verwandelt Google AI Mode in eine schnelle, tastaturgesteuerte
         Entwicklungsumgebung, die direkt mit deinem Repository verbunden ist —

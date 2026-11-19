@@ -1,0 +1,8 @@
+{
+  "extName": {
+    "message": "Vexel"
+  },
+  "extDescription": {
+    "message": "Workspace code local pour Google AI Mode : commandes /, fichiers @, sauvegarde directe de code et virtualisation rapide."
+  }
+}

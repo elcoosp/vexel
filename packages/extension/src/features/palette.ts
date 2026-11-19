@@ -1,5 +1,5 @@
 import { t, plural } from '@lingui/core/macro';
-import '../i18n';
+import { detectLocale, setLocale } from '../i18n';
 import { browseLocalFs, packLocalFsFolder, pickLocalFolder, readLocalFsFile } from './local-fs';
 import { openOnboardingModal } from './onboarding';
 import { animate } from 'motion';
@@ -145,6 +145,24 @@ const headerRight = document.createElement('div');
   btnTour.type = 'button';
   btnTour.className = 'export-btn';
   btnTour.title = t`Interactive welcome tour & local folder setup`;
+  const btnLang = document.createElement('button');
+  btnLang.type = 'button';
+  btnLang.className = 'pill-btn';
+  const syncLangBtn = () => {
+    const cur = detectLocale();
+    btnLang.textContent = cur.toUpperCase();
+    btnLang.title = cur === 'en' ? 'Switch language to French (FR)' : 'Passer l’interface en anglais (EN)';
+  };
+  syncLangBtn();
+  btnLang.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const next = detectLocale() === 'en' ? 'fr' : 'en';
+    try { localStorage.setItem('vexel:locale', next); } catch {}
+    setLocale(next);
+    syncLangBtn();
+    window.location.reload();
+  });
   btnTour.textContent = '?';
   Object.assign(btnTour.style, { width: '28px', height: '28px', minWidth: '28px', padding: '0', borderRadius: '999px', justifyContent: 'center' });
   btnTour.addEventListener('click', () => {
