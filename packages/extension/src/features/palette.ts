@@ -303,6 +303,38 @@ animate(dockBtn, { opacity: 1, scale: 1 }, { type: 'spring', stiffness: 460, dam
 }
 return;
 }
+const searchForm = input.closest('form[role="search"]') as HTMLElement | null;
+if (searchForm && !input.closest('[data-xid="aim-mars-input-plate"]')) {
+  const inputRect = input.getBoundingClientRect();
+  let row: HTMLElement | null = input.parentElement;
+  while (row && row !== searchForm) {
+    const cs = window.getComputedStyle(row);
+    const rightCtrl = Array.from(row.querySelectorAll('button, [role="button"]')).find((el) => {
+      const h = el as HTMLElement;
+      if (dockHost.contains(h) || h.offsetParent === null) return false;
+      const r = h.getBoundingClientRect();
+      return r.width >= 16 && r.height >= 16 && r.left >= inputRect.right - 24;
+    }) as HTMLElement | undefined;
+    if (cs.display.includes('flex') && cs.flexWrap !== 'wrap' && rightCtrl) {
+      const rightBranch = Array.from(row.children).find((ch) => ch !== dockHost && ch.contains(rightCtrl));
+      if (rightBranch) {
+        if (dockHost.parentElement !== row || dockHost.nextSibling !== rightBranch) {
+          dockHost.style.position = '';
+          dockHost.style.top = '';
+          dockHost.style.left = '';
+          dockHost.style.flexShrink = '0';
+          dockHost.style.alignSelf = 'center';
+          dockHost.style.marginLeft = '4px';
+          dockHost.style.marginRight = '6px';
+          row.insertBefore(dockHost, rightBranch);
+          animate(dockBtn, { opacity: 1, scale: 1 }, { type: 'spring', stiffness: 460, damping: 32 });
+        }
+        return;
+      }
+    }
+    row = row.parentElement;
+  }
+}
 if (dockHost.parentElement !== document.body) {
 document.body.appendChild(dockHost);
 }
@@ -310,6 +342,10 @@ const rect = plate.getBoundingClientRect();
 if (rect.width > 0 && rect.height > 0) {
 dockHost.style.position = 'fixed';
 dockHost.style.zIndex = '2147483645';
+dockHost.style.flexShrink = '';
+dockHost.style.alignSelf = '';
+dockHost.style.marginLeft = '';
+dockHost.style.marginRight = '';
 dockHost.style.top = rect.bottom + 8 + 'px';
 dockHost.style.left = Math.max(12, rect.right - 122) + 'px';
 }

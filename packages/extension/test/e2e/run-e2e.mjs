@@ -90,6 +90,7 @@ try {
   await paletteHost.waitFor({ state: 'attached', timeout: 3000 });
 const isOpen = await paletteHost.evaluate((el) => el.shadowRoot?.querySelector('.popover')?.classList.contains('open'));
 assert.equal(isOpen, true, 'Command palette should open when typing /');
+  await page.waitForFunction(() => (document.querySelector('#vexel-inline-menu-host')?.shadowRoot?.querySelectorAll('.item').length || 0) >= 2, { timeout: 3000 });
 // ArrowDown moves selection to index 1
 await page.keyboard.press('ArrowDown');
 const secondActive = await paletteHost.evaluate((el) =>
