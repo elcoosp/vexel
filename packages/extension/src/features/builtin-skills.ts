@@ -1,7 +1,11 @@
+import type { MessageDescriptor } from '@lingui/core';
+import { msg } from '@lingui/core/macro';
+import { i18n } from '../i18n';
+
 export interface BuiltinSkillDef {
   id: string;
   name: string;
-  description: string;
+  readonly description: string;
   smartContent: string;
   smartLength: number;
   fullContent: string;
@@ -11,11 +15,11 @@ export interface BuiltinSkillDef {
   isBuiltin: true;
 }
 
-const RAW_BUILTINS: Array<{ id: string; name: string; description: string; body: string }> = [
+const RAW_BUILTINS: Array<{ id: string; name: string; descMsg: MessageDescriptor; body: string }> = [
   {
     id: 'builtin-review-pr',
     name: 'review-pr',
-    description: 'Senior code review focusing on bugs, security edge cases, race conditions, and maintainability.',
+    descMsg: msg`Senior code review focusing on bugs, security edge cases, race conditions, and maintainability.`,
     body: [
       '# Skill: Senior Code Review',
       '',
@@ -29,7 +33,7 @@ const RAW_BUILTINS: Array<{ id: string; name: string; description: string; body:
   {
     id: 'builtin-debug-root-cause',
     name: 'debug-root-cause',
-    description: 'Systematic root-cause diagnosis from stack traces, logs, and code without guesswork.',
+    descMsg: msg`Systematic root-cause diagnosis from stack traces, logs, and code without guesswork.`,
     body: [
       '# Skill: Systematic Root-Cause Debugging',
       '',
@@ -42,7 +46,7 @@ const RAW_BUILTINS: Array<{ id: string; name: string; description: string; body:
   {
     id: 'builtin-architect',
     name: 'architect',
-    description: 'Design pragmatic, scalable system architecture with clear trade-offs and data flow.',
+    descMsg: msg`Design pragmatic, scalable system architecture with clear trade-offs and data flow.`,
     body: [
       '# Skill: Pragmatic System Architecture',
       '',
@@ -55,7 +59,7 @@ const RAW_BUILTINS: Array<{ id: string; name: string; description: string; body:
   {
     id: 'builtin-refactor-clean',
     name: 'refactor-clean',
-    description: 'Simplify complex functions, remove dead code, and improve type safety without behavior changes.',
+    descMsg: msg`Simplify complex functions, remove dead code, and improve type safety without behavior changes.`,
     body: [
       '# Skill: Clean Behavior-Preserving Refactor',
       '',
@@ -68,7 +72,7 @@ const RAW_BUILTINS: Array<{ id: string; name: string; description: string; body:
   {
     id: 'builtin-test-suite',
     name: 'test-suite',
-    description: 'Generate high-signal unit and integration tests covering happy paths, boundaries, and failures.',
+    descMsg: msg`Generate high-signal unit and integration tests covering happy paths, boundaries, and failures.`,
     body: [
       '# Skill: High-Signal Test Suite Generator',
       '',
@@ -81,7 +85,7 @@ const RAW_BUILTINS: Array<{ id: string; name: string; description: string; body:
   {
     id: 'builtin-sql-perf',
     name: 'sql-perf',
-    description: 'Optimize slow SQL queries, composite indexes, and execution plans.',
+    descMsg: msg`Optimize slow SQL queries, composite indexes, and execution plans.`,
     body: [
       '# Skill: SQL & Query Performance Optimization',
       '',
@@ -96,7 +100,9 @@ const RAW_BUILTINS: Array<{ id: string; name: string; description: string; body:
 export const BUILTIN_SKILLS: BuiltinSkillDef[] = RAW_BUILTINS.map((s) => ({
   id: s.id,
   name: s.name,
-  description: s.description,
+  get description() {
+    return i18n._(s.descMsg);
+  },
   smartContent: s.body,
   smartLength: s.body.length,
   fullContent: s.body,
