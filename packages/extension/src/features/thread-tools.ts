@@ -1,3 +1,5 @@
+import { t } from '@lingui/core/macro';
+import '../i18n';
 import { animate } from 'motion';
 
 interface ThreadTurn {
@@ -290,15 +292,16 @@ function buildCleanThreadMarkdown(): string | null {
 export async function copyCleanThread(showToast: (msg: string) => void): Promise<boolean> {
   const md = buildCleanThreadMarkdown();
   if (!md) {
-    showToast('No conversation turns found');
+    showToast(t`No conversation turns found`);
     return false;
   }
   try {
     await navigator.clipboard.writeText(md);
-    showToast('Clean thread copied to clipboard (' + Math.round(md.length / 100) / 10 + ' KB)');
+    const kb = Math.round(md.length / 100) / 10;
+    showToast(t`Clean thread copied to clipboard (${kb} KB)`);
     return true;
   } catch {
-    showToast('Clipboard write blocked');
+    showToast(t`Clipboard write blocked`);
     return false;
   }
 }
@@ -306,7 +309,7 @@ export async function copyCleanThread(showToast: (msg: string) => void): Promise
 export function exportConversationMarkdown(showToast: (msg: string) => void): void {
   const md = buildCleanThreadMarkdown();
   if (!md) {
-    showToast('No conversation turns found');
+    showToast(t`No conversation turns found`);
     return;
   }
   const timestamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
@@ -320,7 +323,8 @@ export function exportConversationMarkdown(showToast: (msg: string) => void): vo
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
-  showToast('Conversation exported (' + Math.round(md.length / 100) / 10 + ' KB)');
+  const kb = Math.round(md.length / 100) / 10;
+  showToast(t`Conversation exported (${kb} KB)`);
 }
 
 const TOC_CSS = [
