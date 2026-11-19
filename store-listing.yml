@@ -156,6 +156,143 @@ storeListing:
 
         ✓ Le bridge est limité exclusivement à 127.0.0.1 avec authentification
         par jeton.
+    es:
+      title: Vexel — Workspace local Google AI Mode
+      summary: "Convierte Google AI Mode en un espacio local: comandos /, archivos @, guardado directo de código y virtualización rápida."
+      detailedDescription: >
+        Vexel transforma Google AI Mode en un entorno de ingeniería rápido,
+        controlado por teclado y conectado directamente a tu repositorio — sin
+        servidores intermedios ni telemetría.
+
+
+        CARACTERÍSTICAS CLAVE
+
+        ────────────────────────────────────────
+
+
+        1. COMANDOS SLASH Y SKILLS DE INGENIERÍA (/)
+
+        • Escribe "/" en el cuadro de texto de Google AI Mode para activar
+        prompts reutilizables y flujos SKILL.md (revisión de código,
+        arquitectura, pruebas, refactorización).
+
+        • Navegación instantánea por teclado e instalación en un clic desde
+        skills.sh.
+
+
+        2. CONTEXTO DE REPOSITORIO (@) — MODO SIN SERVIDOR O BRIDGE LOCAL
+
+        • Escribe "@" para explorar los archivos de tu proyecto o empaquetar una
+        carpeta completa sin salir de Google AI Mode.
+
+        • Modo Sin Servidor: Utiliza la API nativa File System Access de Chrome
+        directamente en tu equipo — sin terminal ni procesos en segundo plano.
+
+        • Bridge opcional (@vexel/bridge): Se conecta por localhost (127.0.0.1)
+        para inyectar git diff y sincronizar tu espacio de trabajo.
+
+
+        3. GUARDADO DIRECTO "SAVE TO FILE" EN BLOQUES DE CÓDIGO
+
+        • Pasa el cursor sobre cualquier bloque de código generado para mostrar
+        el botón "Save to file".
+
+        • Detecta automáticamente la ruta de destino desde el lenguaje o los
+        comentarios de cabecera, con autocompletado de carpetas.
+
+
+        4. CONVERSIÓN AUTOMÁTICA DE PEGADOS LARGOS EN ARCHIVOS ADJUNTOS
+
+        • Pegar registros extensos, trazas de pila o fragmentos multiarchivo los
+        convierte automáticamente en archivos adjuntos limpios.
+
+
+        5. VIRTUALIZACIÓN DE ALTA VELOCIDAD Y BARRA DE LÍNEA DE TIEMPO
+
+        • Mantiene fluidas las sesiones largas mediante virtualización CSS
+        nativa content-visibility.
+
+        • Incluye barra de navegación flotante, copia limpia del hilo y
+        exportación completa en Markdown.
+
+
+        PRIVACIDAD POR DISEÑO
+
+        ────────────────────────────────────────
+
+        ✓ Cero analíticas, cero rastreo, cero servidores externos.
+
+        ✓ Todas tus preferencias y accesos a carpetas permanecen estrictamente en
+        tu dispositivo.
+
+        ✓ El bridge está limitado exclusivamente a 127.0.0.1 con autenticación
+        por token.
+    de:
+      title: Vexel — Lokaler Workspace für Google AI
+      summary: "Lokale Befehlspalette (/), Projektdateien (@), direktes Speichern von Codeblöcken und schnelle DOM-Virtualisierung."
+      detailedDescription: >
+        Vexel verwandelt Google AI Mode in eine schnelle, tastaturgesteuerte
+        Entwicklungsumgebung, die direkt mit deinem Repository verbunden ist —
+        ohne Cloud-Relays und ohne Telemetrie.
+
+
+        HAUPTFUNKTIONEN
+
+        ────────────────────────────────────────
+
+
+        1. SLASH-BEFEHLE & ENGINEERING-SKILLS (/)
+
+        • Tippe "/" in das Eingabefeld von Google AI Mode, um wiederverwendbare
+        Prompts und SKILL.md-Workflows auszulösen (Code-Review, Architektur,
+        Tests, Refactoring).
+
+        • Sofortige Tastaturnavigation und Ein-Klick-Installation von skills.sh.
+
+
+        2. REPOSITORY-KONTEXT (@) — SERVERLOS ODER LOKALE BRIDGE
+
+        • Tippe "@", um Projektdateien zu durchsuchen oder ganze Ordner in
+        sauberen Kontext zu packen, ohne Google AI Mode zu verlassen.
+
+        • Serverloser Modus: Nutzt die native File System Access API von Chrome
+        direkt auf deinem Gerät — kein Terminal erforderlich.
+
+        • Optionale Bridge (@vexel/bridge): Verbindet sich über localhost
+        (127.0.0.1) für Git-Diff-Injektion und Workspace-Synchronisation.
+
+
+        3. DIREKTES "SAVE TO FILE" FÜR CODEBLÖCKE
+
+        • Fahre mit der Maus über einen generierten Codeblock, um den Button
+        "Save to file" einzublenden.
+
+        • Erkennt den Zielpfad automatisch anhand der Sprache oder
+        Header-Kommentare inklusive Ordner-Autovervollständigung.
+
+
+        4. AUTOMATISCHE UMWANDLUNG LANGER EINFÜGUNGEN IN ANHÄNGE
+
+        • Große Logs, Stack-Traces oder Multi-File-Snippets werden beim Einfügen
+        automatisch in saubere Dateianhänge umgewandelt.
+
+
+        5. HOCHGESCHWINDIGKEITS-VIRTUALISIERUNG & TIMELINE-LEISTE
+
+        • Hält lange Sitzungen flüssig durch native CSS content-visibility
+        Virtualisierung, schwebende Timeline-Leiste und Markdown-Export.
+
+
+        DATENSCHUTZ DURCH DESIGN
+
+        ────────────────────────────────────────
+
+        ✓ Keine Analysen, kein Tracking, keine externen Server.
+
+        ✓ Alle Einstellungen und Ordnerzugriffe bleiben strikt auf deinem Gerät.
+
+        ✓ Die optionale Bridge ist ausschließlich an 127.0.0.1 mit
+        Token-Authentifizierung gebunden.
 assets:
   packageZip: release/vexel-extension-store.zip
   icon128: packages/extension/public/icons/icon-128.png
