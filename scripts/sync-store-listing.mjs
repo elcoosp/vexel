@@ -168,78 +168,58 @@ async function fillFirstVisible(page, selectors, value, label) {
   return false;
 }
 
-async function run() {
-  if (!fs.existsSync(LISTING_PATH)) {
-    console.error('❌ Fichier store-listing.yml introuvable à la racine.');
-    process.exit(1);
-  }
+async function injectListingIntoPage(page, listing, primaryLocale) {
+  const results = [];
 
-  const rawYaml = fs.readFileSync(LISTING_PATH, 'utf8');
-  const listing = YAML.parse(rawYaml);
-
-  console.log('🔍 Validation des règles Chrome Web Store...');
-  const { errors, warnings } = validateStoreListing(listing);
-
-  for (const w of warnings) console.warn('  ⚠', w);
-  if (errors.length > 0) {
-    for (const e of errors) console.error('  ❌', e);
-    process.exit(1);
-  }
-  console.log('✅ Métadonnées 100 % conformes aux exigences Chrome Web Store !\n');
-
-  if (process.argv.includes('--validate-only')) {
-    return;
-  }
-
-  const defaultLocale = listing.storeListing.defaultLocale || 'en';
-  const primaryLocale = listing.storeListing.locales[defaultLocale];
-
-  console.log('🌐 Ouverture de Google Chrome (profil persistant .cws-profile)...');
-  const context = await chromium.launchPersistentContext(PROFILE_DIR, {
-    headless: false,
-    channel: 'chrome',
-    viewport: { width: 1360, height: 900 },
-    args: ['--disable-blink-features=AutomationControlled'],
-  });
-
-  const pages = context.pages();
-  const page = pages.length > 0 ? pages[0] : await context.newPage();
-  await page.goto(listing.targetConsoleUrl, { waitUntil: 'domcontentloaded' });
-
-  console.log('⏳ Connecte-toi à ton compte Google / résous le CAPTCHA si nécessaire, puis ouvre la fiche de ton extension...');
-  await page.waitForURL(/chrome\.google\.com\/webstore\/devconsole\/[^/]+\/[^/]+/, {
-    timeout: 0,
-  });
-
-  console.log('\n✍️  Injection automatique des champs détectés sur la page courante...');
-  await page.waitForTimeout(1500);
-
-  await fillFirstVisible(
-    page,
-    ['textarea[aria-label*="Description"]', 'textarea[aria-label*="description"]', 'textarea'],
-    primaryLocale.detailedDescription,
-    'Detailed description'
+  results.push(
+    await fillFirstVisible(
+      page,
+      ['textarea[aria-label*="Description"]', 'textarea[aria-label*="description"]'],
+      primaryLocale.detailedDescription,
+      'Detailed description'
+    )
   );
 
-  await fillFirstVisible(
-    page,
-    ['input[aria-label*="Official URL"]', 'input[aria-label*="Site officiel"]', 'input[type="url"]'],
-    listing.storeListing.homepageUrl,
-    'Homepage URL'
+  results.push(
+    await fillFirstVisible(
+      page,
+      ['input[aria-label*="Official URL"]', 'input[aria-label*="Site officiel"]', 'input[type="url"][data-field="homepage"]'],
+      listing.storeListing.homepageUrl,
+      'Homepage URL'
+    )
   );
 
-  await fillFirstVisible(
-    page,
-    ['textarea[aria-label*="Single purpose"]', 'textarea[aria-label*="objectif unique"]'],
-    listing.privacyPractices.singlePurpose,
-    'Single purpose description'
+  results.push(
+    await fillFirstVisible(
+      page,
+      ['textarea[aria-label*="Single purpose"]', 'textarea[aria-label*="objectif unique"]'],
+      listing.privacyPractices.singlePurpose,
+      'Single purpose description'
+    )
   );
 
-  await fillFirstVisible(
-    page,
-    ['input[aria-label*="Privacy policy"]', 'input[aria-label*="confidentialité"]'],
-    listing.privacyPractices.privacyPolicyUrl,
-    'Privacy policy URL'
+  const justifications = listing.privacyPractices.permissionJustifications || {};
+  for (const [permKey, reason] of Object.entries(justifications)) {
+    results.push(
+      await fillFirstVisible(
+        page,
+        [
+          'textarea[aria-label*="' + permKey + '"]',
+          'textarea[data-permission="' + permKey + '"]',
+        ],
+        reason,
+        'Justification (' + permKey + ')'
+      )
+    );
+  }
+
+  results.push(
+    await fillFirstVisible(
+      page,
+      ['input[aria-label*="Privacy policy"]', 'input[aria-label*="confidentialité"]'],
+      listing.privacyPractices.privacyPolicyUrl,
+      'Privacy policy URL'
+    )
   );
 
   const validShots = (listing.assets?.screenshots || [])
@@ -251,10 +231,121 @@ async function run() {
     if ((await fileInputs.count()) > 0) {
       await fileInputs.first().setInputFiles(validShots);
       console.log('  ✓ ' + validShots.length + " capture(s) d'écran uploadée(s)");
+      results.push(true);
     }
   }
 
-  console.log('\n🎉 Synchronisation terminée ! Vérifie les onglets dans Chrome et clique sur "Enregistrer le brouillon".');
+  return results.filter(Boolean).length;
+}
+
+function buildMockDevConsoleHtml(justifications) {
+  const permBlocks = Object.keys(justifications)
+    .map(
+      (k) =>
+        '<label>' +
+        k +
+        '<textarea aria-label="' +
+        k +
+        ' justification" data-permission="' +
+        k +
+        '"></textarea></label>'
+    )
+    .join('\n');
+
+  return [
+    '<!doctype html><html><head><meta charset="utf-8"><title>CWS Dev Console Mock</title></head><body>',
+    '<h1>Chrome Web Store Developer Dashboard (Dry-Run)</h1>',
+    '<section id="store-listing">',
+    '  <textarea aria-label="Description"></textarea>',
+    '  <input type="url" aria-label="Official URL" data-field="homepage" />',
+    '  <input type="file" accept="image/png,image/jpeg" multiple />',
+    '</section>',
+    '<section id="privacy-practices">',
+    '  <textarea aria-label="Single purpose description"></textarea>',
+    permBlocks,
+    '  <input type="url" aria-label="Privacy policy URL" />',
+    '</section>',
+    '</body></html>',
+  ].join('\n');
+}
+
+async function runDryRun(listing, primaryLocale) {
+console.log('🧪 Lancement du mode --dry-run (simulation Playwright de la console Chrome Web Store)...');
+const browser = await chromium.launch({ headless: true });
+try {
+const page = await browser.newPage();
+const mockHtml = buildMockDevConsoleHtml(listing.privacyPractices.permissionJustifications || {});
+await page.setContent(mockHtml, { waitUntil: 'domcontentloaded' });
+const filledCount = await injectListingIntoPage(page, listing, primaryLocale);
+const descVal = await page.locator('textarea[aria-label="Description"]').inputValue();
+const homeVal = await page.locator('input[aria-label="Official URL"]').inputValue();
+const spVal = await page.locator('textarea[aria-label="Single purpose description"]').inputValue();
+const privVal = await page.locator('input[aria-label="Privacy policy URL"]').inputValue();
+if (descVal !== primaryLocale.detailedDescription) {
+throw new Error('Dry-run assertion failed: Detailed description mismatch.');
+}
+if (homeVal !== listing.storeListing.homepageUrl) {
+throw new Error('Dry-run assertion failed: Homepage URL mismatch.');
+}
+if (spVal !== listing.privacyPractices.singlePurpose) {
+throw new Error('Dry-run assertion failed: Single purpose mismatch.');
+}
+if (privVal !== listing.privacyPractices.privacyPolicyUrl) {
+throw new Error('Dry-run assertion failed: Privacy policy URL mismatch.');
+}
+for (const [permKey, reason] of Object.entries(listing.privacyPractices.permissionJustifications || {})) {
+const val = await page.locator('textarea[data-permission="' + permKey + '"]').inputValue();
+if (val !== reason) {
+throw new Error('Dry-run assertion failed: Permission justification mismatch for ' + permKey);
+}
+}
+console.log('\n✅ Dry-run Playwright réussi : ' + filledCount + ' champs/fichiers injectés et vérifiés dans le DOM !');
+} finally {
+await browser.close();
+}
+}
+async function run() {
+if (!fs.existsSync(LISTING_PATH)) {
+console.error('❌ Fichier store-listing.yml introuvable à la racine.');
+process.exit(1);
+}
+const rawYaml = fs.readFileSync(LISTING_PATH, 'utf8');
+const listing = YAML.parse(rawYaml);
+console.log('🔍 Validation des règles Chrome Web Store...');
+const { errors, warnings } = validateStoreListing(listing);
+for (const w of warnings) console.warn('  ⚠', w);
+if (errors.length > 0) {
+for (const e of errors) console.error('  ❌', e);
+process.exit(1);
+}
+console.log('✅ Métadonnées 100 % conformes aux exigences Chrome Web Store !\n');
+if (process.argv.includes('--validate-only')) {
+return;
+}
+const defaultLocale = listing.storeListing.defaultLocale || 'en';
+const primaryLocale = listing.storeListing.locales[defaultLocale];
+if (process.argv.includes('--dry-run')) {
+await runDryRun(listing, primaryLocale);
+return;
+}
+console.log('🌐 Ouverture de Google Chrome (profil persistant .cws-profile)...');
+const context = await chromium.launchPersistentContext(PROFILE_DIR, {
+headless: false,
+channel: 'chrome',
+viewport: { width: 1360, height: 900 },
+args: ['--disable-blink-features=AutomationControlled'],
+});
+const pages = context.pages();
+const page = pages.length > 0 ? pages.at(0) : await context.newPage();
+await page.goto(listing.targetConsoleUrl, { waitUntil: 'domcontentloaded' });
+console.log('⏳ Connecte-toi à ton compte Google / résous le CAPTCHA si nécessaire, puis ouvre la fiche de ton extension...');
+await page.waitForURL(new RegExp("chrome\\.google\\.com/webstore/devconsole/[^/]+/[^/]+"), {
+timeout: 0,
+});
+console.log('\n✍️  Injection automatique des champs détectés sur la page courante...');
+await page.waitForTimeout(1500);
+await injectListingIntoPage(page, listing, primaryLocale);
+console.log('\n🎉 Synchronisation terminée ! Vérifie les onglets dans Chrome et clique sur "Enregistrer le brouillon".');
 console.log('   (Ferme simplement la fenêtre Chrome quand tu as terminé.)');
 await new Promise((resolve) => context.on('close', resolve));
 }
