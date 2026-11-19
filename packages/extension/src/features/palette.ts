@@ -266,74 +266,127 @@ if (el.offsetParent !== null) return el;
 return null;
 }
 function findInputPlate(input: HTMLElement): HTMLElement {
-return (
-input.closest('[data-xid="aim-mars-input-plate"], .AgWCw') ||
-input.parentElement ||
-input
-);
+  const aimPlate = input.closest('[data-xid="aim-mars-input-plate"]') as HTMLElement | null;
+  if (aimPlate) return aimPlate;
+
+  let cur: HTMLElement | null = input.parentElement;
+  let best: HTMLElement | null = null;
+  while (cur && cur !== document.body && cur.tagName !== 'FORM') {
+    const rect = cur.getBoundingClientRect();
+    const cs = window.getComputedStyle(cur);
+    const radius = parseFloat(cs.borderTopLeftRadius || '0');
+    const hasControls = cur.querySelector('button, [role="button"]') !== null;
+    if (rect.width >= 280 && rect.height >= 40 && hasControls) {
+      best = cur;
+      if (radius >= 16) return cur;
+    }
+    cur = cur.parentElement;
+  }
+  return best || input.parentElement || input;
 }
+
 let observedPlate: HTMLElement | null = null;
 const plateObserver = new ResizeObserver(() => {
-if (isOpen) positionPopover();
+  mountDockIntoInput();
+  if (isOpen) positionPopover();
 });
+
+function findSemanticDockTarget(plate: HTMLElement, input: HTMLElement): {
+  container: HTMLElement;
+  before: ChildNode | null;
+  inlineSearch: boolean;
+} | null {
+  const inputRect = input.getBoundingClientRect();
+  const controls = Array.from(plate.querySelectorAll('button, [role="button"]')).filter((el) => {
+    const h = el as HTMLElement;
+    if (dockHost.contains(h) || h.offsetParent === null) return false;
+    const r = h.getBoundingClientRect();
+    return r.width > 0 && r.height > 0;
+  }) as HTMLElement[];
+
+  // 1. Barre d'outils sous la zone de saisie (Mode IA / conversation)
+  const bottomControls = controls.filter((el) => el.getBoundingClientRect().top >= inputRect.bottom - 6);
+  if (bottomControls.length > 0) {
+    const first = bottomControls[0];
+    let row: HTMLElement | null = first.parentElement;
+    while (row && row !== plate) {
+      const cs = window.getComputedStyle(row);
+      if (cs.display.includes('flex') && row.getBoundingClientRect().width >= 200) {
+        // Insérer après le premier enfant de contrôle (ex: bouton "+") si présent
+        const firstDirectChild = Array.from(row.children).find((ch) => ch !== dockHost && ch.contains(first));
+        return {
+          container: row,
+          before: firstDirectChild ? firstDirectChild.nextSibling : null,
+          inlineSearch: false,
+        };
+      }
+      row = row.parentElement;
+    }
+  }
+
+  // 2. Barre de recherche mono-ligne (page d'accueil Google)
+  let row: HTMLElement | null = input.parentElement;
+  while (row && row !== plate.parentElement) {
+    const cs = window.getComputedStyle(row);
+    const hasRightControls = controls.some((el) => el.getBoundingClientRect().left >= inputRect.right - 20);
+    if (cs.display.includes('flex') && hasRightControls) {
+      const inputBranch = Array.from(row.children).find((ch) => ch !== dockHost && ch.contains(input));
+      if (inputBranch) {
+        return {
+          container: row,
+          before: inputBranch.nextSibling,
+          inlineSearch: true,
+        };
+      }
+    }
+    row = row.parentElement;
+  }
+
+  return null;
+}
+
 function mountDockIntoInput(): void {
-if (dockHost.isConnected && dockHost.parentElement?.classList.contains('o8Wipc')) return;
-const input = activeInput && document.contains(activeInput) ? activeInput : findVisibleInput();
-if (!input) return;
-activeInput = input;
-const plate = findInputPlate(input);
-if (plate !== observedPlate) {
-plateObserver.disconnect();
-plateObserver.observe(plate);
-observedPlate = plate;
+  const input = activeInput && document.contains(activeInput) ? activeInput : findVisibleInput();
+  if (!input) return;
+  activeInput = input;
+  const plate = findInputPlate(input);
+  if (plate !== observedPlate) {
+    plateObserver.disconnect();
+    plateObserver.observe(plate);
+    observedPlate = plate;
+  }
+
+  const target = findSemanticDockTarget(plate, input);
+  if (target) {
+    const needsMove =
+      dockHost.parentElement !== target.container ||
+      (target.before !== null && dockHost.nextSibling !== target.before);
+    if (needsMove) {
+      dockHost.style.position = '';
+      dockHost.style.top = '';
+      dockHost.style.left = '';
+      dockHost.style.alignSelf = target.inlineSearch ? 'center' : '';
+      dockHost.style.marginRight = target.inlineSearch ? '4px' : '';
+      target.container.insertBefore(dockHost, target.before);
+      animate(dockBtn, { opacity: 1, scale: 1 }, { type: 'spring', stiffness: 460, damping: 32 });
+    }
+    return;
+  }
+
+  if (dockHost.parentElement !== document.body) {
+    document.body.appendChild(dockHost);
+  }
+  const rect = plate.getBoundingClientRect();
+  if (rect.width > 0 && rect.height > 0) {
+    dockHost.style.position = 'fixed';
+    dockHost.style.zIndex = '2147483645';
+    dockHost.style.alignSelf = '';
+    dockHost.style.marginRight = '';
+    dockHost.style.top = rect.bottom + 8 + 'px';
+    dockHost.style.left = Math.max(12, rect.right - 122) + 'px';
+  }
 }
-const toolbarRow = plate.querySelector('.o8Wipc');
-if (toolbarRow) {
-if (dockHost.parentElement !== toolbarRow) {
-dockHost.style.position = '';
-dockHost.style.top = '';
-dockHost.style.left = '';
-dockHost.style.alignSelf = '';
-dockHost.style.marginRight = '';
-const chipsContainer = toolbarRow.querySelector('.rJkohe');
-if (chipsContainer) {
-toolbarRow.insertBefore(dockHost, chipsContainer);
-} else {
-toolbarRow.appendChild(dockHost);
-}
-animate(dockBtn, { opacity: 1, scale: 1 }, { type: 'spring', stiffness: 460, damping: 32 });
-}
-return;
-}
-const searchRow = plate.querySelector('.SDkEP') || (plate.classList.contains('SDkEP') ? plate : null);
-if (searchRow) {
-if (dockHost.parentElement !== searchRow) {
-dockHost.style.position = '';
-dockHost.style.top = '';
-dockHost.style.left = '';
-dockHost.style.alignSelf = 'center';
-dockHost.style.marginRight = '4px';
-const rightTools = searchRow.querySelector('.dRYYxd');
-if (rightTools) {
-searchRow.insertBefore(dockHost, rightTools);
-} else {
-searchRow.appendChild(dockHost);
-}
-animate(dockBtn, { opacity: 1, scale: 1 }, { type: 'spring', stiffness: 460, damping: 32 });
-}
-return;
-}
-if (dockHost.parentElement !== document.body) {
-document.body.appendChild(dockHost);
-}
-const rect = plate.getBoundingClientRect();
-if (rect.width > 0 && rect.height > 0) {
-dockHost.style.position = 'fixed';
-dockHost.style.zIndex = '2147483645';
-dockHost.style.top = rect.bottom + 8 + 'px';
-dockHost.style.left = Math.max(12, rect.right - 122) + 'px';
-}
-}
+
 function positionPopover(): void {
   if (!isOpen) return;
 const input = activeInput && document.contains(activeInput) ? activeInput : findVisibleInput();
@@ -1318,5 +1371,14 @@ if (!dockHost.isConnected) mountDockIntoInput();
 if (isOpen) positionPopover();
 }, true);
 window.addEventListener('popstate', () => window.setTimeout(mountDockIntoInput, 120));
+  let dockDomRaf = 0;
+  const dockDomObserver = new MutationObserver(() => {
+    if (dockDomRaf) return;
+    dockDomRaf = window.requestAnimationFrame(() => {
+      dockDomRaf = 0;
+      mountDockIntoInput();
+    });
+  });
+  dockDomObserver.observe(document.body, { childList: true, subtree: true });
 mountDockIntoInput();
 }
