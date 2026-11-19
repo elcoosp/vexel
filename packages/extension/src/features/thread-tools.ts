@@ -22,18 +22,29 @@ function getUserTurnElements(): HTMLElement[] {
   for (let i = 0; i < turnBlocks.length; i++) {
     const block = turnBlocks[i];
     const userEl =
-      block.querySelector<HTMLElement>(
-        '[jsname="eFVkfb"], .VndcI.veK2kb, .tbIZh.Odbbif, [data-user-query], .ryAKYc'
-      ) || null;
+      block.querySelector<HTMLElement>('[jsname="eFVkfb"], [data-user-query]') ||
+      (Array.from(block.children).find(
+        (ch) => !ch.matches('[data-subtree="aimc"], style, script') && (ch.textContent || '').trim().length > 0
+      ) as HTMLElement | undefined) ||
+      null;
     if (userEl && !seen.has(userEl)) {
       seen.add(userEl);
       results.push(userEl);
     }
   }
 
-  const standalone = document.querySelectorAll<HTMLElement>(
-    '[jsname="eFVkfb"], .VndcI.veK2kb, .tbIZh.Odbbif, [data-user-query]'
-  );
+  if (results.length === 0) {
+    const aiBlocks = document.querySelectorAll<HTMLElement>('[data-subtree="aimc"]');
+    for (let i = 0; i < aiBlocks.length; i++) {
+      const prev = aiBlocks[i].previousElementSibling as HTMLElement | null;
+      if (prev && (prev.textContent || '').trim().length > 0 && !seen.has(prev)) {
+        seen.add(prev);
+        results.push(prev);
+      }
+    }
+  }
+
+  const standalone = document.querySelectorAll<HTMLElement>('[jsname="eFVkfb"], [data-user-query]');
   for (let i = 0; i < standalone.length; i++) {
     const el = standalone[i];
     if (seen.has(el)) continue;
