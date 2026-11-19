@@ -377,10 +377,12 @@ function findSemanticDockTarget(plate: HTMLElement, input: HTMLElement): {
     row = row.parentElement;
   }
 
-  // 3. Fallback conteneur toolbar explicite (tests E2E)
-  const explicitToolbar = plate.querySelector('.o8Wipc') as HTMLElement | null;
-  if (explicitToolbar) {
-    return { container: explicitToolbar, before: null, inlineSearch: false };
+  // 3. Fallback conteneur flex direct de plate (markup minimaliste E2E)
+  const directFlexRow = Array.from(plate.children).find(
+    (ch) => ch !== dockHost && window.getComputedStyle(ch as HTMLElement).display.includes('flex')
+  ) as HTMLElement | undefined;
+  if (directFlexRow) {
+    return { container: directFlexRow, before: null, inlineSearch: false };
   }
 
   return null;

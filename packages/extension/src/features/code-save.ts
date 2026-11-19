@@ -133,7 +133,7 @@ export function initCodeSave(showToast: (msg: string) => void): void {
     if (container.getAttribute('data-vexel-save') === 'true') return;
     const codeEl = container.querySelector('code');
     const header =
-      container.querySelector<HTMLElement>('.a2TNg') ||
+      
       (container.firstElementChild as HTMLElement | null);
     if (!codeEl || !header) return;
     container.setAttribute('data-vexel-save', 'true');
