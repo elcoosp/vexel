@@ -106,6 +106,19 @@ Press `Cmd+K` (`Ctrl+K` on Linux/Windows), search your `~/.agents/skills/` playb
 
 Scroll through a multi-turn session as normal. Vexel virtualizes off-screen turns, so the DOM stays small and the UI stays responsive.
 
+## Internationalization (i18n)
+
+Vexel uses **Lingui v6** (`@lingui/core`, `@lingui/cli`, `@lingui/vite-plugin`) with ICU MessageFormat plurals and automatic browser UI language detection (`chrome.i18n.getUILanguage()` / `navigator.language`).
+
+- **Supported locales**: English (`en`), French (`fr`), Spanish (`es`), and German (`de`).
+- **Manual locale override**: Set `localStorage.setItem('vexel:locale', 'fr')` (or `'en'` / `'es'` / `'de'`) in DevTools to switch languages immediately.
+- **Catalog workflow**:
+  ```bash
+  pnpm i18n:extract   # Extract new messages into src/locales/{en,fr,es,de}/messages.po
+  pnpm i18n:check     # Verify 0 missing translations across all locales
+  pnpm build          # Compiles Lingui catalogs before TypeScript & Vite bundling
+  ```
+
 ## Status
 
 > [!NOTE]
