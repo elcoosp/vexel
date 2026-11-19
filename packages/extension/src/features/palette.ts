@@ -257,195 +257,70 @@ const ce = node.closest('[contenteditable="true"]') as HTMLElement | null;
 if (ce) return ce;
 return isEditableElement(node) ? node : null;
 }
-function isTrulyVisibleInput(el: HTMLElement | null): el is HTMLElement {
-  if (!el || !document.contains(el) || el.offsetParent === null) return false;
-  if (el.closest('[data-vexel-ui]') || el.id?.startsWith('vexel-')) return false;
-  const r = el.getBoundingClientRect();
-  return r.width >= 120 && r.height >= 16 && r.bottom > 0 && r.top < window.innerHeight;
-}
-
 function findVisibleInput(): HTMLElement | null {
-  const active = resolveEditable(document.activeElement);
-  if (isTrulyVisibleInput(active)) return active;
-
-  const inputs = Array.from(document.querySelectorAll('textarea, [contenteditable="true"]')) as HTMLElement[];
-  const visible = inputs.filter((el) => isTrulyVisibleInput(el));
-  if (visible.length === 0) return null;
-  // Préférer le dernier champ visible (celui du panneau Mode IA actif plutôt que la barre Search cachée derrière)
-  return visible.slice(-1).find(() => true) || null;
+const inputs = document.querySelectorAll('textarea, [contenteditable="true"]');
+for (let i = 0; i < inputs.length; i++) {
+const el = inputs.item(i) as HTMLElement;
+if (el.offsetParent !== null) return el;
+}
+return null;
 }
 function findInputPlate(input: HTMLElement): HTMLElement {
-  const aimPlate = input.closest('[data-xid="aim-mars-input-plate"]') as HTMLElement | null;
-  if (aimPlate) return aimPlate;
-
-  let cur: HTMLElement | null = input.parentElement;
-  let best: HTMLElement | null = null;
-  while (cur && cur !== document.body && cur.tagName !== 'FORM') {
-    const rect = cur.getBoundingClientRect();
-    const cs = window.getComputedStyle(cur);
-    const radius = parseFloat(cs.borderTopLeftRadius || '0');
-    const hasControls = cur.querySelector('button, [role="button"]') !== null;
-    if (rect.width >= 260 && rect.height >= 40 && hasControls) {
-      best = cur;
-      if (radius >= 16) return cur;
-    }
-    cur = cur.parentElement;
-  }
-  return best || input.parentElement || input;
+return (
+input.closest('[data-xid="aim-mars-input-plate"], .AgWCw') ||
+input.parentElement ||
+input
+);
 }
-
 let observedPlate: HTMLElement | null = null;
 const plateObserver = new ResizeObserver(() => {
-  mountDockIntoInput();
-  if (isOpen) positionPopover();
+if (isOpen) positionPopover();
 });
-
-function findSemanticDockTarget(plate: HTMLElement, input: HTMLElement): {
-  container: HTMLElement;
-  before: ChildNode | null;
-  inlineSearch: boolean;
-} | null {
-  const inputRect = input.getBoundingClientRect();
-  const plateRect = plate.getBoundingClientRect();
-  const inputCenterY = inputRect.top + inputRect.height / 2;
-
-  const controls = Array.from(plate.querySelectorAll('button, [role="button"]')).filter((el) => {
-    const h = el as HTMLElement;
-    if (dockHost.contains(h) || h.offsetParent === null) return false;
-    const r = h.getBoundingClientRect();
-    return r.width >= 12 && r.height >= 12;
-  }) as HTMLElement[];
-
-  // 1. Mode IA actif : barre d'outils inférieure ("footer" dans la grille de la boîte de saisie)
-  const bottomControls = controls.filter((el) => {
-    const r = el.getBoundingClientRect();
-    return (
-      r.top + r.height / 2 > inputCenterY + 10 ||
-      (plateRect.height >= 72 && r.top >= plateRect.top + plateRect.height * 0.45)
-    );
-  });
-
-  if (bottomControls.length > 0) {
-    bottomControls.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
-    const plusBtn = bottomControls.find(() => true)!;
-
-    // Chercher le conteneur flex enfant direct d'un conteneur CSS Grid (ex: footer de .esoFne, z-index: 1)
-    let row: HTMLElement | null = plusBtn.parentElement;
-    let firstFlexRow: HTMLElement | null = null;
-    while (row && row !== plate) {
-      const cs = window.getComputedStyle(row);
-      const parentCs = row.parentElement ? window.getComputedStyle(row.parentElement) : null;
-      if (cs.display.includes('flex')) {
-        if (!firstFlexRow) firstFlexRow = row;
-        if (parentCs && parentCs.display.includes('grid')) {
-          const btnBranch = Array.from(row.children).find((ch) => ch !== dockHost && ch.contains(plusBtn));
-          return {
-            container: row,
-            before: btnBranch ? btnBranch.nextSibling : null,
-            inlineSearch: false,
-          };
-        }
-      }
-      row = row.parentElement;
-    }
-
-    if (firstFlexRow) {
-      const btnBranch = Array.from(firstFlexRow.children).find((ch) => ch !== dockHost && ch.contains(plusBtn));
-      return {
-        container: firstFlexRow,
-        before: btnBranch ? btnBranch.nextSibling : null,
-        inlineSearch: false,
-      };
-    }
-  }
-
-  // 2. Page d'accueil Google : barre de recherche mono-ligne (rangée flex sans wrap)
-  let row: HTMLElement | null = input.parentElement;
-  while (row && row !== plate.parentElement) {
-    const cs = window.getComputedStyle(row);
-    const rightCtrl = controls.find((el) => el.getBoundingClientRect().left >= inputRect.right - 24);
-    if (cs.display.includes('flex') && cs.flexWrap !== 'wrap' && rightCtrl) {
-      const rightBranch = Array.from(row.children).find((ch) => ch !== dockHost && ch.contains(rightCtrl));
-      if (rightBranch) {
-        return {
-          container: row,
-          before: rightBranch,
-          inlineSearch: true,
-        };
-      }
-    }
-    row = row.parentElement;
-  }
-
-  // 3. Fallback conteneur flex direct de plate (markup minimaliste E2E)
-  const directFlexRow = Array.from(plate.children).find(
-    (ch) => ch !== dockHost && window.getComputedStyle(ch as HTMLElement).display.includes('flex')
-  ) as HTMLElement | undefined;
-  if (directFlexRow) {
-    return { container: directFlexRow, before: null, inlineSearch: false };
-  }
-
-  return null;
-}
-
 function mountDockIntoInput(): void {
-  const input = isTrulyVisibleInput(activeInput) ? activeInput : findVisibleInput();
-  if (!input) return;
-  activeInput = input;
-  const plate = findInputPlate(input);
-  if (plate !== observedPlate) {
-    plateObserver.disconnect();
-    plateObserver.observe(plate);
-    observedPlate = plate;
-  }
-
-  const target = findSemanticDockTarget(plate, input);
-  if (target) {
-    const needsMove =
-      dockHost.parentElement !== target.container ||
-      (target.before !== null && dockHost.nextSibling !== target.before);
-    if (needsMove) {
-      dockHost.style.position = 'relative';
-      dockHost.style.zIndex = '5';
-      dockHost.style.top = '';
-      dockHost.style.left = '';
-      dockHost.style.flexShrink = '0';
-      dockHost.style.alignSelf = 'center';
-      dockHost.style.marginLeft = target.inlineSearch ? '4px' : '6px';
-      dockHost.style.marginRight = target.inlineSearch ? '6px' : '0px';
-      target.container.insertBefore(dockHost, target.before);
-      animate(dockBtn, { opacity: 1, scale: 1 }, { type: 'spring', stiffness: 460, damping: 32 });
-    }
-    return;
-  }
-
-  if (dockHost.parentElement !== document.body) {
-    document.body.appendChild(dockHost);
-  }
-  const rect = plate.getBoundingClientRect();
-  if (rect.width > 0 && rect.height > 0) {
-    const nearBottom = rect.bottom + 42 > window.innerHeight;
-    dockHost.style.position = 'fixed';
-    dockHost.style.zIndex = '2147483645';
-    dockHost.style.flexShrink = '';
-    dockHost.style.alignSelf = '';
-    dockHost.style.marginLeft = '';
-    dockHost.style.marginRight = '';
-    dockHost.style.top = (nearBottom ? Math.max(8, rect.top - 36) : rect.bottom + 8) + 'px';
-    dockHost.style.left = Math.max(12, rect.right - 118) + 'px';
-  }
+if (dockHost.isConnected && dockHost.parentElement?.classList.contains('o8Wipc')) return;
+const input = activeInput && document.contains(activeInput) ? activeInput : findVisibleInput();
+if (!input) return;
+activeInput = input;
+const plate = findInputPlate(input);
+if (plate !== observedPlate) {
+plateObserver.disconnect();
+plateObserver.observe(plate);
+observedPlate = plate;
 }
-
+const toolbarRow = plate.querySelector('.o8Wipc');
+if (toolbarRow) {
+if (dockHost.parentElement !== toolbarRow) {
+dockHost.style.position = '';
+dockHost.style.top = '';
+dockHost.style.left = '';
+const chipsContainer = toolbarRow.querySelector('.rJkohe');
+if (chipsContainer) {
+toolbarRow.insertBefore(dockHost, chipsContainer);
+} else {
+toolbarRow.appendChild(dockHost);
+}
+animate(dockBtn, { opacity: 1, scale: 1 }, { type: 'spring', stiffness: 460, damping: 32 });
+}
+return;
+}
+if (dockHost.parentElement !== document.body) {
+document.body.appendChild(dockHost);
+}
+const rect = plate.getBoundingClientRect();
+if (rect.width > 0 && rect.height > 0) {
+dockHost.style.position = 'fixed';
+dockHost.style.zIndex = '2147483645';
+dockHost.style.top = rect.bottom + 8 + 'px';
+dockHost.style.left = Math.max(12, rect.right - 122) + 'px';
+}
+}
 function positionPopover(): void {
   if (!isOpen) return;
-  const input = isTrulyVisibleInput(activeInput) ? activeInput : findVisibleInput();
-  if (input) activeInput = input;
-  const anchorEl = input ? findInputPlate(input) : dockHost;
-  let rect = anchorEl.getBoundingClientRect();
-  if ((rect.width === 0 || rect.height === 0) && dockHost.isConnected) {
-    rect = dockHost.getBoundingClientRect();
-  }
-  if (rect.width === 0 || rect.height === 0) return;
+const input = activeInput && document.contains(activeInput) ? activeInput : findVisibleInput();
+if (!input) return;
+const plate = findInputPlate(input);
+const rect = plate.getBoundingClientRect();
+if (rect.width === 0 || rect.height === 0) return;
 const targetWidth = Math.max(360, Math.min(680, Math.round(rect.width)));
 const widthStr = targetWidth + 'px';
 const popHeight = popover.offsetHeight || 360;
@@ -569,7 +444,7 @@ navigateToDir(parent);
 }
 function fetchSkills(): void {
 setEmptyMessage(t`Loading skills...`);
-chrome?.runtime?.sendMessage?.({ type: 'FETCH_SKILLS' }, (res) => {
+chrome.runtime.sendMessage({ type: 'FETCH_SKILLS' }, (res) => {
 if (chrome.runtime.lastError || !res?.ok) {
 setEmptyMessage(t`Local bridge unreachable (127.0.0.1:49152)`);
 return;
@@ -582,7 +457,7 @@ function browseDir(dir: string, query: string): void {
 if (fileFetchTimer) window.clearTimeout(fileFetchTimer);
 fileFetchTimer = window.setTimeout(
 () => {
-chrome?.runtime?.sendMessage?.({ type: 'BROWSE_DIR', dir, query }, async (res) => {
+chrome.runtime.sendMessage({ type: 'BROWSE_DIR', dir, query }, async (res) => {
         if (chrome.runtime.lastError || !res?.ok) {
           isZeroServerFs = true;
           const local = await browseLocalFs(dir, query, false);
@@ -677,7 +552,7 @@ hasInlineTrigger = tokenLen > 0;
 triggerTextLength = tokenLen;
 isOpen = true;
 dockBtn.classList.add('active');
-if (!popHost.isConnected) (document.body || document.documentElement).appendChild(popHost); popover.classList.add('open');
+popover.style.opacity = '0'; popover.style.transform = 'translateY(8px) scale(0.975)'; popover.classList.add('open');
 animate(zapIcon, { rotate: [0, -14, 10, 0] }, { duration: 0.32 });
 switchMode(initialMode, initialQuery, wasClosed);
 positionPopover();
@@ -732,7 +607,7 @@ if (q.length >= 2) {
 isSearchingRemote = true;
 renderList();
 remoteTimer = window.setTimeout(() => {
-chrome?.runtime?.sendMessage?.({ type: 'SEARCH_REMOTE_SKILLS', query: q }, (res) => {
+chrome.runtime.sendMessage({ type: 'SEARCH_REMOTE_SKILLS', query: q }, (res) => {
 isSearchingRemote = false;
 if (!res?.ok) {
 if (mode === 'skills') renderList();
@@ -882,7 +757,7 @@ delBtn.addEventListener('mousedown', (ev) => {
   renderList();
   const removingName = s.name;
   statusText.textContent = t`Removing ${removingName}...`;
-  chrome?.runtime?.sendMessage?.({ type: 'REMOVE_LOCAL_SKILL', id: s.id, dir: (s as any).dir || '' }, (res) => {
+  chrome.runtime.sendMessage({ type: 'REMOVE_LOCAL_SKILL', id: s.id, dir: (s as any).dir || '' }, (res) => {
     removingSkills.delete(s.id);
     if (!res?.ok || res?.data?.ok === false) {
       renderList();
@@ -1020,7 +895,7 @@ recordRecentEntry(entry);
 closeMenu();
 const dirName = entry.name;
 showToast(t`Packing ${dirName}/...`);
-chrome?.runtime?.sendMessage?.({ type: 'PACK_FOLDER', relPath: entry.relPath }, async (res) => {
+chrome.runtime.sendMessage({ type: 'PACK_FOLDER', relPath: entry.relPath }, async (res) => {
           let packData = res?.ok && res.data?.ok ? res.data : null;
           if (!packData) {
             const localPack = await packLocalFsFolder(entry.relPath);
@@ -1201,7 +1076,7 @@ const instName = remote.name;
 const instRepo = remote.repo;
 statusText.textContent = t`Installing ${instName} via npx...`;
 showToast(t`Installing ${instName} (${instRepo})...`);
-chrome?.runtime?.sendMessage?.({ type: 'INSTALL_REMOTE_SKILL', repo: remote.repo, name: remote.name }, (res) => {
+chrome.runtime.sendMessage({ type: 'INSTALL_REMOTE_SKILL', repo: remote.repo, name: remote.name }, (res) => {
 installingSkills.delete(key);
 if (!res?.ok || res?.data?.ok === false) {
 renderList();
@@ -1236,7 +1111,7 @@ if (!entry) return;
 if (entry.relPath === 'git_diff') {
 closeMenu();
 showToast(t`Packing Git diff...`);
-chrome?.runtime?.sendMessage?.({ type: 'FETCH_GIT_DIFF', dir: currentDir }, (res) => {
+chrome.runtime.sendMessage({ type: 'FETCH_GIT_DIFF', dir: currentDir }, (res) => {
 if (!res?.ok || !res.data?.ok) {
 showToast(res?.data?.error || t`No git repository found here`);
 return;
@@ -1255,7 +1130,7 @@ navigateToDir(entry.relPath);
 return;
 }
 closeMenu();
-chrome?.runtime?.sendMessage?.({ type: 'FETCH_FILE_CONTENT', relPath: entry.relPath }, async (res) => {
+chrome.runtime.sendMessage({ type: 'FETCH_FILE_CONTENT', relPath: entry.relPath }, async (res) => {
         let fileText = res?.ok && res.data ? res.data.content : null;
         if (fileText === null) {
           const localFile = await readLocalFsFile(entry.relPath);
@@ -1375,8 +1250,6 @@ selectCurrentItem(selectedIndex, e.metaKey || e.ctrlKey);
 },
 true
 );
-dockHost.addEventListener('pointerdown', (e) => e.stopPropagation());
-dockHost.addEventListener('mousedown', (e) => e.stopPropagation());
 dockBtn.addEventListener('click', (e) => {
 e.preventDefault();
 e.stopPropagation();
@@ -1425,14 +1298,5 @@ if (!dockHost.isConnected) mountDockIntoInput();
 if (isOpen) positionPopover();
 }, true);
 window.addEventListener('popstate', () => window.setTimeout(mountDockIntoInput, 120));
-  let dockDomRaf = 0;
-  const dockDomObserver = new MutationObserver(() => {
-    if (dockDomRaf) return;
-    dockDomRaf = window.requestAnimationFrame(() => {
-      dockDomRaf = 0;
-      mountDockIntoInput();
-    });
-  });
-  dockDomObserver.observe(document.body, { childList: true, subtree: true });
 mountDockIntoInput();
 }

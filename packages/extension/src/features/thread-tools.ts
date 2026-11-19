@@ -16,17 +16,15 @@ function getUserTurnElements(): HTMLElement[] {
   const results: HTMLElement[] = [];
 
   const turnBlocks = document.querySelectorAll<HTMLElement>(
-    '[data-scope-id="turn"], [jsname="CS7uPe"], [data-turn-id]'
+    '.CKgc1d[data-scope-id="turn"], [jsname="CS7uPe"], [data-turn-id]'
   );
 
   for (let i = 0; i < turnBlocks.length; i++) {
     const block = turnBlocks[i];
     const userEl =
-      block.querySelector<HTMLElement>('[jsname="eFVkfb"], [data-user-query]') ||
-      (Array.from(block.children).find(
-        (ch) => !ch.matches('[data-subtree="aimc"], style, script') && (ch.textContent || '').trim().length > 0
-      ) as HTMLElement | undefined) ||
-      null;
+      block.querySelector<HTMLElement>(
+        '[jsname="eFVkfb"], .VndcI.veK2kb, .tbIZh.Odbbif, [data-user-query], .ryAKYc'
+      ) || null;
     if (userEl && !seen.has(userEl)) {
       seen.add(userEl);
       results.push(userEl);
@@ -34,7 +32,7 @@ function getUserTurnElements(): HTMLElement[] {
   }
 
   const standalone = document.querySelectorAll<HTMLElement>(
-    '[jsname="eFVkfb"], [data-user-query]'
+    '[jsname="eFVkfb"], .VndcI.veK2kb, .tbIZh.Odbbif, [data-user-query]'
   );
   for (let i = 0; i < standalone.length; i++) {
     const el = standalone[i];
@@ -58,13 +56,13 @@ function getUserTurnElements(): HTMLElement[] {
 function extractTurns(): ThreadTurn[] {
   const turns: ThreadTurn[] = [];
   const turnBlocks = Array.from(
-    document.querySelectorAll<HTMLElement>('[data-scope-id="turn"], [jsname="CS7uPe"]')
+    document.querySelectorAll<HTMLElement>('.CKgc1d[data-scope-id="turn"], [jsname="CS7uPe"]')
   );
 
   if (turnBlocks.length > 0) {
     for (const block of turnBlocks) {
       const userEl =
-        block.querySelector<HTMLElement>('[jsname="eFVkfb"], [data-user-query]') || null;
+        block.querySelector<HTMLElement>('[jsname="eFVkfb"], .VndcI.veK2kb, .tbIZh.Odbbif') || null;
       if (userEl) {
         const userText = (userEl.innerText || userEl.textContent || '')
           .replace(/\s+/g, ' ')
@@ -210,7 +208,7 @@ function elementToMarkdown(root: HTMLElement, role: 'user' | 'assistant'): strin
   });
 
   // Strip Google AI disclaimer footer block
-  clone.querySelectorAll('a[href*="://google.com"], a[href*="://://google.com"]').forEach((a) => {
+  clone.querySelectorAll('a[href*="://google.com"], a[href*="://google.com"]').forEach((a) => {
     a.parentElement?.remove();
   });
 
@@ -486,7 +484,7 @@ wrap.className = 'tick-wrap';
 const dot = document.createElement('div');
 dot.className = 'tick';
 wrap.appendChild(dot);
-const turnRoot = (el.closest('[data-scope-id="turn"], [jsname="CS7uPe"], [data-turn-id]') || el) as HTMLElement;
+const turnRoot = (el.closest('.CKgc1d') || el) as HTMLElement;
 turnEntries.push({ wrap, target: turnRoot });
 const badgeLabel = '#' + (idx + 1);
 wrap.addEventListener('pointerenter', () => {
