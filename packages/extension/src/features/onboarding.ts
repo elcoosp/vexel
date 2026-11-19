@@ -1,3 +1,5 @@
+import { t } from '@lingui/core/macro';
+import '../i18n';
 import { animate } from 'motion';
 import { createLucideIcon } from './icons';
 import { loadConnectedFolderName, pickLocalFolder } from './local-fs';
@@ -9,8 +11,8 @@ const ONBOARDING_CSS = [
   '.backdrop { position: fixed; inset: 0; z-index: 2147483646; background: rgba(15, 23, 42, 0.28); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; padding: 20px; font-family: "Google Sans", -apple-system, BlinkMacSystemFont, "Inter", sans-serif; opacity: 0; }',
   '.card { width: 100%; max-width: 480px; background: rgba(255, 255, 255, 0.98); border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 22px; box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18), 0 2px 8px rgba(15, 23, 42, 0.06); overflow: hidden; will-change: transform, opacity; }',
   '.top-bar { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px 0 22px; }',
-  '.brand { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #1f1f1f; letter-spacing: -0.01em; }',
-  '.brand-dot { width: 22px; height: 22px; border-radius: 7px; background: linear-gradient(135deg, #1a73e8, #4285f4); color: #fff; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(26, 115, 232, 0.32); }',
+  '.brand { display: inline-flex; align-items: center; gap: 10px; font-size: 14.5px; font-weight: 600; color: #1f1f1f; letter-spacing: -0.01em; }',
+  '.brand-logo { width: 30px; height: 30px; border-radius: 8px; object-fit: cover; flex-shrink: 0; box-shadow: 0 2px 8px rgba(26, 115, 232, 0.25); }',
   '.skip-btn { border: none; background: transparent; color: #80868b; font-size: 12px; font-weight: 500; cursor: pointer; padding: 4px 8px; border-radius: 8px; transition: color 0.15s ease, background-color 0.15s ease; }',
   '.skip-btn:hover { color: #1f1f1f; background: #f1f3f4; }',
   '.body { padding: 20px 24px 22px 24px; }',
@@ -63,15 +65,16 @@ export function openOnboardingModal(showToast: (msg: string) => void): void {
 
   const brand = document.createElement('div');
   brand.className = 'brand';
-  const brandDot = document.createElement('span');
-  brandDot.className = 'brand-dot';
-  brandDot.appendChild(createLucideIcon('sparkles', 13, '#ffffff'));
-  brand.append(brandDot, document.createTextNode('Welcome to Vexel'));
+  const brandLogo = document.createElement('img');
+  brandLogo.className = 'brand-logo';
+  brandLogo.alt = 'Vexel';
+  brandLogo.src = 'data:image/png;base64,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';
+  brand.append(brandLogo, document.createTextNode(t`Welcome to Vexel`));
 
   const skipBtn = document.createElement('button');
   skipBtn.type = 'button';
   skipBtn.className = 'skip-btn';
-  skipBtn.textContent = 'Skip';
+  skipBtn.textContent = t`Skip`;
 
   topBar.append(brand, skipBtn);
 
@@ -95,7 +98,7 @@ export function openOnboardingModal(showToast: (msg: string) => void): void {
   const backBtn = document.createElement('button');
   backBtn.type = 'button';
   backBtn.className = 'btn-secondary';
-  backBtn.textContent = 'Back';
+  backBtn.textContent = t`Back`;
 
   const nextBtn = document.createElement('button');
   nextBtn.type = 'button';
@@ -135,7 +138,7 @@ export function openOnboardingModal(showToast: (msg: string) => void): void {
   const renderStep = () => {
     dotEls.forEach((d, idx) => d.classList.toggle('active', idx === step));
     backBtn.style.display = step === 0 ? 'none' : 'inline-block';
-    nextBtn.textContent = step === 2 ? 'Start using Vexel' : 'Continue';
+    nextBtn.textContent = step === 2 ? t`Start using Vexel` : t`Continue`;
 
     body.replaceChildren();
 
@@ -152,20 +155,20 @@ export function openOnboardingModal(showToast: (msg: string) => void): void {
     sandbox.className = 'sandbox';
 
     if (step === 0) {
-      pill.textContent = 'Step 1 of 3 · Instant Prompts';
-      title.textContent = 'Type / anywhere to summon reusable skills';
+      pill.textContent = t`Step 1 of 3 · Instant Prompts`;
+      title.textContent = t`Type / anywhere to summon reusable skills`;
       desc.textContent =
-        'Turn repetitive engineering prompts into one-keystroke slash commands—ready out of the box with zero setup.';
+        t`Turn repetitive engineering prompts into one-keystroke slash commands—ready out of the box with zero setup.`;
 
       const chips = document.createElement('div');
       chips.className = 'demo-chips';
       const previews: Record<string, string> = {
         'review-pr':
-          'Injects a senior code review checklist: edge cases, async race conditions, security & minimal patches.',
+          t`Injects a senior code review checklist: edge cases, async race conditions, security & minimal patches.`, 
         'explain-architecture':
-          'Maps data flow, state boundaries, and bottlenecks in plain, structured diagrams.',
+          t`Maps data flow, state boundaries, and bottlenecks in plain, structured diagrams.`, 
         'fix-bug':
-          'Isolates root cause, reproduces failure mode, and writes a surgical regression test.',
+          t`Isolates root cause, reproduces failure mode, and writes a surgical regression test.`, 
       };
 
       Object.keys(previews).forEach((skillKey) => {
@@ -190,10 +193,10 @@ previewBox.className = 'demo-preview';
 previewBox.textContent = previews[selectedDemoSkill] || '';
 sandbox.append(chips, previewBox);
 } else if (step === 1) {
-pill.textContent = 'Step 2 of 3 · Zero-Server Workspace';
-title.textContent = 'Attach files & pack entire folders with @';
+pill.textContent = t`Step 2 of 3 · Zero-Server Workspace`;
+title.textContent = t`Attach files & pack entire folders with @`;
 desc.textContent =
-'Connect any local folder directly in Chrome—no terminal or background server needed. Pack codebases or write AI code blocks straight to disk.';
+t`Connect any local folder directly in Chrome—no terminal or background server needed. Pack codebases or write AI code blocks straight to disk.`;
 const folderBtn = document.createElement('button');
 folderBtn.type = 'button';
 folderBtn.className = 'folder-cta' + (connectedFolderName ? ' connected' : '');
@@ -201,8 +204,8 @@ folderBtn.append(
 createLucideIcon(connectedFolderName ? 'check' : 'folder', 15, 'currentColor'),
 document.createTextNode(
 connectedFolderName
-? 'Connected: ' + connectedFolderName + ' (click to switch)'
-: 'Connect a Project Folder'
+? t`Connected: ${connectedFolderName} (click to switch)`
+: t`Connect a Project Folder`
 )
 );
 folderBtn.addEventListener('click', async () => {
@@ -210,23 +213,24 @@ animate(folderBtn, { scale: Array(0.97, 1) }, { duration: 0.18 });
 const handle = await pickLocalFolder();
 if (handle) {
 connectedFolderName = handle.name;
-showToast('Connected folder: ' + handle.name);
+const folderName = handle.name;
+showToast(t`Connected folder: ${folderName}`);
 renderStep();
 }
 });
 sandbox.appendChild(folderBtn);
 } else {
-pill.textContent = 'Step 3 of 3 · Flow & Speed';
-title.textContent = 'Built for effortless keyboard flow';
+pill.textContent = t`Step 3 of 3 · Flow & Speed`;
+title.textContent = t`Built for effortless keyboard flow`;
 desc.textContent =
-'Every action is designed to stay out of your way until the exact millisecond you need it.';
+t`Every action is designed to stay out of your way until the exact millisecond you need it.`;
 const grid = document.createElement('div');
 grid.className = 'shortcut-grid';
 const items = [
-{ kbd: '/', lbl: 'Insert prompt skill' },
-{ kbd: '@', lbl: 'Attach file or Pack folder' },
-{ kbd: 'Save to file', lbl: 'Hover any code block to write' },
-{ kbd: 'Alt + ↓', lbl: 'Jump to last user prompt' },
+{ kbd: '/', lbl: t`Insert prompt skill` },
+{ kbd: '@', lbl: t`Attach file or Pack folder` },
+{ kbd: t`Save to file`, lbl: t`Hover any code block to write` },
+{ kbd: 'Alt + ↓', lbl: t`Jump to last user prompt` },
 ];
 items.forEach((it) => {
 const sc = document.createElement('div');
