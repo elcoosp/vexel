@@ -22,9 +22,11 @@ function getUserTurnElements(): HTMLElement[] {
   for (let i = 0; i < turnBlocks.length; i++) {
     const block = turnBlocks[i];
     const userEl =
-      block.querySelector<HTMLElement>(
-        '[jsname="eFVkfb"], [data-user-query]'
-      ) || null;
+      block.querySelector<HTMLElement>('[jsname="eFVkfb"], [data-user-query]') ||
+      (Array.from(block.children).find(
+        (ch) => !ch.matches('[data-subtree="aimc"], style, script') && (ch.textContent || '').trim().length > 0
+      ) as HTMLElement | undefined) ||
+      null;
     if (userEl && !seen.has(userEl)) {
       seen.add(userEl);
       results.push(userEl);
