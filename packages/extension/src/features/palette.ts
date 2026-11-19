@@ -673,7 +673,7 @@ hasInlineTrigger = tokenLen > 0;
 triggerTextLength = tokenLen;
 isOpen = true;
 dockBtn.classList.add('active');
-popover.style.opacity = '0'; popover.style.transform = 'translateY(8px) scale(0.975)'; popover.classList.add('open');
+if (!popHost.isConnected) (document.body || document.documentElement).appendChild(popHost); popover.style.opacity = '1'; popover.style.transform = 'translateY(0px) scale(1)'; popover.classList.add('open');
 animate(zapIcon, { rotate: [0, -14, 10, 0] }, { duration: 0.32 });
 switchMode(initialMode, initialQuery, wasClosed);
 positionPopover();
