@@ -46,8 +46,8 @@ async function idbPut(key: string, val: unknown): Promise<void> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
     tx.objectStore(STORE_NAME).put(val, key);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
+    tx.oncomplete = () => { try { db.close(); } catch {} resolve(); };
+    tx.onerror = () => { try { db.close(); } catch {} reject(tx.error); };
   });
 }
 
@@ -57,8 +57,8 @@ async function idbGet<T>(key: string): Promise<T | null> {
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readonly');
       const req = tx.objectStore(STORE_NAME).get(key);
-      req.onsuccess = () => resolve((req.result as T) || null);
-      req.onerror = () => reject(req.error);
+      req.onsuccess = () => { try { db.close(); } catch {} resolve((req.result as T) || null); };
+      req.onerror = () => { try { db.close(); } catch {} reject(req.error); };
     });
   } catch {
     return null;

@@ -789,6 +789,7 @@ let lastCheckedPre: HTMLPreElement | null = null;
   const handleCodeHoverOrFocus = (ev: Event) => {
     const target = ev.target as HTMLElement | null;
     if (!target || target.nodeType !== 1) return;
+    if (lastCheckedPre && !lastCheckedPre.isConnected) lastCheckedPre = null;
     if (lastCheckedPre && lastCheckedPre.contains(target)) return;
     const pre = target.closest('pre');
     if (!pre) return;

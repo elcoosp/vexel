@@ -123,7 +123,13 @@ export function openOnboardingModal(showToast: (msg: string) => void): void {
     }
   });
 
+  let closing = false;
+  const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') finishOnboarding(); };
+  document.addEventListener('keydown', onKeyDown, true);
   const finishOnboarding = () => {
+    if (closing) return;
+    closing = true;
+    document.removeEventListener('keydown', onKeyDown, true);
     try {
       chrome.storage?.local?.set({ [ONBOARDED_KEY]: true });
     } catch {}

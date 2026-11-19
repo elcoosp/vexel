@@ -5,7 +5,9 @@ import os from 'node:os'
 import path from 'node:path'
 
 const execFileAsync = promisify(execFile)
-const META_CACHE_FILE = path.join(os.homedir(), '.cache', 'vexel-skills-meta.json')
+const CACHE_DIR = path.join(os.homedir(), '.cache')
+const META_CACHE_FILE = path.join(CACHE_DIR, 'vexel-skills-meta.json')
+const MAX_SEARCH_CACHE = 100
 const searchCache = new Map()
 const inflightSearch = new Map()
 let rateLimitedUntil = 0
@@ -21,7 +23,7 @@ function loadMetaCache() {
 async function saveMetaCache(cache) {
   try {
     await fs.promises.mkdir(CACHE_DIR, { recursive: true })
-    await fs.promises.writeFile(META_CACHE_FILE, JSON.stringify(metaCache, null, 2), "utf8")
+    await fs.promises.writeFile(META_CACHE_FILE, JSON.stringify(cache, null, 2), "utf8")
   } catch {}
 }
 
@@ -157,6 +159,7 @@ export async function searchRemoteSkills(query = '') {
           }
         })
       )
+      if (searchCache.size >= MAX_SEARCH_CACHE) { const oldest = searchCache.keys().next().value; if (oldest !== undefined) searchCache.delete(oldest); }
       searchCache.set(q, { ts: Date.now(), items })
       return items
     } catch {

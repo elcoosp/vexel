@@ -64,7 +64,7 @@ function extractTurns(): ThreadTurn[] {
       const userEl =
         block.querySelector<HTMLElement>('[jsname="eFVkfb"], .VndcI.veK2kb, .tbIZh.Odbbif') || null;
       if (userEl) {
-        const userText = (userEl.innerText || userEl.textContent || '')
+        const userText = (userEl.textContent || '')
           .replace(/\s+/g, ' ')
           .trim();
         if (userText) {
@@ -95,7 +95,7 @@ function extractTurns(): ThreadTurn[] {
 
   const fallbackUserNodes = getUserTurnElements();
   for (const node of fallbackUserNodes) {
-    const clean = (node.innerText || node.textContent || '').replace(/\s+/g, ' ').trim();
+    const clean = (node.textContent || '').replace(/\s+/g, ' ').trim();
     if (clean) {
       turns.push({
         index: turns.length + 1,
@@ -521,6 +521,7 @@ createTickNode(nextItems[i].el, nextItems[i].preview, i);
 }
 renderedPreviews = nextItems.map((x) => x.preview);
 window.requestAnimationFrame(() => {
+if (!rail.classList.contains('visible')) return;
 const isOverflow = railScroll.scrollHeight > railScroll.clientHeight;
 rail.classList.toggle('overflowing', isOverflow);
 railScroll.classList.toggle('overflowing', isOverflow);
@@ -585,21 +586,30 @@ syncThumb();
 { passive: true }
 );
 let tocTimer: number | undefined;
+const burstTimers = new Set<number>();
 const scheduleToc = (delay = 180) => {
 if (tocTimer) window.clearTimeout(tocTimer);
 tocTimer = window.setTimeout(() => {
 refreshToc();
 }, delay);
 };
+const scheduleSyncBurst = (delays: number[]) => {
+for (const id of burstTimers) window.clearTimeout(id);
+burstTimers.clear();
+for (const d of delays) {
+const id = window.setTimeout(() => {
+burstTimers.delete(id);
+refreshToc();
+}, d);
+burstTimers.add(id);
+}
+};
 // Instant sync right after sending a message (Enter or Send button click)
 document.addEventListener(
 'keydown',
 (ev: KeyboardEvent) => {
 if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing) {
-window.setTimeout(refreshToc, 120);
-window.setTimeout(refreshToc, 500);
-window.setTimeout(refreshToc, 1300);
-window.setTimeout(refreshToc, 2600);
+scheduleSyncBurst(Array(120, 500, 1300, 2600));
 }
 },
 true
@@ -609,10 +619,7 @@ document.addEventListener(
 (ev: MouseEvent) => {
 const target = ev.target as HTMLElement | null;
 if (target?.closest('[data-xid="aim-mars-input-plate"] button, form button, [aria-label*="Envoyer"], [aria-label*="Send"]')) {
-window.setTimeout(refreshToc, 150);
-window.setTimeout(refreshToc, 550);
-window.setTimeout(refreshToc, 1400);
-window.setTimeout(refreshToc, 2700);
+scheduleSyncBurst(Array(150, 550, 1400, 2700));
 }
 },
 true

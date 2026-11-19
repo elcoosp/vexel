@@ -34,6 +34,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === 'INSTALL_REMOTE_SKILL') {
     fetch(LOCAL_HOST + '/skills/install', {
       method: 'POST',
+      signal: AbortSignal.timeout(65000),
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ repo: message.repo, name: message.name }),
     })
@@ -45,6 +46,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === 'REMOVE_LOCAL_SKILL') {
     fetch(LOCAL_HOST + '/skills/remove', {
       method: 'POST',
+      signal: AbortSignal.timeout(35000),
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: message.id, dir: message.dir }),
     })
@@ -72,6 +74,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === 'WRITE_FILE') {
     fetch(LOCAL_HOST + '/write-file', {
       method: 'POST',
+      signal: AbortSignal.timeout(8000),
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ relPath: message.relPath, content: message.content }),
     })

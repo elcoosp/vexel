@@ -297,6 +297,8 @@ const plateObserver = new ResizeObserver(() => {
 if (isOpen) positionPopover();
 });
 function mountDockIntoInput(): void {
+if (observedPlate && !observedPlate.isConnected) { plateObserver.disconnect(); observedPlate = null; }
+if (activeInput && !activeInput.isConnected) activeInput = null;
 if (dockHost.isConnected && dockHost.parentElement?.classList.contains('o8Wipc')) return;
 const input = activeInput && document.contains(activeInput) ? activeInput : findVisibleInput();
 if (!input) return;
@@ -1168,7 +1170,7 @@ return;
 if (mode === 'files') {
 const entry = visibleFileItems[idx] || browseEntries[idx];
 if (!entry) return;
-if (entry.relPath === 'git_diff') {
+if (entry.relPath === '__git_diff__') {
 closeMenu();
 showToast(t`Packing Git diff...`);
 chrome.runtime.sendMessage({ type: 'FETCH_GIT_DIFF', dir: currentDir }, (res) => {
@@ -1353,8 +1355,8 @@ paletteScrollRaf = 0;
 if (isOpen) positionPopover();
 });
 }, { capture: true, passive: true });
-document.addEventListener('focusin', () => {
-if (!dockHost.isConnected) mountDockIntoInput();
+document.addEventListener('focusin', (e) => {
+if (!dockHost.isConnected && resolveEditable(e.target)) mountDockIntoInput();
 if (isOpen) positionPopover();
 }, true);
 window.addEventListener('popstate', () => window.setTimeout(mountDockIntoInput, 120));

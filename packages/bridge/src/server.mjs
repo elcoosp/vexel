@@ -211,6 +211,17 @@ async function searchEntries(absDir, query, depth = 0, out = []) {
   return out
 }
 
+async function readJsonBody(req, maxBytes = 600 * 1024) {
+  let total = 0
+  const chunks = []
+  for await (const chunk of req) {
+    total += chunk.length
+    if (total > maxBytes) throw new Error('Payload too large')
+    chunks.push(chunk)
+  }
+  return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')
+}
+
 const server = http.createServer(async (req, res) => {
   res.setHeader('Vary', 'Origin')
   const reqOrigin = req.headers.origin || ''
@@ -315,9 +326,7 @@ const server = http.createServer(async (req, res) => {
   }
   if (parsedUrl.pathname === "/skills/install" && req.method === "POST") {
     try {
-      let body = ""
-      for await (const chunk of req) body += chunk
-      const { repo, name } = JSON.parse(body || "{}")
+      const { repo, name } = await readJsonBody(req, 64 * 1024)
       const result = await installRemoteSkill(repo, name)
       res.writeHead(200)
       res.end(JSON.stringify(result))
@@ -329,9 +338,7 @@ const server = http.createServer(async (req, res) => {
   }
   if (parsedUrl.pathname === "/skills/remove" && req.method === "POST") {
     try {
-      let body = ""
-      for await (const chunk of req) body += chunk
-      const { id, dir } = JSON.parse(body || "{}")
+      const { id, dir } = await readJsonBody(req, 64 * 1024)
       const result = await removeLocalSkill(id, dir)
       res.writeHead(200)
       res.end(JSON.stringify(result))
@@ -528,9 +535,7 @@ const server = http.createServer(async (req, res) => {
 
   if (parsedUrl.pathname === '/write-file' && req.method === 'POST') {
     try {
-      let rawBody = ''
-      for await (const chunk of req) rawBody += chunk
-      const body = JSON.parse(rawBody || '{}')
+      const body = await readJsonBody(req, 600 * 1024)
       const relPath = String(body.relPath || '').trim()
       const content = typeof body.content === 'string' ? body.content : ''
       if (!relPath || relPath.endsWith('/') || !path.extname(path.basename(relPath))) {
