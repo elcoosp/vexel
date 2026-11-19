@@ -552,7 +552,7 @@ turnEntries = [];
 currentIdx = -1;
 hideTooltip();
 railInner.replaceChildren(activePill);
-if (nextItems.length < 2) {
+if (nextItems.length < 1) {
 rail.classList.remove('visible');
 return;
 }
@@ -609,7 +609,9 @@ document.addEventListener(
 (ev: KeyboardEvent) => {
 if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing) {
 window.setTimeout(refreshToc, 120);
-window.setTimeout(refreshToc, 450);
+window.setTimeout(refreshToc, 500);
+window.setTimeout(refreshToc, 1300);
+window.setTimeout(refreshToc, 2600);
 }
 },
 true
@@ -621,6 +623,8 @@ const target = ev.target as HTMLElement | null;
 if (target?.closest('[data-xid="aim-mars-input-plate"] button, form button, [aria-label*="Envoyer"], [aria-label*="Send"]')) {
 window.setTimeout(refreshToc, 150);
 window.setTimeout(refreshToc, 550);
+window.setTimeout(refreshToc, 1400);
+window.setTimeout(refreshToc, 2700);
 }
 },
 true
