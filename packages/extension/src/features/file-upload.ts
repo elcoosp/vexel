@@ -1,3 +1,6 @@
+import { t } from '@lingui/core/macro';
+import '../i18n';
+
 export const MAX_SAFE_LENGTH = 8000;
 
 export function uploadAsTextFile(
@@ -13,6 +16,7 @@ export function uploadAsTextFile(
   const dataTransfer = new DataTransfer();
   dataTransfer.items.add(file);
 
+  const formattedLen = content.length.toLocaleString();
   const fileInputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="file"]'));
   const targetInput = fileInputs.find((input) => !input.disabled) ?? fileInputs.find(() => true);
 
@@ -20,7 +24,7 @@ export function uploadAsTextFile(
     targetInput.files = dataTransfer.files;
     targetInput.dispatchEvent(new Event('input', { bubbles: true }));
     targetInput.dispatchEvent(new Event('change', { bubbles: true }));
-    showToast('Fichier joint : ' + fileName + ' (' + content.length.toLocaleString() + ' car.)');
+    showToast(t`Attached file: ${fileName} (${formattedLen} chars)`);
     return;
   }
 
@@ -33,5 +37,5 @@ export function uploadAsTextFile(
       })
     );
   }
-  showToast('Fichier joint : ' + fileName + ' (' + content.length.toLocaleString() + ' car.)');
+  showToast(t`Attached file: ${fileName} (${formattedLen} chars)`);
 }
