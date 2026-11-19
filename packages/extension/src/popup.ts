@@ -13,9 +13,9 @@ const STRINGS = {
   },
   fr: {
     zeroTitle: 'Mode Zéro-Serveur actif',
-    zeroSub: 'Tapez @ dans Google AI Mode pour choisir un dossier local, ou lancez le bridge CLI optionnel :',
+    zeroSub: 'Tapez @ dans Google AI Mode pour choisir un dossier local, ou lancez le bridge CLI optionnel :',
     onlineTitle: 'Bridge local connecté',
-    onlineSub: 'Dossier actif : ',
+    onlineSub: 'Dossier actif : ',
     copy: 'Copier',
     copied: 'Copié',
     openAim: 'Ouvrir Google AI Mode',
