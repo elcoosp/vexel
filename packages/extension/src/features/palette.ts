@@ -276,7 +276,7 @@ function findInputPlate(input: HTMLElement): HTMLElement {
     const cs = window.getComputedStyle(cur);
     const radius = parseFloat(cs.borderTopLeftRadius || '0');
     const hasControls = cur.querySelector('button, [role="button"]') !== null;
-    if (rect.width >= 280 && rect.height >= 40 && hasControls) {
+    if (rect.width >= 260 && rect.height >= 40 && hasControls) {
       best = cur;
       if (radius >= 16) return cur;
     }
@@ -297,25 +297,31 @@ function findSemanticDockTarget(plate: HTMLElement, input: HTMLElement): {
   inlineSearch: boolean;
 } | null {
   const inputRect = input.getBoundingClientRect();
+  const inputCenterY = inputRect.top + inputRect.height / 2;
+
   const controls = Array.from(plate.querySelectorAll('button, [role="button"]')).filter((el) => {
     const h = el as HTMLElement;
     if (dockHost.contains(h) || h.offsetParent === null) return false;
     const r = h.getBoundingClientRect();
-    return r.width > 0 && r.height > 0;
+    return r.width >= 16 && r.height >= 16;
   }) as HTMLElement[];
 
-  // 1. Mode IA actif : barre d'outils située sous la zone de saisie (contenant le bouton "+")
-  const bottomControls = controls.filter((el) => el.getBoundingClientRect().top >= inputRect.bottom - 8);
+  // 1. Mode IA actif : barre d'outils située sous la ligne du champ de saisie (ex: bouton "+")
+  const bottomControls = controls.filter((el) => {
+    const r = el.getBoundingClientRect();
+    return r.top + r.height / 2 > inputCenterY + 14;
+  });
   if (bottomControls.length > 0) {
-    const first = bottomControls[0];
-    let row: HTMLElement | null = first.parentElement;
+    bottomControls.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
+    const leftMostBtn = bottomControls[0];
+    let row: HTMLElement | null = leftMostBtn.parentElement;
     while (row && row !== plate) {
       const cs = window.getComputedStyle(row);
-      if (cs.display.includes('flex') && row.getBoundingClientRect().width >= 160) {
-        const firstDirectChild = Array.from(row.children).find((ch) => ch !== dockHost && ch.contains(first));
+      if (cs.display.includes('flex') && row.getBoundingClientRect().width >= 140) {
+        const btnBranch = Array.from(row.children).find((ch) => ch !== dockHost && ch.contains(leftMostBtn));
         return {
           container: row,
-          before: firstDirectChild ? firstDirectChild.nextSibling : null,
+          before: btnBranch ? btnBranch.nextSibling : null,
           inlineSearch: false,
         };
       }
@@ -327,9 +333,9 @@ function findSemanticDockTarget(plate: HTMLElement, input: HTMLElement): {
   let row: HTMLElement | null = input.parentElement;
   while (row && row !== plate.parentElement) {
     const cs = window.getComputedStyle(row);
-    const hasLeftPlus = controls.some((el) => el.getBoundingClientRect().right <= inputRect.left + 12);
-    const hasRightTools = controls.some((el) => el.getBoundingClientRect().left >= inputRect.right - 20);
-    if (cs.display.includes('flex') && cs.flexWrap !== 'wrap' && (hasLeftPlus || hasRightTools)) {
+    const hasLeftCtrl = controls.some((el) => el.getBoundingClientRect().right <= inputRect.left + 16);
+    const hasRightCtrl = controls.some((el) => el.getBoundingClientRect().left >= inputRect.right - 24);
+    if (cs.display.includes('flex') && cs.flexWrap !== 'wrap' && (hasLeftCtrl || hasRightCtrl)) {
       const inputBranch = Array.from(row.children).find((ch) => ch !== dockHost && ch.contains(input));
       if (inputBranch) {
         return {
@@ -342,11 +348,20 @@ function findSemanticDockTarget(plate: HTMLElement, input: HTMLElement): {
     row = row.parentElement;
   }
 
+  // 3. Fallback conteneur toolbar explicite (tests E2E / minimal markup)
+  const explicitToolbar = plate.querySelector('.o8Wipc') as HTMLElement | null;
+  if (explicitToolbar) {
+    return { container: explicitToolbar, before: null, inlineSearch: false };
+  }
+
   return null;
 }
 
 function mountDockIntoInput(): void {
-  const input = activeInput && document.contains(activeInput) ? activeInput : findVisibleInput();
+  const input =
+    activeInput && document.contains(activeInput) && activeInput.offsetParent !== null
+      ? activeInput
+      : findVisibleInput();
   if (!input) return;
   activeInput = input;
   const plate = findInputPlate(input);
