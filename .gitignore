@@ -12,3 +12,4 @@ scripts/.demo-workspace/
 *.mp4
 *.webm
 *.gif
+.cws-profile/
