@@ -304,14 +304,14 @@ function findSemanticDockTarget(plate: HTMLElement, input: HTMLElement): {
     return r.width > 0 && r.height > 0;
   }) as HTMLElement[];
 
-  // 1. Barre d'outils sous la zone de saisie (Mode IA actif)
-  const bottomControls = controls.filter((el) => el.getBoundingClientRect().top >= inputRect.bottom - 6);
+  // 1. Mode IA actif : barre d'outils située sous la zone de saisie (contenant le bouton "+")
+  const bottomControls = controls.filter((el) => el.getBoundingClientRect().top >= inputRect.bottom - 8);
   if (bottomControls.length > 0) {
     const first = bottomControls[0];
     let row: HTMLElement | null = first.parentElement;
     while (row && row !== plate) {
       const cs = window.getComputedStyle(row);
-      if (cs.display.includes('flex') && row.getBoundingClientRect().width >= 200) {
+      if (cs.display.includes('flex') && row.getBoundingClientRect().width >= 160) {
         const firstDirectChild = Array.from(row.children).find((ch) => ch !== dockHost && ch.contains(first));
         return {
           container: row,
@@ -323,7 +323,7 @@ function findSemanticDockTarget(plate: HTMLElement, input: HTMLElement): {
     }
   }
 
-  // 2. Barre de recherche mono-ligne (page d'accueil Google) : viser le conteneur flex horizontal sans wrap
+  // 2. Page d'accueil Google : barre de recherche mono-ligne (conteneur flex sans wrap)
   let row: HTMLElement | null = input.parentElement;
   while (row && row !== plate.parentElement) {
     const cs = window.getComputedStyle(row);
