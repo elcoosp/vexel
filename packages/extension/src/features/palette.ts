@@ -297,27 +297,32 @@ function findSemanticDockTarget(plate: HTMLElement, input: HTMLElement): {
   inlineSearch: boolean;
 } | null {
   const inputRect = input.getBoundingClientRect();
+  const plateRect = plate.getBoundingClientRect();
   const inputCenterY = inputRect.top + inputRect.height / 2;
 
   const controls = Array.from(plate.querySelectorAll('button, [role="button"]')).filter((el) => {
     const h = el as HTMLElement;
     if (dockHost.contains(h) || h.offsetParent === null) return false;
     const r = h.getBoundingClientRect();
-    return r.width >= 16 && r.height >= 16;
+    return r.width >= 12 && r.height >= 12;
   }) as HTMLElement[];
 
-  // 1. Mode IA actif : barre d'outils située sous la ligne du champ de saisie (ex: bouton "+")
+  // 1. Mode IA actif : boîte à 2 niveaux ("Posez une question" en haut, barre "+" / micro en bas)
   const bottomControls = controls.filter((el) => {
     const r = el.getBoundingClientRect();
-    return r.top + r.height / 2 > inputCenterY + 14;
+    return (
+      r.top + r.height / 2 > inputCenterY + 10 ||
+      (plateRect.height >= 72 && r.top >= plateRect.top + plateRect.height * 0.45)
+    );
   });
+
   if (bottomControls.length > 0) {
     bottomControls.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
-    const leftMostBtn = bottomControls[0];
+    const leftMostBtn = bottomControls.find(() => true)!;
     let row: HTMLElement | null = leftMostBtn.parentElement;
     while (row && row !== plate) {
       const cs = window.getComputedStyle(row);
-      if (cs.display.includes('flex') && row.getBoundingClientRect().width >= 140) {
+      if (cs.display.includes('flex') && row.getBoundingClientRect().width >= 120) {
         const btnBranch = Array.from(row.children).find((ch) => ch !== dockHost && ch.contains(leftMostBtn));
         return {
           container: row,
@@ -329,18 +334,17 @@ function findSemanticDockTarget(plate: HTMLElement, input: HTMLElement): {
     }
   }
 
-  // 2. Page d'accueil Google : barre de recherche mono-ligne (conteneur flex sans wrap)
+  // 2. Page d'accueil Google : barre de recherche mono-ligne (rangée flex sans wrap)
   let row: HTMLElement | null = input.parentElement;
   while (row && row !== plate.parentElement) {
     const cs = window.getComputedStyle(row);
-    const hasLeftCtrl = controls.some((el) => el.getBoundingClientRect().right <= inputRect.left + 16);
-    const hasRightCtrl = controls.some((el) => el.getBoundingClientRect().left >= inputRect.right - 24);
-    if (cs.display.includes('flex') && cs.flexWrap !== 'wrap' && (hasLeftCtrl || hasRightCtrl)) {
-      const inputBranch = Array.from(row.children).find((ch) => ch !== dockHost && ch.contains(input));
-      if (inputBranch) {
+    const rightCtrl = controls.find((el) => el.getBoundingClientRect().left >= inputRect.right - 24);
+    if (cs.display.includes('flex') && cs.flexWrap !== 'wrap' && rightCtrl) {
+      const rightBranch = Array.from(row.children).find((ch) => ch !== dockHost && ch.contains(rightCtrl));
+      if (rightBranch) {
         return {
           container: row,
-          before: inputBranch.nextSibling,
+          before: rightBranch,
           inlineSearch: true,
         };
       }
@@ -348,7 +352,7 @@ function findSemanticDockTarget(plate: HTMLElement, input: HTMLElement): {
     row = row.parentElement;
   }
 
-  // 3. Fallback conteneur toolbar explicite (tests E2E / minimal markup)
+  // 3. Fallback conteneur toolbar explicite (tests E2E)
   const explicitToolbar = plate.querySelector('.o8Wipc') as HTMLElement | null;
   if (explicitToolbar) {
     return { container: explicitToolbar, before: null, inlineSearch: false };
@@ -381,9 +385,9 @@ function mountDockIntoInput(): void {
       dockHost.style.top = '';
       dockHost.style.left = '';
       dockHost.style.flexShrink = '0';
-      dockHost.style.alignSelf = target.inlineSearch ? 'center' : '';
-      dockHost.style.marginLeft = target.inlineSearch ? '0px' : '';
-      dockHost.style.marginRight = target.inlineSearch ? '6px' : '';
+      dockHost.style.alignSelf = 'center';
+      dockHost.style.marginLeft = target.inlineSearch ? '4px' : '6px';
+      dockHost.style.marginRight = target.inlineSearch ? '6px' : '0px';
       target.container.insertBefore(dockHost, target.before);
       animate(dockBtn, { opacity: 1, scale: 1 }, { type: 'spring', stiffness: 460, damping: 32 });
     }
@@ -395,14 +399,15 @@ function mountDockIntoInput(): void {
   }
   const rect = plate.getBoundingClientRect();
   if (rect.width > 0 && rect.height > 0) {
+    const nearBottom = rect.bottom + 42 > window.innerHeight;
     dockHost.style.position = 'fixed';
     dockHost.style.zIndex = '2147483645';
     dockHost.style.flexShrink = '';
     dockHost.style.alignSelf = '';
     dockHost.style.marginLeft = '';
     dockHost.style.marginRight = '';
-    dockHost.style.top = rect.bottom + 8 + 'px';
-    dockHost.style.left = Math.max(12, rect.right - 122) + 'px';
+    dockHost.style.top = (nearBottom ? Math.max(8, rect.top - 36) : rect.bottom + 8) + 'px';
+    dockHost.style.left = Math.max(12, rect.right - 118) + 'px';
   }
 }
 
