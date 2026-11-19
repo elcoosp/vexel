@@ -16,7 +16,7 @@ function getUserTurnElements(): HTMLElement[] {
   const results: HTMLElement[] = [];
 
   const turnBlocks = document.querySelectorAll<HTMLElement>(
-    '.CKgc1d[data-scope-id="turn"], [jsname="CS7uPe"], [data-turn-id]'
+    '[data-scope-id="turn"], [jsname="CS7uPe"], [data-turn-id]'
   );
 
   for (let i = 0; i < turnBlocks.length; i++) {
@@ -56,7 +56,7 @@ function getUserTurnElements(): HTMLElement[] {
 function extractTurns(): ThreadTurn[] {
   const turns: ThreadTurn[] = [];
   const turnBlocks = Array.from(
-    document.querySelectorAll<HTMLElement>('.CKgc1d[data-scope-id="turn"], [jsname="CS7uPe"]')
+    document.querySelectorAll<HTMLElement>('[data-scope-id="turn"], [jsname="CS7uPe"]')
   );
 
   if (turnBlocks.length > 0) {
@@ -484,7 +484,7 @@ wrap.className = 'tick-wrap';
 const dot = document.createElement('div');
 dot.className = 'tick';
 wrap.appendChild(dot);
-const turnRoot = (el.closest('.CKgc1d') || el) as HTMLElement;
+const turnRoot = (el.closest('[data-scope-id="turn"], [jsname="CS7uPe"], [data-turn-id]') || el) as HTMLElement;
 turnEntries.push({ wrap, target: turnRoot });
 const badgeLabel = '#' + (idx + 1);
 wrap.addEventListener('pointerenter', () => {
@@ -616,24 +616,13 @@ true
 );
 window.addEventListener('popstate', () => scheduleToc(200));
 window.addEventListener('load', () => scheduleToc(200), { once: true });
-  let tocMutPending = false;
-  const tocObserver = new MutationObserver((mutations) => {
-    if (tocMutPending) return;
-    for (let i = 0; i < mutations.length; i++) {
-      const m = mutations[i];
-      if (m.target === host || (m.target instanceof Node && host.contains(m.target))) continue;
-      if (m.addedNodes.length > 0 || m.removedNodes.length > 0) {
-        tocMutPending = true;
-        window.requestAnimationFrame(() => {
-          tocMutPending = false;
-          scheduleToc(250);
-        });
-        break;
-      }
-    }
-  });
-  if (document.body) {
-    tocObserver.observe(document.body, { childList: true, subtree: true });
+  document.addEventListener('aimRenderComplete', () => scheduleToc(80), true);
+  const nav = (window as unknown as { navigation?: EventTarget }).navigation;
+  if (nav) {
+    nav.addEventListener('navigatesuccess', () => {
+      scheduleToc(300);
+      scheduleToc(1200);
+    });
   }
   window.setTimeout(() => refreshToc(), 800);
   window.setTimeout(() => refreshToc(), 2200);
