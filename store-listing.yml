@@ -5,7 +5,7 @@ manifestSync:
   name: Vexel
   shortDescription: "Local coding workspace for Google AI Mode: / slash skills, @
     repo context, 1-click Save to file & fast virtualization."
-  version: 0.2.4
+  version: 0.2.5
 storeListing:
   category: Developer Tools
   defaultLocale: en

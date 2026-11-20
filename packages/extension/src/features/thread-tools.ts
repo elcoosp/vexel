@@ -348,6 +348,14 @@ const TOC_CSS = [
   '.shared-tip { position: fixed; right: 50px; top: 0; display: inline-flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(18px); color: #1f1f1f; border: 1px solid rgba(0, 0, 0, 0.08); padding: 6px 12px 6px 8px; border-radius: 10px; font-size: 12px; font-weight: 500; line-height: 1.3; white-space: nowrap; max-width: 280px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05); opacity: 0; pointer-events: none; will-change: transform, opacity; z-index: 2147483641; }',
   '.tip-badge { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; font-weight: 600; color: #1a73e8; background: #e8f0fe; padding: 1px 6px; border-radius: 6px; flex-shrink: 0; }',
   '.tip-text { overflow: hidden; text-overflow: ellipsis; color: #3c4043; }',
+  '@media (max-width: 900px) {',
+  '  .rail { right: 4px; width: 22px; padding: 4px 0; }',
+  '  .rail.overflowing:hover { width: 24px; }',
+  '  .rail-inner, .active-pill, .tick-wrap { width: 14px; }',
+  '  .active-pill, .tick-wrap { height: 14px; }',
+  '  .tick { width: 4px; height: 4px; }',
+  '  .shared-tip { right: 32px; max-width: calc(100vw - 44px); }',
+  '}',
 ].join('\n');
 
 export function initThreadTools(_showToast?: (msg: string) => void): void {
