@@ -779,7 +779,7 @@ async function main() {
       'Turn Google AI Mode into a Local Coding Workspace',
       'Zero-truncation file paste • / Slash skills & skills.sh • @ Local repo context • 1-click Save to disk'
     ));
-    await wait(2300);
+    await wait(1800);
     await hideCard('mk-intro');
     await wait(550);
   });
@@ -796,19 +796,19 @@ async function main() {
     if ((await host.count()) === 0) {
       await openPaletteViaDock().catch(() => openPalette('/'));
       await page.locator('#vexel-inline-menu-host').getByRole('button', { name: '?', exact: true }).click({ timeout: 5000 }).catch(() => { });
-      await wait(400);
+      await wait(350);
     }
     await host.waitFor({ state: 'attached', timeout: 6000 });
-    await wait(750);
+    await wait(1650);
     await shot('01-onboarding-hero');
     await host.locator('.demo-chip').nth(1).click().catch(() => { });
-    await wait(600);
+    await wait(950);
     await host.locator('.btn-primary').click();
     await waitStep(2);
-    await wait(550);
+    await wait(1250);
     await host.locator('.btn-primary').click();
     await waitStep(3);
-    await wait(550);
+    await wait(1250);
     await shot('01b-onboarding-shortcuts', { hiRes: false });
     await host.locator('.btn-primary').click();
     await host.waitFor({ state: 'detached', timeout: 6000 });
@@ -944,7 +944,7 @@ async function main() {
     await page.evaluate(() => { document.documentElement.style.background = '#F8F9FA'; });
     const repoLabel = ['github.com', 'elcoosp', 'vexel'].join('/');
     await showCard('mk-outro', cardInner('Vexel', 'Free & Open-Source • Local-First • Zero Telemetry', 'Available for Chrome, Edge & Firefox — ' + repoLabel));
-    await wait(2700);
+    await wait(2100);
   });
 
   await stopRecorder();
