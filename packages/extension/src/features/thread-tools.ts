@@ -624,9 +624,19 @@ scheduleSyncBurst(Array(150, 550, 1400, 2700));
 },
 true
 );
+const tocObserver = new MutationObserver((mutations) => {
+  for (let i = 0; i < mutations.length; i++) {
+    const t = mutations[i].target as HTMLElement | null;
+    if (t && (t.id?.startsWith('vexel-') || t.closest?.('[data-vexel-ui]'))) continue;
+    scheduleToc(220);
+    break;
+  }
+});
+tocObserver.observe(document.body, { childList: true, subtree: true });
+(window as unknown as { navigation?: EventTarget }).navigation?.addEventListener('navigatesuccess', () => scheduleToc(250));
 window.addEventListener('popstate', () => scheduleToc(200));
 window.addEventListener('load', () => scheduleToc(200), { once: true });
-  window.setTimeout(() => refreshToc(), 800);
-  window.setTimeout(() => refreshToc(), 2200);
+window.setTimeout(() => refreshToc(), 800);
+window.setTimeout(() => refreshToc(), 2200);
 scheduleToc(100);
 }

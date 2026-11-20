@@ -64,7 +64,7 @@ const FORCE = process.env.FORCE === '1';
 const COOLDOWN_MIN = Number(process.env.COOLDOWN_MIN || 15);
 const BLOCK_COOLDOWN_MIN = Number(process.env.BLOCK_COOLDOWN_MIN || 60);
 const MAX_QUERIES_DAY = Number(process.env.MAX_QUERIES_DAY || 12);
-const FPS = 30, VW = 1280, VH = 800, W = 1920, H = 1080, BG = '0x0B1220';
+const FPS = 30, VW = 1440, VH = 810, W = 1920, H = 1080, BG = '0xF8F9FA';
 
 let chromeProc = null, bridgeProc = null, bridgeSafe = false;
 let browser = null, context = null, page = null, cdp = null;
@@ -295,7 +295,8 @@ async function startRecorder() {
   rec.timer = setInterval(() => {
     if (!rec.last || rec.paused) return;
     frameCount++;
-    fs.writeFileSync(path.join(FRAMES, 'f' + String(frameCount).padStart(6, '0') + '.jpg'), rec.last);
+    const fPath = path.join(FRAMES, 'f' + String(frameCount).padStart(6, '0') + '.jpg');
+    fs.promises.writeFile(fPath, rec.last).catch(() => {});
     if (Date.now() - rec.lastAt > 2500) { rec.lastAt = Date.now(); cdp.send('Page.startScreencast', opts).catch(() => { }); }
   }, Math.round(1000 / FPS));
 }
@@ -530,12 +531,13 @@ async function pause(msg) {
 // ---------- branded cards (logo) + captions (RIGHT side) ----------
 function cardInner(title, sub, foot) {
   const hero = LOGO
-    ? '<img src="data:image/png;base64,' + LOGO + '" style="width:340px;max-width:70vw;height:auto;object-fit:contain;margin-bottom:4px;" alt="Vexel">'
-    : '<div style="font-size:84px;font-weight:800;letter-spacing:-2px;">' + title + '</div>';
-  return '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:radial-gradient(1200px 700px at 50% 20%,#16233f 0%,#0B1220 60%);color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;text-align:center;">'
+    ? '<img src="data:image/png;base64,' + LOGO + '" style="width:112px;height:112px;border-radius:26px;object-fit:cover;box-shadow:0 12px 32px rgba(26,115,232,0.22);margin-bottom:6px;" alt="Vexel">'
+    : '<div style="font-size:64px;font-weight:800;letter-spacing:-2px;color:#1f1f1f;">' + title + '</div>';
+  return '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:radial-gradient(1100px 620px at 50% 15%,#e8f0fe 0%,#f8f9fa 52%,#ffffff 100%);color:#1f1f1f;font-family:\'Google Sans\',-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif;text-align:center;padding:32px;">'
+    + '<div style="display:inline-flex;align-items:center;gap:8px;padding:5px 14px;border-radius:999px;background:#e8f0fe;border:1px solid #c6dafc;color:#1967d2;font-size:12px;font-weight:700;letter-spacing:0.06em;">VEXEL FOR GOOGLE AI MODE</div>'
     + hero
-    + '<div style="font-size:30px;color:#A8C7FA;font-weight:600;">' + sub + '</div>'
-    + '<div style="font-size:20px;color:#8b93a7;margin-top:14px;">' + foot + '</div></div>';
+    + '<div style="font-size:36px;font-weight:700;letter-spacing:-0.025em;color:#1f1f1f;line-height:1.2;max-width:860px;">' + sub + '</div>'
+    + '<div style="font-size:19px;color:#5f6368;font-weight:500;max-width:680px;line-height:1.45;">' + foot + '</div></div>';
 }
 async function showCard(id, html) {
   await page.evaluate(a => {
@@ -556,9 +558,9 @@ async function hideCard(id) {
   }, id);
 }
 function captionHtml(text) {
-  return '<div style="position:fixed;right:56px;bottom:150px;max-width:400px;background:rgba(11,18,32,0.92);border:1px solid rgba(66,133,244,0.45);border-radius:16px;padding:14px 18px;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;text-align:left;">'
-    + '<div style="font-size:12px;font-weight:700;letter-spacing:1.6px;color:#A8C7FA;margin-bottom:6px;">VEXEL - LIVE ON GOOGLE AI MODE</div>'
-    + '<div style="font-size:21px;font-weight:600;color:#ffffff;line-height:1.3;">' + escHtml(text) + '</div></div>';
+  return '<div style="position:fixed;left:44px;top:34px;max-width:520px;background:rgba(255,255,255,0.96);border:1px solid #dadce0;border-radius:16px;padding:13px 18px;box-shadow:0 12px 32px rgba(60,64,67,0.14),0 2px 6px rgba(60,64,67,0.06);font-family:\'Google Sans\',-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif;text-align:left;">'
+    + '<div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:0.08em;color:#1967d2;margin-bottom:4px;"><span style="width:7px;height:7px;border-radius:50%;background:#1a73e8;display:inline-block;"></span>VEXEL • GOOGLE AI MODE</div>'
+    + '<div style="font-size:20px;font-weight:600;color:#1f1f1f;line-height:1.3;letter-spacing:-0.01em;">' + escHtml(text) + '</div></div>';
 }
 function waitStep(n) {
   return page.waitForFunction(k => {
@@ -632,7 +634,7 @@ function assembleVideo(caps) {
     const n = s.end - s.start;
     if (n < 2) continue;
     const file = path.join(SCENES, String(i).padStart(2, '0') + '-' + s.name + '.mp4');
-    const base = 'scale=' + W + ':' + H + ':force_original_aspect_ratio=decrease,pad=' + W + ':' + H + ':(ow-iw)/2:(oh-ih)/2:color=' + BG;
+    const base = 'scale=' + (W - 64) + ':' + (H - 48) + ':force_original_aspect_ratio=decrease,drawbox=x=0:y=0:w=iw:h=ih:color=0xDADCE0:t=2,pad=' + W + ':' + H + ':(ow-iw)/2:(oh-ih)/2:color=' + BG;
     let fade = '';
     if (i === 0) fade = ',fade=t=in:st=0:d=0.5';
     if (i === scenes.length - 1 && s.seconds > 1.4) fade = ',fade=t=out:st=' + (s.seconds - 0.6).toFixed(2) + ':d=0.6';
@@ -641,7 +643,7 @@ function assembleVideo(caps) {
     if (cap) {
       ff(['-framerate', String(FPS), '-start_number', String(s.start + 1), '-i', path.join(FRAMES, 'f%06d.jpg'),
         '-loop', '1', '-i', cap,
-        '-filter_complex', '[0:v]' + base + '[bg];[bg][1:v]overlay=0:0' + fade + ',format=yuv420p'].concat(common));
+        '-filter_complex', '[0:v]' + base + '[bg];[1:v]format=rgba,fade=t=in:st=0.15:d=0.25:alpha=1[cap];[bg][cap]overlay=0:0' + fade + ',format=yuv420p'].concat(common));
     } else {
       ff(['-framerate', String(FPS), '-start_number', String(s.start + 1), '-i', path.join(FRAMES, 'f%06d.jpg'),
         '-vf', base + fade + ',format=yuv420p'].concat(common));
@@ -652,11 +654,26 @@ function assembleVideo(caps) {
   const mp4 = path.join(OUT, 'vexel-demo.mp4');
   ff(['-f', 'concat', '-safe', '0', '-i', listPath, '-c', 'copy', '-movflags', '+faststart', mp4]);
   fs.rmSync(listPath, { force: true });
-  const gifIdx = scenes.findIndex(s => s.name === CONFIG.gifScene);
-  const gi = gifIdx >= 0 ? gifIdx : 0;
-  const gifSrc = path.join(SCENES, String(gi).padStart(2, '0') + '-' + scenes[gi].name + '.mp4');
-  ff(['-i', gifSrc, '-t', String(CONFIG.gifMaxSeconds), '-vf',
-    'fps=12,scale=960:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse', '-loop', '0', path.join(OUT, 'vexel-demo.gif')]);
+  const highlightNames = ['skills', 'files', 'save', 'paste'];
+  const gifClips = [];
+  for (const hName of highlightNames) {
+    const idx = scenes.findIndex(s => s.name === hName && (s.end - s.start) > FPS);
+    if (idx >= 0) {
+      const srcClip = path.join(SCENES, String(idx).padStart(2, '0') + '-' + scenes[idx].name + '.mp4');
+      const trimClip = path.join(SCENES, 'gif-' + hName + '.mp4');
+      ff(['-i', srcClip, '-t', '3.5', '-c', 'copy', trimClip]);
+      gifClips.push(trimClip);
+    }
+  }
+  const gifListPath = path.join(OUT, '.gif-concat.txt');
+  const gifInputMp4 = path.join(SCENES, 'gif-reel.mp4');
+  if (gifClips.length > 0) {
+    fs.writeFileSync(gifListPath, gifClips.map(c => "file '" + c + "'").join('\n') + '\n');
+    ff(['-f', 'concat', '-safe', '0', '-i', gifListPath, '-c', 'copy', gifInputMp4]);
+    fs.rmSync(gifListPath, { force: true });
+    ff(['-i', gifInputMp4, '-vf',
+      'fps=14,scale=960:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse', '-loop', '0', path.join(OUT, 'vexel-demo.gif')]);
+  }
   const ask = scenes.find(s => s.name === 'ask');
   const posterT = ask ? ((ask.start + (ask.end - ask.start) / 2) / FPS).toFixed(2) : '2';
   ff(['-i', mp4, '-ss', posterT, '-frames:v', '1', path.join(OUT, 'poster.png')]);
@@ -742,7 +759,7 @@ async function main() {
   const pasteCaption = 'Paste ' + thousands(pasteLog.length) + ' chars -> auto-attached as a file. Zero truncation.';
 
   await scene('intro', 'Vexel - live on Google AI Mode', async () => {
-    await showCard('mk-intro', cardInner('Vexel', 'Paste huge. Stay fast.', 'Live capture - real Google AI Mode - CDP 127.0.0.1:' + PORT));
+    await showCard('mk-intro', cardInner('Vexel', 'Local Coding Workspace for Google AI Mode', 'Slash skills (/), local repo context (@), 1-click file save & fast thread virtualization.'));
     await wait(2300);
     await hideCard('mk-intro');
     await wait(550);
@@ -902,8 +919,9 @@ async function main() {
   });
 
   await scene('outro', 'Star it on GitHub', async () => {
-    await page.evaluate(() => { document.documentElement.style.background = '#0B1220'; });
-    await showCard('mk-outro', cardInner('Vexel', 'MIT - Chrome MV3 - local-first', 'Star on GitHub: ' + CONFIG.repo));
+    await page.evaluate(() => { document.documentElement.style.background = '#F8F9FA'; });
+    const repoLabel = ['github.com', 'elcoosp', 'vexel'].join('/');
+    await showCard('mk-outro', cardInner('Vexel', 'Open-Source • Local-First • Zero Telemetry', repoLabel));
     await wait(2700);
   });
 
