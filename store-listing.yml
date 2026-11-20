@@ -1,5 +1,5 @@
 schemaVersion: 1.0.0
-targetConsoleUrl: https://google.com
+targetConsoleUrl: https://://google.comwebstore/devconsole
 manifestSync:
   manifestPath: packages/extension/public/manifest.json
   name: Vexel
@@ -9,8 +9,8 @@ manifestSync:
 storeListing:
   category: Developer Tools
   defaultLocale: en
-  supportUrl: https://github.com/issues
-  homepageUrl: https://github.com
+  supportUrl: https://://github.comelcoosp/vexel/issues
+  homepageUrl: https://://github.comelcoosp/vexel
   locales:
     en:
       title: Vexel
@@ -297,11 +297,12 @@ storeListing:
         Token-Authentifizierung gebunden.
     pt_BR:
       title: Vexel — Workspace Local para Google AI Mode
-      summary: "Transforme o Google AI Mode em workspace local: comandos /, arquivos @, salvar no disco em 1 clique e exportar Markdown."
+      summary: "Transforme o Google AI Mode em workspace local: comandos /, arquivos
+        @, salvar no disco em 1 clique e exportar Markdown."
       detailedDescription: >
-        Vexel transforma o Google AI Mode em um ambiente de desenvolvimento rápido,
-        guiado pelo teclado e conectado ao seu repositório local — sem servidores
-        intermediários.
+        Vexel transforma o Google AI Mode em um ambiente de desenvolvimento
+        rápido, guiado pelo teclado e conectado ao seu repositório local — sem
+        servidores intermediários.
 
         PRINCIPAIS RECURSOS
 
@@ -310,17 +311,19 @@ storeListing:
         1. COMANDOS SLASH E SKILLS DE ENGENHARIA (/)
 
         • Digite "/" na caixa de prompt do Google AI Mode para inserir fluxos
-        reutilizáveis e prompts SKILL.md (code review, arquitetura, testes, refatoração).
+        reutilizáveis e prompts SKILL.md (code review, arquitetura, testes,
+        refatoração).
 
-        • Navegação instantânea pelo teclado e instalação em 1 clique via skills.sh.
+        • Navegação instantânea pelo teclado e instalação em 1 clique via
+        skills.sh.
 
         2. CONTEXTO DE REPOSITÓRIO (@) — MODO SEM SERVIDOR OU BRIDGE LOCAL
 
-        • Digite "@" para explorar arquivos locais ou empacotar uma pasta inteira
-        sem sair do Google AI Mode.
+        • Digite "@" para explorar arquivos locais ou empacotar uma pasta
+        inteira sem sair do Google AI Mode.
 
-        • Modo Sem Servidor: Usa a API nativa File System Access do Chrome direto
-        no seu computador — sem terminal nem processos em segundo plano.
+        • Modo Sem Servidor: Usa a API nativa File System Access do Chrome
+        direto no seu computador — sem terminal nem processos em segundo plano.
 
         3. SALVAR DIRETO EM ARQUIVO ("SAVE TO FILE")
 
@@ -333,91 +336,55 @@ storeListing:
         conversa em Markdown limpo.
     ja:
       title: Vexel — Google AI Mode ローカル開発環境
-      summary: "Google AI Mode を高速なローカル開発環境へ：/ スラッシュコマンド、@ フォルダ参照、ワンクリック保存、Markdown 出力。"
-      detailedDescription: >
-        Vexel は Google AI Mode をキーボード中心の高速なローカルコーディングワークスペースへ
-        アップグレードします。
-
+      summary: Google AI Mode を高速なローカル開発環境へ：/ スラッシュコマンド、@ フォルダ参照、ワンクリック保存、Markdown 出力。
+      detailedDescription: |
+        Vexel は Google AI Mode をキーボード中心の高速なローカルコーディングワークスペースへ アップグレードします。
         主な機能
-
         ────────────────────────────────────────
-
         1. スラッシュコマンド＆エンジニアリングスキル (/)
-
         • プロンプト欄に "/" を入力して再利用可能なワークフローや SKILL.md を即座に挿入。
-
         • skills.sh からのワンクリックインストールに対応。
-
         2. リポジトリコンテキスト (@) — ゼロサーバーモード対応
-
         • "@" を入力してローカルファイルの参照やフォルダ全体の一括パックが可能。
-
         • Chrome の File System Access API を利用し、常駐サーバー不要で動作します。
-
         3. コードブロックのワンクリック保存 ("Save to file")
-
         • 生成されたコードブロックにホバーしてローカルディスクへ直接保存できます。
-
         4. 高速仮想化＆Markdown エクスポート
-
         • 長いスレッドでも軽快に動作し、会話全体をクリーンな Markdown として出力できます。
     zh_CN:
       title: Vexel — Google AI Mode 本地编程工作区
-      summary: "将 Google AI Mode 升级为本地编程工作区：/ 快捷指令、@ 文件夹上下文、一键保存代码及 Markdown 导出。"
-      detailedDescription: >
+      summary: 将 Google AI Mode 升级为本地编程工作区：/ 快捷指令、@ 文件夹上下文、一键保存代码及 Markdown 导出。
+      detailedDescription: |
         Vexel 将 Google AI Mode 升级为以键盘为核心的本地开发工作区，无需中转服务器。
-
         核心功能
-
         ────────────────────────────────────────
-
         1. 斜杠命令与工程技能 (/)
-
         • 在输入框中输入 "/" 即可插入可复用的提示词工作流（代码审查、架构设计、单元测试、重构）。
-
         • 支持从 skills.sh 一键安装社区技能。
-
         2. 仓库上下文 (@) — 无服务器模式或本地桥接
-
         • 输入 "@" 浏览本地文件或一键打包整个文件夹到上下文。
-
         • 无服务器模式直接调用 Chrome 原生文件系统 API，无需启动后台服务。
-
         3. 代码块一键保存到本地 ("Save to file")
-
         • 悬停任意代码块即可直接写入本地磁盘，自动识别路径与目录。
-
         4. 高速虚拟化与 Markdown 导出
-
         • 保持长对话流畅滚动，支持一键复制或导出整洁的 Markdown 记录。
     ko:
       title: Vexel — Google AI Mode 로컬 코딩 워크스페이스
-      summary: "Google AI Mode를 로컬 코딩 워크스페이스로 업그레이드: / 슬래시 명령, @ 폴더 컨텍스트, 원클릭 저장 및 Markdown 내보내기."
-      detailedDescription: >
+      summary: "Google AI Mode를 로컬 코딩 워크스페이스로 업그레이드: / 슬래시 명령, @ 폴더 컨텍스트, 원클릭 저장 및
+        Markdown 내보내기."
+      detailedDescription: |
         Vexel은 Google AI Mode를 키보드 중심의 빠른 로컬 개발 워크스페이스로 전환합니다.
-
         주요 기능
-
         ────────────────────────────────────────
-
         1. 슬래시 명령 및 엔지니어링 스킬 (/)
-
         • 프롬프트 상자에 "/"를 입력하여 코드 리뷰, 아키텍처, 테스트, 리팩토링 워크플로를 즉시 삽입합니다.
-
         • skills.sh에서 원클릭으로 스킬을 설치할 수 있습니다.
-
         2. 로컬 저장소 컨텍스트 (@) — 무서버 모드 지원
-
         • "@"를 입력하여 로컬 파일을 탐색하거나 전체 폴더를 컨텍스트로 패키징합니다.
-
         • Chrome의 File System Access API를 사용해 별도 백그라운드 서버 없이 동작합니다.
-
         3. 코드 블록 원클릭 로컬 저장 ("Save to file")
-
         • 생성된 코드 블록에 마우스를 올려 로컬 디스크에 바로 저장할 수 있습니다.
-
         4. 고속 가상화 및 Markdown 내보내기
-
         • 긴 대화도 부드럽게 유지하며 전체 스레드를 깔끔한 Markdown으로 내보낼 수 있습니다.
 assets:
   packageZip: release/vexel-extension-store.zip
@@ -437,6 +404,8 @@ assets:
         rail
   smallPromoTile: docs/assets/store-promo-small-440x280.png
   marqueePromoTile: docs/assets/store-promo-marquee-1400x560.png
+  firefoxZip: release/vexel-extension-firefox.zip
+  edgeIcon300: docs/assets/store-icon-300x300.png
 privacyPractices:
   singlePurpose: >
     Enhances Google AI Mode with local file context injection (@), reusable
@@ -455,7 +424,7 @@ privacyPractices:
       process on the loopback interface to read project files, git diffs, and
       write saved code blocks.
   collectsUserData: false
-  privacyPolicyUrl: https://github.com/blob/main/PRIVACY.md
+  privacyPolicyUrl: https://://github.comelcoosp/vexel/blob/main/PRIVACY.md
   certifications:
     noThirdPartyTransfers: true
     noUnrelatedUse: true
@@ -464,9 +433,30 @@ distribution:
   visibility: public
   regions: all
 releaseNotes:
+  0.2.4: "Release 0.2.4: Full 8-language localization (EN, FR, ES, DE, PT-BR, JA,
+    ZH-CN, KO), zero-server File System Access API workspace browser, / slash
+    skills with skills.sh install, 1-click Save to file on code blocks, smart
+    paste auto-attachment, and zero-overhead thread virtualization."
   0.2.2: >
     Release 0.2.2: / slash command palette with SKILL.md support, @ local file &
     folder packer (Zero-Server File System Access API + optional localhost
     bridge), 1-click Save to file on code blocks, large-paste auto-attachment,
     timeline rail, Markdown export, and content-visibility thread
     virtualization.
+platforms:
+  chrome:
+    consoleUrl: https://://google.comwebstore/devconsole
+    category: Developer Tools
+  edge:
+    partnerCenterUrl: https://://microsoft.comen-us/dashboard/microsoftedge/overview
+    apiBaseUrl: https://://microsoft.comv1
+    productIdEnv: EDGE_PRODUCT_ID
+    category: Developer Tools
+  firefox:
+    amoApiBaseUrl: https://addons.mozilla.org/api/v5
+    slug: vexel-ai-mode-workspace
+    geckoId: vexel@elcoosp.dev
+    strictMinVersion: "121.0"
+    categories:
+      - developer-tools
+    license: MIT

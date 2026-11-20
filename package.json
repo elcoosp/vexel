@@ -14,14 +14,17 @@
     "test:unit": "LINGUI_CONFIG=packages/extension/lingui.config.ts vitest run --project unit",
     "test:dom": "LINGUI_CONFIG=packages/extension/lingui.config.ts vitest run --project dom",
     "test:e2e": "pnpm build && node packages/extension/test/e2e/run-e2e.mjs",
-    "zip:store": "pnpm build && mkdir -p release && rm -f release/vexel-extension-store.zip && (cd packages/extension/dist && zip -r ../../../release/vexel-extension-store.zip .)",
+    "zip:store": "pnpm build && node scripts/build-store-zips.mjs",
     "marketing:assets": "node scripts/capture-live-assets.mjs",
     "marketing:mock": "pnpm build && node scripts/generate-store-assets.mjs",
-    "store:validate": "node scripts/sync-store-listing.mjs --validate-only",
-    "store:sync": "pnpm zip:store && node scripts/sync-store-listing.mjs",
-    "store:dry-run": "node scripts/sync-store-listing.mjs --dry-run",
+    "store:validate": "node scripts/sync-store-listing.mjs --validate-only --target all",
+    "store:sync": "pnpm zip:store && node scripts/sync-store-listing.mjs --target all",
+    "store:dry-run": "pnpm zip:store && node scripts/sync-store-listing.mjs --dry-run --target all",
     "i18n:extract": "pnpm --filter @vexel/extension exec lingui extract",
-    "i18n:check": "pnpm --filter @vexel/extension exec lingui check missing --mode catalog"
+    "i18n:check": "pnpm --filter @vexel/extension exec lingui check missing --mode catalog",
+    "store:sync:chrome": "pnpm zip:store && node scripts/sync-store-listing.mjs --target chrome",
+    "store:sync:edge": "pnpm zip:store && node scripts/sync-store-listing.mjs --target edge",
+    "store:sync:firefox": "pnpm zip:store && node scripts/sync-store-listing.mjs --target firefox"
   },
   "devDependencies": {
     "@lingui/vite-plugin": "^6.12.0",
