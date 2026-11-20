@@ -349,12 +349,9 @@ const TOC_CSS = [
   '.tip-badge { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; font-weight: 600; color: #1a73e8; background: #e8f0fe; padding: 1px 6px; border-radius: 6px; flex-shrink: 0; }',
   '.tip-text { overflow: hidden; text-overflow: ellipsis; color: #3c4043; }',
   '@media (max-width: 900px) {',
-  '  .rail { right: 4px; width: 22px; padding: 4px 0; }',
-  '  .rail.overflowing:hover { width: 24px; }',
-  '  .rail-inner, .active-pill, .tick-wrap { width: 14px; }',
-  '  .active-pill, .tick-wrap { height: 14px; }',
-  '  .tick { width: 4px; height: 4px; }',
-  '  .shared-tip { right: 32px; max-width: calc(100vw - 44px); }',
+  '  .rail { right: 4px; width: 24px; }',
+  '  .rail.overflowing:hover { width: 26px; }',
+  '  .shared-tip { right: 34px; max-width: calc(100vw - 46px); }',
   '}',
 ].join('\n');
 
@@ -447,7 +444,7 @@ syncThumb();
 );
 const moveActivePill = (idx: number, instant = false) => {
 if (idx < 0 || idx >= turnEntries.length) return;
-const targetY = idx * 20;
+const targetY = turnEntries[idx].wrap.offsetTop;
 if (instant) {
 activePill.style.transform = 'translateY(' + targetY + 'px)';
 } else {
