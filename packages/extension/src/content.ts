@@ -3,7 +3,12 @@ import './i18n'
 import { initOnboarding } from './features/onboarding'
 import { initCodeSave } from './features/code-save'
 import { initDomBooster } from './features/dom-booster'
-import { MAX_SAFE_LENGTH, uploadAsTextFile } from './features/file-upload'
+import {
+  MAX_SAFE_LENGTH,
+  getProjectedInputLength,
+  resolvePromptInput,
+  uploadAsTextFile,
+} from './features/file-upload'
 import { initCommandPalette } from './features/palette'
 import { initThreadTools } from './features/thread-tools'
 
@@ -38,19 +43,16 @@ function initAutoFilePaste(): void {
   document.addEventListener(
     'paste',
     (e: ClipboardEvent) => {
-      const target = e.target as HTMLElement | null
-      if (!target) return
-      if (target.closest('[data-vexel-ui]') || target.id?.startsWith('vexel-')) return
-      const isPromptInput =
-        target.matches('textarea, [contenteditable="true"], input[type="text"]') ||
-        Boolean(target.closest('textarea, [contenteditable="true"]'))
-      if (!isPromptInput) return
+      const promptInput = resolvePromptInput(e.target as HTMLElement | null)
+      if (!promptInput) return
 
       const pasted = e.clipboardData?.getData('text/plain') || ''
-      if (pasted.length > MAX_SAFE_LENGTH) {
+      if (!pasted) return
+
+      if (getProjectedInputLength(promptInput, pasted) > MAX_SAFE_LENGTH) {
         e.preventDefault()
         e.stopPropagation()
-        uploadAsTextFile(pasted, target, showToast)
+        uploadAsTextFile(pasted, promptInput, showToast)
       }
     },
     true
