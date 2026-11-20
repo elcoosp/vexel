@@ -568,9 +568,14 @@ async function hideCard(id) {
   }, id);
 }
 function captionHtml(text) {
-  return '<div style="position:fixed;left:112px;top:74px;max-width:540px;background:rgba(255,255,255,0.96);border:1px solid #dadce0;border-radius:16px;padding:16px 22px;box-shadow:0 12px 32px rgba(60,64,67,0.14),0 2px 6px rgba(60,64,67,0.06);font-family:\'Google Sans\',-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif;text-align:left;">'
+  const parts = String(text || '').split(' — ');
+  const headline = parts[0] || text;
+  const detail = parts.slice(1).join(' — ');
+  return '<div style="position:fixed;left:112px;top:74px;max-width:560px;background:rgba(255,255,255,0.97);border:1px solid #dadce0;border-radius:16px;padding:15px 22px;box-shadow:0 12px 32px rgba(60,64,67,0.14),0 2px 6px rgba(60,64,67,0.06);font-family:\'Google Sans\',-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif;text-align:left;">'
     + '<div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:0.08em;color:#1967d2;margin-bottom:4px;"><span style="width:7px;height:7px;border-radius:50%;background:#1a73e8;display:inline-block;"></span>VEXEL • GOOGLE AI MODE</div>'
-    + '<div style="font-size:20px;font-weight:600;color:#1f1f1f;line-height:1.3;letter-spacing:-0.01em;">' + escHtml(text) + '</div></div>';
+    + '<div style="font-size:19px;font-weight:700;color:#1f1f1f;line-height:1.25;letter-spacing:-0.015em;">' + escHtml(headline) + '</div>'
+    + (detail ? '<div style="margin-top:4px;font-size:14px;font-weight:500;color:#5f6368;line-height:1.35;">' + escHtml(detail) + '</div>' : '')
+    + '</div>';
 }
 function waitStep(n) {
   return page.waitForFunction(k => {
@@ -766,16 +771,27 @@ async function main() {
   await startRecorder();
 
   const pasteLog = fs.readFileSync(path.join(WORKSPACE, 'logs/ci-failure.log'), 'utf8');
-  const pasteCaption = 'Paste ' + thousands(pasteLog.length) + ' chars -> auto-attached as a file. Zero truncation.';
+  const pasteCaption = 'Zero-Truncation Paste (' + thousands(pasteLog.length) + ' chars) — Auto-attached as a .txt file while keeping your prompt intact';
 
-  await scene('intro', 'Vexel - live on Google AI Mode', async () => {
-    await showCard('mk-intro', cardInner('Vexel', 'Local Coding Workspace for Google AI Mode', 'Slash skills (/), local repo context (@), 1-click file save & fast thread virtualization.'));
+  await scene('intro', 'Vexel — Turn Google AI Mode into a Local Coding Workspace', async () => {
+    await showCard('mk-intro', cardInner(
+      'Vexel',
+      'Turn Google AI Mode into a Local Coding Workspace',
+      'Zero-truncation file paste • / Slash skills & skills.sh • @ Local repo context • 1-click Save to disk'
+    ));
     await wait(2300);
     await hideCard('mk-intro');
     await wait(550);
   });
 
-  await scene('onboarding', 'First-run tour - keyboard-first, 3 steps', async () => {
+  await scene('landing', 'Native Workspace Dock — Quick access to / Skills, @ Files & Markdown export', async () => {
+    await wait(650);
+    await page.locator('#vexel-input-dock-host .dock-btn').hover().catch(() => { });
+    await wait(550);
+    await shot('00-ai-mode-landing');
+  });
+
+  await scene('onboarding', 'Zero-Server Ready — Connect any local folder in seconds, no backend required', async () => {
     const host = page.locator('#vexel-onboarding-host');
     if ((await host.count()) === 0) {
       await openPaletteViaDock().catch(() => openPalette('/'));
@@ -783,31 +799,24 @@ async function main() {
       await wait(400);
     }
     await host.waitFor({ state: 'attached', timeout: 6000 });
-    await wait(800);
+    await wait(750);
     await shot('01-onboarding-hero');
     await host.locator('.demo-chip').nth(1).click().catch(() => { });
-    await wait(700);
+    await wait(600);
     await host.locator('.btn-primary').click();
     await waitStep(2);
-    await wait(600);
+    await wait(550);
     await host.locator('.btn-primary').click();
     await waitStep(3);
-    await wait(600);
+    await wait(550);
     await shot('01b-onboarding-shortcuts', { hiRes: false });
     await host.locator('.btn-primary').click();
     await host.waitFor({ state: 'detached', timeout: 6000 });
     await clearPrompt();
-    await wait(400);
+    await wait(350);
   });
 
-  await scene('landing', 'Real Google AI Mode - no mocks, live over CDP', async () => {
-    await wait(700);
-    await page.locator('#vexel-input-dock-host .dock-btn').hover().catch(() => { });
-    await wait(500);
-    await shot('00-ai-mode-landing');
-  });
-
-  await scene('ask', 'Ask once - the real answer streams in', async () => {
+  await scene('ask', 'Code Generation Workflow — Ask once, inspect & save generated code directly', async () => {
     const inp = await focusPrompt();
     const baseline = await bodyLen();
     await inp.pressSequentially(CONFIG.queries.ask, { delay: jitter(Math.round(38 * PACE), 0.3) });
@@ -816,10 +825,10 @@ async function main() {
     await page.keyboard.press('Enter');
     await waitAnswer(st, baseline + 150);
     await scrollToTop();
-    await wait(700);
+    await wait(650);
     await shot('02-ai-mode-answer', { full: true });
     await smoothScroll(Math.round(VH * 0.65), 420);
-    await wait(700);
+    await wait(650);
   });
 
   await scene('paste', pasteCaption, async () => {
@@ -845,7 +854,7 @@ async function main() {
     }
     if (!ok) throw new Error('paste interception toast not seen (AI Mode variant may lack input[type=file])');
     await shot('03-paste-to-file');
-    await wait(1300);
+    await wait(1200);
     const baseline = await bodyLen();
     await inp.pressSequentially(' ' + CONFIG.queries.paste, { delay: jitter(Math.round(20 * PACE), 0.3) });
     noteQuery(st);
@@ -856,33 +865,34 @@ async function main() {
     await shot('03b-paste-answer');
   });
 
-  await scene('skills', 'One click on the Vexel dock - your skills palette', async () => {
+  await scene('skills', 'Slash Skills (/) — Built-in engineering playbooks + 1-click skills.sh search', async () => {
     await ensureVexelLater();
     await clearPrompt();
     await openPaletteViaDock().catch(() => openPalette('/'));
     await wait(750);
     await shot('04-slash-skills-palette');
-    await page.keyboard.press('ArrowDown'); await wait(jitter(450, 0.3));
-    await page.keyboard.press('ArrowDown'); await wait(jitter(450, 0.3));
-    await page.keyboard.press('Enter'); await wait(800);
+    await page.keyboard.press('ArrowDown'); await wait(jitter(400, 0.3));
+    await page.keyboard.press('ArrowDown'); await wait(jitter(400, 0.3));
+    await page.keyboard.press('Enter'); await wait(750);
     await shot('05-skill-injected', { hiRes: false });
     await clearPrompt();
   });
 
-  await scene('files', 'Type @ - browse and attach local project files', async () => {
+  await scene('files', 'Repo Context (@) — Attach local files, pack entire folders, or inject Git diff', async () => {
     await clearPrompt();
     const inp = await focusPrompt();
     await inp.pressSequentially('@', { delay: jitter(Math.round(90 * PACE), 0.3) });
     if (!(await paletteOpen(5000))) throw new Error('palette did not open on "@"');
-    await wait(1300);
+    await wait(1100);
     await shot('06-at-files-workspace');
-    await wait(500);
-    await page.keyboard.press('Escape');
-    await wait(350);
+    await page.keyboard.type('webhook', { delay: 65 });
+    await wait(650);
+    await page.keyboard.press('Enter');
+    await wait(850);
     await clearPrompt();
   });
 
-  await scene('save', 'Hover code - Save to file, straight to disk', async () => {
+  await scene('save', '1-Click Save to File — Write AI-generated code straight into your repository', async () => {
     const code = page.locator('pre code').first();
     await code.waitFor({ state: 'attached', timeout: 8000 });
     await smoothScrollIntoView(code);
@@ -910,7 +920,7 @@ async function main() {
     }
   });
 
-  await scene('speed', 'Long threads stay instant - off-screen turns virtualized', async () => {
+  await scene('speed', 'Floating TOC & Fast Virtualization — Jump across turns & export clean Markdown', async () => {
     rec.speed = 4; await wait(jitter(6500, 0.25)); rec.speed = 1;
     const inp = await focusPrompt();
     const baseline = await bodyLen();
@@ -918,20 +928,22 @@ async function main() {
     noteQuery(st);
     await page.keyboard.press('Enter');
     await waitAnswer(st, baseline + 80, 90000);
-    await wait(500);
+    await wait(450);
     await smoothScroll(-1900, 900);
-    await wait(650);
+    await wait(550);
+    await page.locator('#vexel-toc-host .tick-wrap').first().hover().catch(() => { });
+    await wait(700);
     await smoothScroll(1900, 900);
-    await wait(500);
+    await wait(450);
     await page.keyboard.press('Alt+ArrowDown');
-    await wait(950);
+    await wait(850);
     await shot('08-long-thread-fast');
   });
 
-  await scene('outro', 'Star it on GitHub', async () => {
+  await scene('outro', 'Vexel — Free & Open-Source for Chrome, Edge & Firefox', async () => {
     await page.evaluate(() => { document.documentElement.style.background = '#F8F9FA'; });
     const repoLabel = ['github.com', 'elcoosp', 'vexel'].join('/');
-    await showCard('mk-outro', cardInner('Vexel', 'Open-Source • Local-First • Zero Telemetry', repoLabel));
+    await showCard('mk-outro', cardInner('Vexel', 'Free & Open-Source • Local-First • Zero Telemetry', 'Available for Chrome, Edge & Firefox — ' + repoLabel));
     await wait(2700);
   });
 
