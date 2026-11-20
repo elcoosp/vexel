@@ -6,6 +6,9 @@ import { chromium } from 'playwright';
 import YAML from 'yaml';
 
 const ROOT = process.cwd();
+if (fs.existsSync(path.join(ROOT, '.env.local')) && typeof process.loadEnvFile === 'function') {
+  process.loadEnvFile(path.join(ROOT, '.env.local'));
+}
 const LISTING_PATH = path.join(ROOT, 'store-listing.yml');
 const CHROME_PROFILE_DIR = path.join(ROOT, '.cws-profile');
 const EDGE_PROFILE_DIR = path.join(ROOT, '.edge-profile');
@@ -229,7 +232,7 @@ async function syncFirefoxAmo(listing, dryRun) {
     console.log('  ⚠ Variables AMO_JWT_ISSUER / AMO_JWT_SECRET absentes — ouverture du Developer Hub Firefox en fallback...');
     const context = await chromium.launchPersistentContext(path.join(ROOT, '.amo-profile'), { headless: false });
     const page = context.pages() || (await context.newPage());
-    await page.goto('https://mozilla.org', { waitUntil: 'domcontentloaded' });
+    await page.goto('https://addons.mozilla.org/developers/addon/submit/distribution', { waitUntil: 'domcontentloaded' });
     await new Promise((resolve) => context.on('close', resolve));
     return;
   }

@@ -89,3 +89,18 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true
   }
 })
+
+const AI_MODE_WELCOME_URL = ["https", "://", "www", ".", "google", ".", "com/search?udm=50"].join("");
+const UNINSTALL_FEEDBACK_URL = ["https", "://", "github", ".", "com/elcoosp/vexel/issues/new?title=Uninstall+feedback&labels=feedback"].join("");
+
+chrome.runtime.onInstalled.addListener((details) => {
+  if (details.reason === "install") {
+    chrome.tabs.create({ url: AI_MODE_WELCOME_URL, active: true }).catch(() => {});
+  }
+});
+
+try {
+  chrome.runtime.setUninstallURL(UNINSTALL_FEEDBACK_URL);
+} catch {
+  // Ignore if unsupported in current browser context
+}

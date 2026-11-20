@@ -1,5 +1,5 @@
 schemaVersion: 1.0.0
-targetConsoleUrl: https://://google.comwebstore/devconsole
+targetConsoleUrl: https://chrome.google.com/webstore/devconsole
 manifestSync:
   manifestPath: packages/extension/public/manifest.json
   name: Vexel
@@ -9,8 +9,8 @@ manifestSync:
 storeListing:
   category: Developer Tools
   defaultLocale: en
-  supportUrl: https://://github.comelcoosp/vexel/issues
-  homepageUrl: https://://github.comelcoosp/vexel
+  supportUrl: https://github.com/elcoosp/vexel/issues
+  homepageUrl: https://github.com/elcoosp/vexel
   locales:
     en:
       title: Vexel
@@ -424,7 +424,7 @@ privacyPractices:
       process on the loopback interface to read project files, git diffs, and
       write saved code blocks.
   collectsUserData: false
-  privacyPolicyUrl: https://://github.comelcoosp/vexel/blob/main/PRIVACY.md
+  privacyPolicyUrl: https://github.com/elcoosp/vexel/blob/main/PRIVACY.md
   certifications:
     noThirdPartyTransfers: true
     noUnrelatedUse: true
@@ -445,11 +445,11 @@ releaseNotes:
     virtualization.
 platforms:
   chrome:
-    consoleUrl: https://://google.comwebstore/devconsole
+    consoleUrl: https://chrome.google.com/webstore/devconsole
     category: Developer Tools
   edge:
-    partnerCenterUrl: https://://microsoft.comen-us/dashboard/microsoftedge/overview
-    apiBaseUrl: https://://microsoft.comv1
+    partnerCenterUrl: https://partner.microsoft.com/en-us/dashboard/microsoftedge/overview
+    apiBaseUrl: https://api.addons.microsoftedge.microsoft.com/v1
     productIdEnv: EDGE_PRODUCT_ID
     category: Developer Tools
   firefox:
