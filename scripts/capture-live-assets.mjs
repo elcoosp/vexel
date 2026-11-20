@@ -71,7 +71,7 @@ let browser = null, context = null, page = null, cdp = null;
 let LOGO = '';
 const warnings = [], shots = [], scenes = [];
 let frameCount = 0;
-const rec = { last: null, lastAt: 0, timer: null, paused: false };
+const rec = { last: null, lastAt: 0, timer: null, freeze: false, speed: 1, tick: 0 };
 
 function warn(msg) { warnings.push(msg); console.warn('  [warn] ' + msg); }
 function wait(ms) { return page.waitForTimeout(Math.round(ms * PACE)); }
@@ -288,12 +288,16 @@ async function startRecorder() {
   const opts = { format: 'jpeg', quality: 88, maxWidth: W, maxHeight: H, everyNthFrame: 1 };
   await cdp.send('Page.startScreencast', opts);
   cdp.on('Page.screencastFrame', ev => {
-    rec.last = Buffer.from(ev.data, 'base64');
-    rec.lastAt = Date.now();
+    if (!rec.freeze) {
+      rec.last = Buffer.from(ev.data, 'base64');
+      rec.lastAt = Date.now();
+    }
     cdp.send('Page.screencastFrameAck', { sessionId: ev.sessionId }).catch(() => { });
   });
   rec.timer = setInterval(() => {
-    if (!rec.last || rec.paused) return;
+    if (!rec.last) return;
+    rec.tick++;
+    if (rec.speed > 1 && (rec.tick % rec.speed) !== 0) return;
     frameCount++;
     const fPath = path.join(FRAMES, 'f' + String(frameCount).padStart(6, '0') + '.jpg');
     fs.promises.writeFile(fPath, rec.last).catch(() => {});
@@ -358,7 +362,7 @@ async function fullShot(name) {
 }
 async function shot(name, opts = {}) {
   await wait(opts.settle === undefined ? 350 : opts.settle);
-  rec.paused = true;
+  rec.freeze = true;
   await page.waitForTimeout(120);
   await page.evaluate(() => {
     const s = document.createElement('style');
@@ -379,7 +383,7 @@ async function shot(name, opts = {}) {
   } finally {
     await page.evaluate(() => { const s = document.getElementById('mk-caret-hide'); if (s) s.remove(); }).catch(() => { });
     await page.waitForTimeout(200);
-    rec.paused = false;
+    rec.freeze = false;
   }
   console.log('  [shot] ' + name);
   await wait(opts.hold === undefined ? 650 : opts.hold);
@@ -456,6 +460,9 @@ async function ensureNotBlocked(st, stage) {
   throw new Error('ANTIBOT: Google /sorry/ rate block at ' + stage + '. This is IP/profile-level, not a script bug. Wait ~' + BLOCK_COOLDOWN_MIN + ' min, then run once with INTERACTIVE=1 to solve + sign in (profile persists). FORCE=1 bypasses the governor only.');
 }
 async function waitAnswer(st, minLen, timeoutMs = CONFIG.answerTimeoutMs) {
+  const prevSpeed = rec.speed;
+  rec.speed = 4;
+  try {
   const t0 = Date.now();
   let last = -1, stable = 0;
   await page.waitForTimeout(400);
@@ -476,6 +483,9 @@ async function waitAnswer(st, minLen, timeoutMs = CONFIG.answerTimeoutMs) {
   await page.waitForTimeout(800);
   await ensureNotBlocked(st, 'answer');
   await ensureVexelLater();
+  } finally {
+    rec.speed = prevSpeed;
+  }
 }
 async function waitToast(substr, timeout) {
   return page.waitForFunction(s => {
@@ -558,7 +568,7 @@ async function hideCard(id) {
   }, id);
 }
 function captionHtml(text) {
-  return '<div style="position:fixed;left:44px;top:34px;max-width:520px;background:rgba(255,255,255,0.96);border:1px solid #dadce0;border-radius:16px;padding:13px 18px;box-shadow:0 12px 32px rgba(60,64,67,0.14),0 2px 6px rgba(60,64,67,0.06);font-family:\'Google Sans\',-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif;text-align:left;">'
+  return '<div style="position:fixed;left:112px;top:74px;max-width:540px;background:rgba(255,255,255,0.96);border:1px solid #dadce0;border-radius:16px;padding:16px 22px;box-shadow:0 12px 32px rgba(60,64,67,0.14),0 2px 6px rgba(60,64,67,0.06);font-family:\'Google Sans\',-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif;text-align:left;">'
     + '<div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:0.08em;color:#1967d2;margin-bottom:4px;"><span style="width:7px;height:7px;border-radius:50%;background:#1a73e8;display:inline-block;"></span>VEXEL • GOOGLE AI MODE</div>'
     + '<div style="font-size:20px;font-weight:600;color:#1f1f1f;line-height:1.3;letter-spacing:-0.01em;">' + escHtml(text) + '</div></div>';
 }
@@ -634,7 +644,7 @@ function assembleVideo(caps) {
     const n = s.end - s.start;
     if (n < 2) continue;
     const file = path.join(SCENES, String(i).padStart(2, '0') + '-' + s.name + '.mp4');
-    const base = 'scale=' + (W - 64) + ':' + (H - 48) + ':force_original_aspect_ratio=decrease,drawbox=x=0:y=0:w=iw:h=ih:color=0xDADCE0:t=2,pad=' + W + ':' + H + ':(ow-iw)/2:(oh-ih)/2:color=' + BG;
+    const base = 'scale=' + (W - 160) + ':' + (H - 90) + ':force_original_aspect_ratio=decrease,drawbox=x=0:y=0:w=iw:h=ih:color=0xDADCE0:t=2,pad=' + W + ':' + H + ':(ow-iw)/2:(oh-ih)/2:color=' + BG;
     let fade = '';
     if (i === 0) fade = ',fade=t=in:st=0:d=0.5';
     if (i === scenes.length - 1 && s.seconds > 1.4) fade = ',fade=t=out:st=' + (s.seconds - 0.6).toFixed(2) + ':d=0.6';
@@ -814,7 +824,7 @@ async function main() {
 
   await scene('paste', pasteCaption, async () => {
     await ensureVexelLater();
-    await wait(jitter(6500, 0.35)); // human spacing between submissions
+    rec.speed = 4; await wait(jitter(6500, 0.25)); rec.speed = 1;
     const inp = await focusPrompt();
     let ok = false;
     try {
@@ -901,7 +911,7 @@ async function main() {
   });
 
   await scene('speed', 'Long threads stay instant - off-screen turns virtualized', async () => {
-    await wait(jitter(6500, 0.35)); // human spacing between submissions
+    rec.speed = 4; await wait(jitter(6500, 0.25)); rec.speed = 1;
     const inp = await focusPrompt();
     const baseline = await bodyLen();
     await inp.pressSequentially(CONFIG.queries.followUp, { delay: jitter(Math.round(28 * PACE), 0.3) });
