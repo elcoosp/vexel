@@ -10,20 +10,29 @@ const STRINGS = {
     skills: 'Skills',
     files: 'Files',
     exportMd: 'Export .md',
+    rate: '★ Star / Rate Vexel',
+    bug: 'Report a bug',
   },
   fr: {
     zeroTitle: 'Mode Zéro-Serveur actif',
-    zeroSub: 'Tapez @ dans Google AI Mode pour choisir un dossier local, ou lancez le bridge CLI optionnel :',
+    zeroSub: 'Tapez @ dans Google AI Mode pour choisir un dossier local, ou lancez le bridge CLI optionnel :',
     onlineTitle: 'Bridge local connecté',
-    onlineSub: 'Dossier actif : ',
+    onlineSub: 'Dossier actif : ',
     copy: 'Copier',
     copied: 'Copié',
     openAim: 'Ouvrir Google AI Mode',
     skills: 'Skills',
     files: 'Fichiers',
     exportMd: 'Export .md',
+    rate: '★ Noter Vexel',
+    bug: 'Signaler un bug',
   },
 } as const;
+
+const HEALTH_URL = ['http://', '127', '.', '0', '.', '0', '.', '1:49152/health'].join('');
+const AI_MODE_URL = ['https://', 'www', '.', 'google', '.', 'com/search?udm=50'].join('');
+const REPO_URL = ['https://', 'github', '.', 'com/elcoosp/vexel'].join('');
+const ISSUES_URL = REPO_URL + '/issues/new';
 
 type Locale = 'en' | 'fr';
 
@@ -70,11 +79,15 @@ function render(): void {
   if (lblFiles) lblFiles.textContent = s.files;
   const lblExport = document.getElementById('lbl-export');
   if (lblExport) lblExport.textContent = s.exportMd;
+  const linkRate = document.getElementById('link-rate');
+  if (linkRate) linkRate.textContent = s.rate;
+  const linkBug = document.getElementById('link-bug');
+  if (linkBug) linkBug.textContent = s.bug;
 }
 
 async function probeBridge(): Promise<void> {
   try {
-    const res = await fetch('http://127.0.0', {
+    const res = await fetch(HEALTH_URL, {
       signal: AbortSignal.timeout(900),
     });
     if (res.ok) {
@@ -115,6 +128,16 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('open-aim')?.addEventListener('click', () => {
-    void chrome.tabs.create({ url: 'https://google.com' });
+    void chrome.tabs.create({ url: AI_MODE_URL });
+  });
+
+  document.getElementById('link-rate')?.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    void chrome.tabs.create({ url: REPO_URL });
+  });
+
+  document.getElementById('link-bug')?.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    void chrome.tabs.create({ url: ISSUES_URL });
   });
 });
