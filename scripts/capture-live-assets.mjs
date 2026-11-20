@@ -569,7 +569,7 @@ async function hideCard(id) {
 }
 function captionHtml(text) {
   const parts = String(text || '').split(' — ');
-  const headline = parts[0] || text;
+  const headline = parts || text;
   const detail = parts.slice(1).join(' — ');
   return '<div style="position:fixed;left:112px;top:74px;max-width:560px;background:rgba(255,255,255,0.97);border:1px solid #dadce0;border-radius:16px;padding:15px 22px;box-shadow:0 12px 32px rgba(60,64,67,0.14),0 2px 6px rgba(60,64,67,0.06);font-family:\'Google Sans\',-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif;text-align:left;">'
     + '<div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:0.08em;color:#1967d2;margin-bottom:4px;"><span style="width:7px;height:7px;border-radius:50%;background:#1a73e8;display:inline-block;"></span>VEXEL • GOOGLE AI MODE</div>'
