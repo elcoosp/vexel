@@ -15,3 +15,5 @@ scripts/.demo-workspace/
 .cws-profile/
 packages/extension/src/locales/**/*.js
 docs/store-deploy-env.md
+
+release/
