@@ -2,6 +2,7 @@
   "name": "vexel",
   "version": "0.2.5",
   "private": true,
+  "type": "module",
   "scripts": {
     "build": "pnpm -r build",
     "dev:bridge": "pnpm --filter @vexel/bridge dev",
@@ -13,21 +14,23 @@
     "test": "pnpm test:unit && pnpm test:dom && pnpm test:e2e",
     "test:unit": "LINGUI_CONFIG=packages/extension/lingui.config.ts vitest run --project unit",
     "test:dom": "LINGUI_CONFIG=packages/extension/lingui.config.ts vitest run --project dom",
-    "test:e2e": "pnpm build && node packages/extension/test/e2e/run-e2e.mjs",
-    "zip:store": "pnpm build && node scripts/build-store-zips.mjs",
-    "marketing:assets": "node scripts/capture-live-assets.mjs",
-    "marketing:mock": "pnpm build && node scripts/generate-store-assets.mjs",
-    "store:validate": "node scripts/sync-store-listing.mjs --validate-only --target all",
-    "store:sync": "pnpm zip:store && node scripts/sync-store-listing.mjs --target all",
-    "store:dry-run": "pnpm zip:store && node scripts/sync-store-listing.mjs --dry-run --target all",
+    "test:e2e": "pnpm build && node packages/extension/test/e2e/run-e2e.ts",
+    "zip:store": "pnpm build && node scripts/build-store-zips.ts",
+    "marketing:assets": "node scripts/capture-live-assets.ts",
+    "marketing:mock": "pnpm build && node scripts/generate-store-assets.ts",
+    "store:validate": "node scripts/sync-store-listing.ts --validate-only --target all",
+    "store:sync": "pnpm zip:store && node scripts/sync-store-listing.ts --target all",
+    "store:dry-run": "pnpm zip:store && node scripts/sync-store-listing.ts --dry-run --target all",
     "i18n:extract": "pnpm --filter @vexel/extension exec lingui extract",
     "i18n:check": "pnpm --filter @vexel/extension exec lingui check missing --mode catalog",
-    "store:sync:chrome": "pnpm zip:store && node scripts/sync-store-listing.mjs --target chrome",
-    "store:sync:edge": "pnpm zip:store && node scripts/sync-store-listing.mjs --target edge",
-    "store:sync:firefox": "pnpm zip:store && node scripts/sync-store-listing.mjs --target firefox"
+    "store:sync:chrome": "pnpm zip:store && node scripts/sync-store-listing.ts --target chrome",
+    "store:sync:edge": "pnpm zip:store && node scripts/sync-store-listing.ts --target edge",
+    "store:sync:firefox": "pnpm zip:store && node scripts/sync-store-listing.ts --target firefox",
+    "typecheck": "pnpm --filter @vexel/extension exec tsc -p ../../tsconfig.json --noEmit && pnpm --filter @vexel/extension exec tsc --noEmit"
   },
   "devDependencies": {
     "@lingui/vite-plugin": "^6.12.0",
+    "@types/node": "^26.6.6",
     "happy-dom": "^21.0.4",
     "linkedom": "^0.18.15",
     "oxfmt": "^0.78.0",
@@ -35,6 +38,5 @@
     "playwright": "^1.65.1",
     "vitest": "^5.1.0",
     "yaml": "^2.9.1"
-  },
-  "type": "module"
+  }
 }

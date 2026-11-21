@@ -1,18 +1,21 @@
-import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import { chromium } from 'playwright';
+import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { type BrowserContext, chromium } from 'playwright'
 
-const extPath = path.resolve('packages/extension/dist');
-assert.ok(fs.existsSync(path.join(extPath, 'manifest.json')), 'Build extension first via pnpm build');
+const extPath = path.resolve('packages/extension/dist')
+assert.ok(
+  fs.existsSync(path.join(extPath, 'manifest.json')),
+  'Build extension first via pnpm build'
+)
 
-const outDir = path.resolve('docs/assets');
-fs.mkdirSync(outDir, { recursive: true });
+const outDir = path.resolve('docs/assets')
+fs.mkdirSync(outDir, { recursive: true })
 
-const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vexel-marketing-profile-'));
-const videoTmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vexel-marketing-video-'));
+const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vexel-marketing-profile-'))
+const videoTmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vexel-marketing-video-'))
 
 const REALISTIC_GOOGLE_AIM_HTML = `<!doctype html>
 <html lang="en">
@@ -206,106 +209,120 @@ const REALISTIC_GOOGLE_AIM_HTML = `<!doctype html>
     </div>
   </main>
 </body>
-</html>`;
+</html>`
 
-let context;
+let context: BrowserContext | null = null
 try {
   context = await chromium.launchPersistentContext(userDataDir, {
     headless: false,
     viewport: { width: 1280, height: 800 },
     recordVideo: { dir: videoTmpDir, size: { width: 1280, height: 800 } },
-    args: [
-      `--disable-extensions-except=${extPath}`,
-      `--load-extension=${extPath}`,
-      '--no-sandbox',
-    ],
-  });
+    args: [`--disable-extensions-except=${extPath}`, `--load-extension=${extPath}`, '--no-sandbox'],
+  })
 
   await context.route('https://google.com*', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'text/html; charset=utf-8',
       body: REALISTIC_GOOGLE_AIM_HTML,
-    });
-  });
+    })
+  })
 
-  const page = await context.newPage();
-  await context.addInitScript(() => { try { localStorage.setItem('vexel:locale', 'en'); localStorage.setItem('vexel:popup-locale', 'en'); } catch {} });
-  await page.setViewportSize({ width: 1280, height: 800 });
+  const page = await context.newPage()
+  await context.addInitScript(() => {
+    try {
+      localStorage.setItem('vexel:locale', 'en')
+      localStorage.setItem('vexel:popup-locale', 'en')
+    } catch {}
+  })
+  await page.setViewportSize({ width: 1280, height: 800 })
 
-  await page.goto('https://google.com?udm=50&q=stripe-webhook-hardening', { waitUntil: 'domcontentloaded' });
+  await page.goto('https://google.com', { waitUntil: 'domcontentloaded' })
 
   // Shot 1: Onboarding Hero
-  const onboardingHost = page.locator('#vexel-onboarding-host');
-  await onboardingHost.waitFor({ state: 'attached', timeout: 5000 });
-  await page.waitForTimeout(450);
-  await page.screenshot({ path: path.join(outDir, '01-onboarding-hero.png') });
+  const onboardingHost = page.locator('#vexel-onboarding-host')
+  await onboardingHost.waitFor({ state: 'attached', timeout: 5000 })
+  await page.waitForTimeout(450)
+  await page.screenshot({ path: path.join(outDir, '01-onboarding-hero.png') })
 
   // Advance onboarding smoothly for video, then close
-  await onboardingHost.evaluate((el) => (el.shadowRoot?.querySelector('.btn-primary'))?.click());
-  await page.waitForTimeout(450);
-  await onboardingHost.evaluate((el) => (el.shadowRoot?.querySelector('.btn-primary'))?.click());
-  await page.waitForTimeout(450);
-  await onboardingHost.evaluate((el) => (el.shadowRoot?.querySelector('.btn-primary'))?.click());
-  await onboardingHost.waitFor({ state: 'detached', timeout: 3000 });
-  await page.waitForTimeout(250);
+  await onboardingHost.evaluate((el) =>
+    el.shadowRoot?.querySelector<HTMLElement>('.btn-primary')?.click()
+  )
+  await page.waitForTimeout(450)
+  await onboardingHost.evaluate((el) =>
+    el.shadowRoot?.querySelector<HTMLElement>('.btn-primary')?.click()
+  )
+  await page.waitForTimeout(450)
+  await onboardingHost.evaluate((el) =>
+    el.shadowRoot?.querySelector<HTMLElement>('.btn-primary')?.click()
+  )
+  await onboardingHost.waitFor({ state: 'detached', timeout: 3000 })
+  await page.waitForTimeout(250)
 
   // Shot 2: Slash "/" Command Palette with Skills
-  const promptBox = page.locator('#aim-prompt');
-  await promptBox.click();
-  await promptBox.type('/', { delay: 80 });
-  await page.waitForTimeout(350);
-  await page.screenshot({ path: path.join(outDir, '02-slash-skills-palette.png') });
+  const promptBox = page.locator('#aim-prompt')
+  await promptBox.click()
+  await promptBox.type('/', { delay: 80 })
+  await page.waitForTimeout(350)
+  await page.screenshot({ path: path.join(outDir, '02-slash-skills-palette.png') })
 
   // Select top skill via Enter
-  await page.keyboard.press('Enter');
-  await page.waitForTimeout(450);
+  await page.keyboard.press('Enter')
+  await page.waitForTimeout(450)
 
   // Shot 3: "@" Files & Zero-Server / Bridge Workspace Tab
-  await promptBox.fill('');
-  await promptBox.type('@', { delay: 80 });
-  await page.waitForTimeout(400);
-  await page.screenshot({ path: path.join(outDir, '03-at-files-workspace.png') });
+  await promptBox.fill('')
+  await promptBox.type('@', { delay: 80 })
+  await page.waitForTimeout(400)
+  await page.screenshot({ path: path.join(outDir, '03-at-files-workspace.png') })
 
-  await page.keyboard.press('Escape');
-  await page.waitForTimeout(250);
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(250)
 
   // Shot 4: Hover code block -> "Save to file" popover with auto-inferred path
-  const codeBlock = page.locator('pre code');
-  await codeBlock.hover();
-  const saveTrigger = page.locator('button[data-vexel-ui="true"]', { hasText: 'Save to file' });
-  await saveTrigger.waitFor({ state: 'visible', timeout: 3000 });
-  await page.waitForTimeout(250);
-  await saveTrigger.click();
-  await page.waitForTimeout(450);
-  await page.screenshot({ path: path.join(outDir, '04-code-save-popover.png') });
+  const codeBlock = page.locator('pre code')
+  await codeBlock.hover()
+  const saveTrigger = page.locator('button[data-vexel-ui="true"]', { hasText: 'Save to file' })
+  await saveTrigger.waitFor({ state: 'visible', timeout: 3000 })
+  await page.waitForTimeout(250)
+  await saveTrigger.click()
+  await page.waitForTimeout(450)
+  await page.screenshot({ path: path.join(outDir, '04-code-save-popover.png') })
 
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(500)
 
-  const videoPath = await page.video()?.path();
-  await context.close();
-  context = null;
+  const videoPath = await page.video()?.path()
+  await context.close()
+  context = null
 
   if (videoPath && fs.existsSync(videoPath)) {
-    const destWebm = path.join(outDir, 'vexel-demo.webm');
-    fs.copyFileSync(videoPath, destWebm);
-    console.log('✓ Saved demo video:', destWebm);
+    const destWebm = path.join(outDir, 'vexel-demo.webm')
+    fs.copyFileSync(videoPath, destWebm)
+    console.log('✓ Saved demo video:', destWebm)
 
     try {
-      const destGif = path.join(outDir, 'vexel-demo.gif');
+      const destGif = path.join(outDir, 'vexel-demo.gif')
       execFileSync(
         'ffmpeg',
-        ['-y', '-i', destWebm, '-vf', 'fps=14,scale=960:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse', destGif],
+        [
+          '-y',
+          '-i',
+          destWebm,
+          '-vf',
+          'fps=14,scale=960:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse',
+          destGif,
+        ],
         { stdio: 'ignore' }
-      );
-      console.log('✓ Converted optimized README GIF:', destGif);
+      )
+      console.log('✓ Converted optimized README GIF:', destGif)
     } catch {
-console.log('ℹ ffmpeg not found — kept high-res docs/assets/vexel-demo.webm');
-}
-}
-console.log('✓ Generated 4 Chrome Web Store 1280x800 PNGs in docs/assets/');
+      console.log('ℹ ffmpeg not found — kept high-res docs/assets/vexel-demo.webm')
+    }
+  }
+  console.log('✓ Generated 4 Chrome Web Store 1280x800 PNGs in docs/assets/')
 } finally {
-if (context) await context.close();
-fs.rmSync(userDataDir, { recursive: true, force: true });
-fs.rmSync(videoTmpDir, { recursive: true, force: true });
+  if (context) await context.close()
+  fs.rmSync(userDataDir, { recursive: true, force: true })
+  fs.rmSync(videoTmpDir, { recursive: true, force: true })
 }

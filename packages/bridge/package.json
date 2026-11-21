@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --watch src/server.mjs",
-    "build": "echo 'Bridge ready (native ESM)'"
+    "dev": "node --watch src/server.ts",
+    "build": "../extension/node_modules/.bin/tsc -p tsconfig.json --noEmit"
   }
 }

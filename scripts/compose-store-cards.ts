@@ -1,26 +1,38 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { chromium } from 'playwright';
+import fs from 'node:fs'
+import path from 'node:path'
+import { chromium } from 'playwright'
 
-const ROOT = process.cwd();
-const ASSETS_DIR = path.join(ROOT, 'docs/assets');
+interface StoreSlide {
+  outName: string
+  badge: string
+  title: string
+  subtitle: string
+  accent: string
+  pillBg: string
+  pillBorder: string
+  sources: string[]
+  cropTopPct: number
+}
 
-function pickBestSource(candidates) {
+const ROOT = process.cwd()
+const ASSETS_DIR = path.join(ROOT, 'docs/assets')
+
+function pickBestSource(candidates: readonly string[]): string {
   for (const rel of candidates) {
-    const full = path.join(ASSETS_DIR, rel);
+    const full = path.join(ASSETS_DIR, rel)
     if (fs.existsSync(full) && fs.statSync(full).size > 30000) {
-      return full;
+      return full
     }
   }
-  throw new Error('Aucune capture source valide trouvée parmi : ' + candidates.join(', '));
+  throw new Error('Aucune capture source valide trouvée parmi : ' + candidates.join(', '))
 }
 
-function toDataUri(filePath) {
-  const b64 = fs.readFileSync(filePath).toString('base64');
-  return 'data:image/png;base64,' + b64;
+function toDataUri(filePath: string): string {
+  const b64 = fs.readFileSync(filePath).toString('base64')
+  return 'data:image/png;base64,' + b64
 }
 
-const SLIDES = [
+const SLIDES: readonly StoreSlide[] = [
   {
     outName: 'store-01-slash-skills.png',
     badge: 'SLASH COMMANDS  •  /',
@@ -36,7 +48,8 @@ const SLIDES = [
     outName: 'store-02-at-repo-context.png',
     badge: 'LOCAL REPO CONTEXT  •  @',
     title: 'Browse Files & Pack Folders with Zero Server',
-    subtitle: 'Connect any local repository via Chrome File System Access API or optional localhost bridge.',
+    subtitle:
+      'Connect any local repository via Chrome File System Access API or optional localhost bridge.',
     accent: '#137333',
     pillBg: '#e6f4ea',
     pillBorder: '#ceead6',
@@ -47,7 +60,8 @@ const SLIDES = [
     outName: 'store-03-save-to-file.png',
     badge: '1-CLICK DISK WRITE',
     title: 'Save Generated Code Blocks Straight to Disk',
-    subtitle: 'Auto-infers target file paths from comments & language tags with folder autocomplete.',
+    subtitle:
+      'Auto-infers target file paths from comments & language tags with folder autocomplete.',
     accent: '#1967d2',
     pillBg: '#e8f0fe',
     pillBorder: '#c6dafc',
@@ -76,13 +90,17 @@ const SLIDES = [
     sources: ['01b-onboarding-shortcuts.png', '08-long-thread-fast.png'],
     cropTopPct: 16,
   },
-];
+]
 
-function renderCardHtml(slide, imgUri) {
-  const displayUrl = ['https', '://', 'www.', 'google.', 'com/search?udm=50'].join('');
+function renderCardHtml(slide: StoreSlide, imgUri: string): string {
+  const displayUrl = ['https', '://', 'www.', 'google.', 'com/search?udm=50'].join('')
   const imgStyle = slide.cropTopPct
-    ? 'width: 100%; height: ' + (100 + slide.cropTopPct) + '%; margin-top: -' + (slide.cropTopPct * 0.85) + '%; object-fit: cover; object-position: top;'
-    : 'width: 100%; height: 100%; object-fit: contain; object-position: center center;';
+    ? 'width: 100%; height: ' +
+      (100 + slide.cropTopPct) +
+      '%; margin-top: -' +
+      slide.cropTopPct * 0.85 +
+      '%; object-fit: cover; object-position: top;'
+    : 'width: 100%; height: 100%; object-fit: contain; object-position: center center;'
 
   return [
     '<!doctype html><html><head><meta charset="utf-8"><style>',
@@ -136,7 +154,7 @@ function renderCardHtml(slide, imgUri) {
     '.shot-wrap img { ' + imgStyle + ' display: block; }',
     '</style></head><body>',
     '<div class="header">',
-    '  <div class="pill"><span class="dot"></span><span>' + slide.badge + '</span></div>',
+    '  <div class="pill"><span class="dot"></span>' + slide.badge + '</div>',
     '  <h1>' + slide.title + '</h1>',
     '  <div class="sub">' + slide.subtitle + '</div>',
     '</div>',
@@ -148,12 +166,16 @@ function renderCardHtml(slide, imgUri) {
     '  <div class="shot-wrap"><img src="' + imgUri + '" /></div>',
     '</div>',
     '</body></html>',
-  ].join('\n');
+  ].join('\n')
 }
-
-function renderPromoTileHtml(width, height, iconUri, compact) {
+function renderPromoTileHtml(
+  width: number,
+  height: number,
+  iconUri: string,
+  compact: boolean
+): string {
   return [
-    '<!doctype html><html><head><meta charset="utf-8"><style>',
+    '',
     '* { box-sizing: border-box; margin: 0; padding: 0; }',
     'body {',
     '  width: ' + width + 'px; height: ' + height + 'px; overflow: hidden;',
@@ -163,10 +185,24 @@ function renderPromoTileHtml(width, height, iconUri, compact) {
     '  padding: ' + (compact ? '26px 30px' : '48px 72px') + ';',
     '}',
     '.left { max-width: ' + (compact ? '280px' : '780px') + '; }',
-    '.brand { display: flex; align-items: center; gap: ' + (compact ? '10px' : '16px') + '; margin-bottom: ' + (compact ? '12px' : '18px') + '; }',
-    '.brand img { width: ' + (compact ? '36px' : '56px') + '; height: ' + (compact ? '36px' : '56px') + '; border-radius: 12px; }',
-    '.brand span { font-size: ' + (compact ? '22px' : '34px') + '; font-weight: 800; letter-spacing: -0.02em; }',
-    'h1 { font-size: ' + (compact ? '21px' : '46px') + '; font-weight: 800; line-height: 1.15; letter-spacing: -0.02em; margin-bottom: ' + (compact ? '10px' : '16px') + '; }',
+    '.brand { display: flex; align-items: center; gap: ' +
+      (compact ? '10px' : '16px') +
+      '; margin-bottom: ' +
+      (compact ? '12px' : '18px') +
+      '; }',
+    '.brand img { width: ' +
+      (compact ? '36px' : '56px') +
+      '; height: ' +
+      (compact ? '36px' : '56px') +
+      '; border-radius: 12px; }',
+    '.brand span { font-size: ' +
+      (compact ? '22px' : '34px') +
+      '; font-weight: 800; letter-spacing: -0.02em; }',
+    'h1 { font-size: ' +
+      (compact ? '21px' : '46px') +
+      '; font-weight: 800; line-height: 1.15; letter-spacing: -0.02em; margin-bottom: ' +
+      (compact ? '10px' : '16px') +
+      '; }',
     '.tags { display: flex; flex-wrap: wrap; gap: 8px; }',
     '.tag {',
     '  padding: ' + (compact ? '4px 9px' : '7px 14px') + '; border-radius: 8px;',
@@ -193,38 +229,45 @@ function renderPromoTileHtml(width, height, iconUri, compact) {
     '  </div>',
     '</div>',
     '<div class="right">',
-    '  <div class="cmd"><b>/review-pr</b>  Senior code & security audit</div>',
+    '  <div class="cmd"><b>/review-pr</b>  Senior code &amp; security audit</div>',
     '  <div class="cmd"><b>@src/billing/</b>  Zero-server folder pack</div>',
     '  <div class="cmd"><b>Save to file</b>  1-click write to disk</div>',
     '</div>',
     '</body></html>',
-  ].join('\n');
+  ].join('\n')
 }
-
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({ headless: true })
 try {
   for (const slide of SLIDES) {
-    const srcPath = pickBestSource(slide.sources);
-    const imgUri = toDataUri(srcPath);
-    const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
-    await page.setContent(renderCardHtml(slide, imgUri), { waitUntil: 'load' });
-    const outPath = path.join(ASSETS_DIR, slide.outName);
-    await page.screenshot({ path: outPath });
-    await page.close();
-    console.log('✓ Generated 1280x800 Store Card:', slide.outName);
+    const srcPath = pickBestSource(slide.sources)
+    const imgUri = toDataUri(srcPath)
+    const page = await browser.newPage({
+      viewport: { width: 1280, height: 800 },
+      deviceScaleFactor: 1,
+    })
+    await page.setContent(renderCardHtml(slide, imgUri), { waitUntil: 'load' })
+    const outPath = path.join(ASSETS_DIR, slide.outName)
+    await page.screenshot({ path: outPath })
+    await page.close()
+    console.log('✓ Generated 1280x800 Store Card:', slide.outName)
   }
-
-  const iconUri = toDataUri(path.join(ROOT, 'packages/extension/public/icons/icon-128.png'));
-
-  const smallPage = await browser.newPage({ viewport: { width: 440, height: 280 }, deviceScaleFactor: 1 });
-  await smallPage.setContent(renderPromoTileHtml(440, 280, iconUri, true), { waitUntil: 'load' });
-  await smallPage.screenshot({ path: path.join(ASSETS_DIR, 'store-promo-small-440x280.png') });
-  await smallPage.close();
-
-const marqueePage = await browser.newPage({ viewport: { width: 1400, height: 560 }, deviceScaleFactor: 1 });
-await marqueePage.setContent(renderPromoTileHtml(1400, 560, iconUri, false), { waitUntil: 'load' });
-await marqueePage.screenshot({ path: path.join(ASSETS_DIR, 'store-promo-marquee-1400x560.png') });
-await marqueePage.close();
+  const iconUri = toDataUri(path.join(ROOT, 'packages/extension/public/icons/icon-128.png'))
+  const smallPage = await browser.newPage({
+    viewport: { width: 440, height: 280 },
+    deviceScaleFactor: 1,
+  })
+  await smallPage.setContent(renderPromoTileHtml(440, 280, iconUri, true), { waitUntil: 'load' })
+  await smallPage.screenshot({ path: path.join(ASSETS_DIR, 'store-promo-small-440x280.png') })
+  await smallPage.close()
+  const marqueePage = await browser.newPage({
+    viewport: { width: 1400, height: 560 },
+    deviceScaleFactor: 1,
+  })
+  await marqueePage.setContent(renderPromoTileHtml(1400, 560, iconUri, false), {
+    waitUntil: 'load',
+  })
+  await marqueePage.screenshot({ path: path.join(ASSETS_DIR, 'store-promo-marquee-1400x560.png') })
+  await marqueePage.close()
 } finally {
-await browser.close();
+  await browser.close()
 }

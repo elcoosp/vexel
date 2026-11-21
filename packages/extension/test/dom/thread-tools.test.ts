@@ -1,19 +1,19 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { copyCleanThread } from '../../src/features/thread-tools';
+import { describe, it, expect, beforeEach } from 'vitest'
+import { copyCleanThread } from '../../src/features/thread-tools'
 
 describe('thread-tools Clean Markdown serialization (linkedom)', () => {
-  let copiedText = '';
+  let copiedText = ''
 
   beforeEach(() => {
-    copiedText = '';
+    copiedText = ''
     Object.defineProperty(globalThis.navigator, 'clipboard', {
       value: {
         writeText: async (text: string) => {
-          copiedText = text;
+          copiedText = text
         },
       },
       configurable: true,
-    });
+    })
 
     document.body.innerHTML = `
       <main>
@@ -30,19 +30,19 @@ describe('thread-tools Clean Markdown serialization (linkedom)', () => {
 }</code></pre>
         </div></div>
       </main>
-    `;
-  });
+    `
+  })
 
   it('copies formatted conversation turns to clipboard and triggers toast', async () => {
-    const toasts: string[] = [];
-    const ok = await copyCleanThread((msg) => toasts.push(msg));
-    expect(ok).toBe(true);
-    expect(copiedText).toContain('## User');
-    expect(copiedText).toContain('How do I debounce a function in TypeScript?');
-    expect(copiedText).toContain('## Assistant');
-    expect(copiedText).toContain('### Typed Debounce Helper');
-    expect(copiedText).toContain('```ts');
-    expect(copiedText).toContain('export function debounce');
-    expect(toasts.some((t) => t.includes('Clean thread copied'))).toBe(true);
-  });
-});
+    const toasts: string[] = []
+    const ok = await copyCleanThread((msg) => toasts.push(msg))
+    expect(ok).toBe(true)
+    expect(copiedText).toContain('## User')
+    expect(copiedText).toContain('How do I debounce a function in TypeScript?')
+    expect(copiedText).toContain('## Assistant')
+    expect(copiedText).toContain('### Typed Debounce Helper')
+    expect(copiedText).toContain('```ts')
+    expect(copiedText).toContain('export function debounce')
+    expect(toasts.some((t) => t.includes('Clean thread copied'))).toBe(true)
+  })
+})

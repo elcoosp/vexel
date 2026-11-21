@@ -1,45 +1,45 @@
 export interface RefFile {
-  relPath: string;
-  content: string;
-  length: number;
+  relPath: string
+  content: string
+  length: number
 }
 
 export interface SkillItem {
-  id: string;
-  name: string;
-  description: string;
-  smartContent: string;
-  smartLength: number;
-  fullContent: string;
-  fullLength: number;
-  refCount: number;
-  refs: RefFile[];
-  sourceRepo?: string;
-  installs?: string | number;
-  isBuiltin?: boolean;
+  id: string
+  name: string
+  description: string
+  smartContent: string
+  smartLength: number
+  fullContent: string
+  fullLength: number
+  refCount: number
+  refs: RefFile[]
+  sourceRepo?: string
+  installs?: string | number
+  isBuiltin?: boolean
 }
 
 export interface RemoteSkill {
-  id: string;
-  name: string;
-  repo: string;
-  installs?: string | number;
-  description?: string;
+  id: string
+  name: string
+  repo: string
+  installs?: string | number
+  description?: string
 }
 
 export interface BrowseEntry {
-  name: string;
-  relPath: string;
-  isDir: boolean;
+  name: string
+  relPath: string
+  isDir: boolean
 }
 
-export type MenuMode = 'skills' | 'refs' | 'files';
+export type MenuMode = 'skills' | 'refs' | 'files'
 
-export const BT1 = String.fromCharCode(96);
-export const BT3 = String.fromCharCode(96, 96, 96);
+export const BT1 = String.fromCharCode(96)
+export const BT3 = String.fromCharCode(96, 96, 96)
 
 export function formatChars(len: number): string {
-  return len >= 1000 ? (len / 1000).toFixed(1) + 'k' : len + ' c';
+  return len >= 1000 ? (len / 1000).toFixed(1) + 'k' : len + ' c'
 }
 
 export const DOCK_CSS = [
@@ -51,7 +51,7 @@ export const DOCK_CSS = [
   '.dock-keys kbd { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 10px; font-weight: 600; line-height: 1; background: #ffffff; border: 1px solid #dadce0; border-bottom-width: 1.5px; padding: 2px 4px; border-radius: 5px; color: #5f6368; transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease; }',
   '.dock-btn:hover .dock-keys kbd, .dock-btn.active .dock-keys kbd { border-color: #c6dafc; color: #1a73e8; }',
   '.dock-keys kbd.lit { background: #1a73e8; color: #ffffff !important; border-color: #1a73e8 !important; }',
-].join('\n');
+].join('\n')
 
 export const POPOVER_CSS = [
   ':host { all: initial; color-scheme: light; }',
@@ -109,5 +109,4 @@ export const POPOVER_CSS = [
   '.section-clear:hover { color: #1a73e8; background: rgba(26, 115, 232, 0.08); }',
   '.footer { display: flex; justify-content: space-between; align-items: center; padding: 7px 16px; border-top: 1px solid #f1f3f4; background: #fafbfc; font-size: 11px; color: #5f6368; }',
   '.empty { padding: 24px 16px; text-align: center; color: #5f6368; font-size: 12.5px; }',
-].join('\n');
-
+].join('\n')

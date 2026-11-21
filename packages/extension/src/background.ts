@@ -28,7 +28,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true
   }
   if (message.type === 'SEARCH_REMOTE_SKILLS') {
-    fetchBridgeEndpoint('/skills/search?q=' + encodeURIComponent(message.query || '')).then(sendResponse)
+    fetchBridgeEndpoint('/skills/search?q=' + encodeURIComponent(message.query || '')).then(
+      sendResponse
+    )
     return true
   }
   if (message.type === 'INSTALL_REMOTE_SKILL') {
@@ -90,17 +92,25 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 })
 
-const AI_MODE_WELCOME_URL = ["https", "://", "www", ".", "google", ".", "com/search?udm=50"].join("");
-const UNINSTALL_FEEDBACK_URL = ["https", "://", "github", ".", "com/elcoosp/vexel/issues/new?title=Uninstall+feedback&labels=feedback"].join("");
+const AI_MODE_WELCOME_URL = ['https', '://', 'www', '.', 'google', '.', 'com/search?udm=50'].join(
+  ''
+)
+const UNINSTALL_FEEDBACK_URL = [
+  'https',
+  '://',
+  'github',
+  '.',
+  'com/elcoosp/vexel/issues/new?title=Uninstall+feedback&labels=feedback',
+].join('')
 
 chrome.runtime.onInstalled.addListener((details) => {
-  if (details.reason === "install") {
-    chrome.tabs.create({ url: AI_MODE_WELCOME_URL, active: true }).catch(() => {});
+  if (details.reason === 'install') {
+    chrome.tabs.create({ url: AI_MODE_WELCOME_URL, active: true }).catch(() => {})
   }
-});
+})
 
 try {
-  chrome.runtime.setUninstallURL(UNINSTALL_FEEDBACK_URL);
+  chrome.runtime.setUninstallURL(UNINSTALL_FEEDBACK_URL)
 } catch {
   // Ignore if unsupported in current browser context
 }

@@ -1,23 +1,60 @@
-import { searchRemoteSkills, enrichLocalSkill, installRemoteSkill, removeLocalSkill } from './skills-registry.mjs'
-import http from 'node:http'
-import fs from 'node:fs/promises'
 import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
-const execFileAsync = promisify(execFile)
-import path from 'node:path'
+import type { Dirent } from 'node:fs'
+import fs from 'node:fs/promises'
+import http from 'node:http'
 import os from 'node:os'
-
+import path from 'node:path'
+import { promisify } from 'node:util'
+import {
+  enrichLocalSkill,
+  installRemoteSkill,
+  removeLocalSkill,
+  searchRemoteSkills,
+} from './skills-registry.ts'
+const execFileAsync = promisify(execFile)
 const PORT = Number(process.env.VEXEL_PORT) || 49152
 const HOME_DIR = os.homedir()
 const ROOT_DIR = process.env.VEXEL_ROOT_DIR ? path.resolve(process.env.VEXEL_ROOT_DIR) : HOME_DIR
 const SKILLS_DIR = path.join(HOME_DIR, '.agents', 'skills')
-
+interface ParsedSkillMarkdown {
+  name: string
+  description: string
+  body: string
+}
+interface SkillReferenceFile {
+  relPath: string
+  content: string
+  length: number
+}
+interface LocalSkillRecord {
+  id: string
+  name: string
+  description: string
+  smartContent: string
+  smartLength: number
+  fullContent: string
+  fullLength: number
+  refCount: number
+  refs: SkillReferenceFile[]
+  sourceRepo?: string
+  installs?: string
+}
+interface BrowseEntry {
+  name: string
+  relPath: string
+  isDir: boolean
+}
+interface PackedFileItem {
+  rel: string
+  ext: string
+  content: string
+}
 const IGNORED_DIRS = new Set([
   'node_modules',
   '.git',
   'tests',
   'evals',
-  '__pycache__',
+  'pycache',
   'target',
   'dist',
   'build',
@@ -73,13 +110,21 @@ const ALLOWED_CODE_EXT = new Set([
   '.vue',
   '.txt',
 ])
-
-function parseSkillMarkdown(raw, fallbackName) {
+function getErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message
+  return String(err)
+}
+function getErrnoCode(err: unknown): string | undefined {
+  if (err && typeof err === 'object' && 'code' in err && typeof err.code === 'string') {
+    return err.code
+  }
+  return undefined
+}
+function parseSkillMarkdown(raw: string, fallbackName: string): ParsedSkillMarkdown {
   const lines = raw.split(/\r?\n/)
   if (lines.at(0) !== '---') {
     return { name: fallbackName, description: '', body: raw.trim() }
   }
-
   let endIdx = -1
   for (let i = 1; i < lines.length; i++) {
     if (lines.at(i) === '---') {
@@ -87,20 +132,16 @@ function parseSkillMarkdown(raw, fallbackName) {
       break
     }
   }
-
   if (endIdx === -1) {
     return { name: fallbackName, description: '', body: raw.trim() }
   }
-
   const yamlLines = lines.slice(1, endIdx)
   const body = lines
     .slice(endIdx + 1)
     .join('\n')
     .trim()
-
   let name = fallbackName
   let description = ''
-
   for (const line of yamlLines) {
     if (line.startsWith('name:')) {
       name = line
@@ -114,18 +155,17 @@ function parseSkillMarkdown(raw, fallbackName) {
         .replace(/^["']|["']$/g, '')
     }
   }
-
   return { name, description, body }
 }
-
-async function collectReferenceFiles(dirPath, baseSkillDir) {
+async function collectReferenceFiles(
+  dirPath: string,
+  baseSkillDir: string
+): Promise<SkillReferenceFile[]> {
   const entries = await fs.readdir(dirPath, { withFileTypes: true })
-  const results = []
-
+  const results: SkillReferenceFile[] = []
   for (const entry of entries) {
     if (IGNORED_DIRS.has(entry.name) || entry.name.startsWith('.')) continue
     const fullPath = path.join(dirPath, entry.name)
-
     if (entry.isDirectory()) {
       const nested = await collectReferenceFiles(fullPath, baseSkillDir)
       results.push(...nested)
@@ -133,17 +173,14 @@ async function collectReferenceFiles(dirPath, baseSkillDir) {
       if (entry.name === 'SKILL.md' || IGNORED_SKILL_FILES.has(entry.name)) continue
       const ext = path.extname(entry.name).toLowerCase()
       if (!ALLOWED_SKILL_EXT.has(ext)) continue
-
       const relPath = path.relative(baseSkillDir, fullPath)
       const content = (await fs.readFile(fullPath, 'utf8')).trim()
       results.push({ relPath, content, length: content.length })
     }
   }
-
   return results
 }
-
-function resolveSafePath(relDir = '') {
+function resolveSafePath(relDir = ''): string | null {
   const cleaned = String(relDir || '').replace(/^\/+/, '')
   const segments = cleaned.split(/[/\\]+/).filter(Boolean)
   if (segments.some((seg) => seg.startsWith('.'))) {
@@ -155,17 +192,14 @@ function resolveSafePath(relDir = '') {
   }
   return resolved
 }
-
-async function listDirectoryEntries(absDir) {
+async function listDirectoryEntries(absDir: string): Promise<BrowseEntry[]> {
   const entries = await fs.readdir(absDir, { withFileTypes: true })
-  const folders = []
-  const files = []
-
+  const folders: BrowseEntry[] = []
+  const files: BrowseEntry[] = []
   for (const entry of entries) {
     if (entry.name.startsWith('.') || IGNORED_DIRS.has(entry.name)) continue
     const fullPath = path.join(absDir, entry.name)
     const relPath = path.relative(ROOT_DIR, fullPath)
-
     if (entry.isDirectory()) {
       folders.push({ name: entry.name, relPath, isDir: true })
     } else if (entry.isFile()) {
@@ -174,27 +208,28 @@ async function listDirectoryEntries(absDir) {
       files.push({ name: entry.name, relPath, isDir: false })
     }
   }
-
   folders.sort((a, b) => a.name.localeCompare(b.name))
   files.sort((a, b) => a.name.localeCompare(b.name))
   return [...folders, ...files].slice(0, 1000)
 }
-
-async function searchEntries(absDir, query, depth = 0, out = []) {
+async function searchEntries(
+  absDir: string,
+  query: string,
+  depth = 0,
+  out: BrowseEntry[] = []
+): Promise<BrowseEntry[]> {
   if (depth > 5 || out.length >= 40) return out
-  let entries
+  let entries: Dirent[]
   try {
     entries = await fs.readdir(absDir, { withFileTypes: true })
   } catch {
     return out
   }
-
   for (const entry of entries) {
     if (out.length >= 40) break
     if (entry.name.startsWith('.') || IGNORED_DIRS.has(entry.name)) continue
     const fullPath = path.join(absDir, entry.name)
     const relPath = path.relative(ROOT_DIR, fullPath)
-
     if (entry.isDirectory()) {
       if (entry.name.toLowerCase().includes(query)) {
         out.push({ name: entry.name, relPath, isDir: true })
@@ -210,18 +245,24 @@ async function searchEntries(absDir, query, depth = 0, out = []) {
   }
   return out
 }
-
-async function readJsonBody(req, maxBytes = 600 * 1024) {
+async function readJsonBody(
+  req: http.IncomingMessage,
+  maxBytes = 600 * 1024
+): Promise<Record<string, unknown>> {
   let total = 0
-  const chunks = []
+  const chunks: Buffer[] = []
   for await (const chunk of req) {
-    total += chunk.length
+    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+    total += buf.length
     if (total > maxBytes) throw new Error('Payload too large')
-    chunks.push(chunk)
+    chunks.push(buf)
   }
-  return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')
+  const parsed: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    return parsed as Record<string, unknown>
+  }
+  return {}
 }
-
 const server = http.createServer(async (req, res) => {
   res.setHeader('Vary', 'Origin')
   const reqOrigin = req.headers.origin || ''
@@ -241,38 +282,31 @@ const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Vexel-Token')
   res.setHeader('Content-Type', 'application/json; charset=utf-8')
-
   if (req.method === 'OPTIONS') {
     res.writeHead(204)
     res.end()
     return
   }
   const parsedUrl = new URL(req.url || '/', 'http://127.0.0.1')
-
   if (parsedUrl.pathname === '/skills') {
     try {
       const topEntries = await fs.readdir(SKILLS_DIR, { withFileTypes: true })
       const skillFolders = topEntries.filter((e) => e.isDirectory() && !e.name.startsWith('.'))
-
-      const skills = []
+      const skills: LocalSkillRecord[] = []
       for (const folder of skillFolders) {
         const skillDir = path.join(SKILLS_DIR, folder.name)
         const mainFile = path.join(skillDir, 'SKILL.md')
-
         let rawMain = ''
         try {
           rawMain = await fs.readFile(mainFile, 'utf8')
         } catch {
           continue
         }
-
         const parsed = parseSkillMarkdown(rawMain, folder.name)
         const refs = await collectReferenceFiles(skillDir, skillDir)
         refs.sort((a, b) => a.relPath.localeCompare(b.relPath))
-
         let smartContent = parsed.body
         let fullContent = parsed.body
-
         if (refs.length > 0) {
           const indexLines = refs.map(
             (r) => '- ' + r.relPath + ' (' + Math.ceil(r.length / 1000) + 'k car.)'
@@ -284,13 +318,11 @@ const server = http.createServer(async (req, res) => {
             ')\nLes fichiers de reference suivants existent localement mais ne sont pas encore charges pour economiser le contexte :\n' +
             indexLines.join('\n') +
             '\n\nInstruction : Si tu as besoin du contenu detaille de un ou plusieurs de ces fichiers pour repondre avec precision, demande-moi explicitement de te fournir le fichier exact avant de poursuivre.'
-
           const refBlocks = refs.map(
             (r) => '\n\n---\n## Reference: ' + r.relPath + '\n\n' + r.content
           )
           fullContent = parsed.body + refBlocks.join('')
         }
-
         skills.push({
           id: folder.name,
           name: parsed.name,
@@ -303,68 +335,67 @@ const server = http.createServer(async (req, res) => {
           refs,
         })
       }
-
       const enriched = await Promise.all(skills.map(enrichLocalSkill))
       enriched.sort((a, b) => a.name.localeCompare(b.name))
       skills.splice(0, skills.length, ...enriched)
       res.writeHead(200)
       res.end(JSON.stringify({ skillsDir: SKILLS_DIR, count: skills.length, skills }))
-    } catch (err) {
+    } catch (err: unknown) {
       res.writeHead(500)
       res.end(JSON.stringify({ error: String(err), skillsDir: SKILLS_DIR }))
     }
     return
   }
-
-
-  if (parsedUrl.pathname === "/skills/search") {
-    const q = parsedUrl.searchParams.get("q") || ""
-    const remote = await searchRemoteSkills(q).catch((e) => { console.error("[Vexel Bridge] searchRemoteSkills ERR:", e); return [] })
+  if (parsedUrl.pathname === '/skills/search') {
+    const q = parsedUrl.searchParams.get('q') || ''
+    const remote = await searchRemoteSkills(q).catch((e: unknown) => {
+      console.error('[Vexel Bridge] searchRemoteSkills ERR:', e)
+      return []
+    })
     res.writeHead(200)
     res.end(JSON.stringify({ skills: remote }))
     return
   }
-  if (parsedUrl.pathname === "/skills/install" && req.method === "POST") {
+  if (parsedUrl.pathname === '/skills/install' && req.method === 'POST') {
     try {
-      const { repo, name } = await readJsonBody(req, 64 * 1024)
+      const body = await readJsonBody(req, 64 * 1024)
+      const repo = typeof body.repo === 'string' ? body.repo : ''
+      const name = typeof body.name === 'string' ? body.name : undefined
       const result = await installRemoteSkill(repo, name)
       res.writeHead(200)
       res.end(JSON.stringify(result))
-    } catch (err) {
+    } catch (err: unknown) {
       res.writeHead(200)
-      res.end(JSON.stringify({ ok: false, error: err && err.message ? err.message : String(err) }))
+      res.end(JSON.stringify({ ok: false, error: getErrorMessage(err) }))
     }
     return
   }
-  if (parsedUrl.pathname === "/skills/remove" && req.method === "POST") {
+  if (parsedUrl.pathname === '/skills/remove' && req.method === 'POST') {
     try {
-      const { id, dir } = await readJsonBody(req, 64 * 1024)
+      const body = await readJsonBody(req, 64 * 1024)
+      const id = typeof body.id === 'string' ? body.id : ''
+      const dir = typeof body.dir === 'string' ? body.dir : undefined
       const result = await removeLocalSkill(id, dir)
       res.writeHead(200)
       res.end(JSON.stringify(result))
-    } catch (err) {
+    } catch (err: unknown) {
       res.writeHead(200)
-      res.end(JSON.stringify({ ok: false, error: err && err.message ? err.message : String(err) }))
+      res.end(JSON.stringify({ ok: false, error: getErrorMessage(err) }))
     }
     return
   }
-
-
   if (parsedUrl.pathname === '/browse') {
     try {
       const dirParam = parsedUrl.searchParams.get('dir') || ''
       const q = (parsedUrl.searchParams.get('q') || '').toLowerCase().trim()
       const targetDir = resolveSafePath(dirParam)
-
       if (!targetDir) {
         res.writeHead(403)
         res.end(JSON.stringify({ error: 'Acces refuse hors de la racine' }))
         return
       }
-
       const relDir = path.relative(ROOT_DIR, targetDir)
       const entries = q ? await searchEntries(targetDir, q) : await listDirectoryEntries(targetDir)
-
       res.writeHead(200)
       res.end(
         JSON.stringify({
@@ -373,10 +404,18 @@ const server = http.createServer(async (req, res) => {
           entries,
         })
       )
-    } catch (err) {
-      if (err && (err.code === 'ENOENT' || err.code === 'ENOTDIR')) {
+    } catch (err: unknown) {
+      const code = getErrnoCode(err)
+      if (code === 'ENOENT' || code === 'ENOTDIR') {
         res.writeHead(200)
-        res.end(JSON.stringify({ rootLabel: path.basename(ROOT_DIR), dir: '', entries: [], missingDir: true }))
+        res.end(
+          JSON.stringify({
+            rootLabel: path.basename(ROOT_DIR),
+            dir: '',
+            entries: [],
+            missingDir: true,
+          })
+        )
         return
       }
       res.writeHead(500)
@@ -384,49 +423,63 @@ const server = http.createServer(async (req, res) => {
     }
     return
   }
-
   if (parsedUrl.pathname === '/git-diff') {
     try {
       const relDir = parsedUrl.searchParams.get('dir') || ''
       const targetDir = resolveSafePath(relDir) || ROOT_DIR
-      const { stdout: statusOut } = await execFileAsync('git', ['status', '-s'], { cwd: targetDir, timeout: 5000 })
+      const { stdout: statusOut } = await execFileAsync('git', ['status', '-s'], {
+        cwd: targetDir,
+        timeout: 5000,
+      })
       let diffOut = ''
       try {
-        const resHead = await execFileAsync('git', ['diff', 'HEAD'], { cwd: targetDir, timeout: 8000, maxBuffer: 2 * 1024 * 1024 })
+        const resHead = await execFileAsync('git', ['diff', 'HEAD'], {
+          cwd: targetDir,
+          timeout: 8000,
+          maxBuffer: 2 * 1024 * 1024,
+        })
         diffOut = resHead.stdout || ''
       } catch {
-        const resPlain = await execFileAsync('git', ['diff'], { cwd: targetDir, timeout: 8000, maxBuffer: 2 * 1024 * 1024 })
+        const resPlain = await execFileAsync('git', ['diff'], {
+          cwd: targetDir,
+          timeout: 8000,
+          maxBuffer: 2 * 1024 * 1024,
+        })
         diffOut = resPlain.stdout || ''
       }
       const trimmedDiff = diffOut.slice(0, 120000)
-      const changedFiles = statusOut.split('\n').map((l) => l.trim()).filter(Boolean).length
+      const changedFiles = statusOut
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean).length
       const content = [
         '### Git Working Tree Diff' + (relDir ? ' (' + relDir + ')' : ''),
         '',
         '#### Status (' + changedFiles + ' changed file(s))',
-        '```',
+        '',
         statusOut.trim() || '(clean)',
-        '```',
+        '',
         '',
         '#### Diff',
-        '```diff',
+        'diff',
         trimmedDiff.trim() || '(no unstaged/staged diff)',
-        '```',
+        '',
       ].join('\n')
       res.writeHead(200)
-      res.end(JSON.stringify({
-        ok: true,
-        changedFiles,
-        tokensEst: Math.max(1, Math.round(content.length / 4)),
-        content,
-      }))
-    } catch (err) {
+      res.end(
+        JSON.stringify({
+          ok: true,
+          changedFiles,
+          tokensEst: Math.max(1, Math.round(content.length / 4)),
+          content,
+        })
+      )
+    } catch {
       res.writeHead(200)
       res.end(JSON.stringify({ ok: false, error: 'Not a git repository or git unavailable' }))
     }
     return
   }
-
   if (parsedUrl.pathname === '/pack-folder') {
     try {
       const relDir = parsedUrl.searchParams.get('path') || ''
@@ -436,27 +489,71 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ error: 'Cannot pack root directory directly' }))
         return
       }
-      const IGNORED = new Set(['node_modules', '.git', '.next', 'dist', 'build', '.turbo', '.cache', 'coverage', '__pycache__', '.venv', 'vendor'])
-      const BINARY_EXT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.pdf', '.zip', '.tar', '.gz', '.woff', '.woff2', '.ttf', '.eot', '.mp4', '.mp3', '.lock'])
-      const LOCKFILES = new Set(['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lockb', 'Cargo.lock'])
-      const candidateRelPaths = []
-
+      const IGNORED = new Set([
+        'node_modules',
+        '.git',
+        '.next',
+        'dist',
+        'build',
+        '.turbo',
+        '.cache',
+        'coverage',
+        'pycache',
+        '.venv',
+        'vendor',
+      ])
+      const BINARY_EXT = new Set([
+        '.png',
+        '.jpg',
+        '.jpeg',
+        '.gif',
+        '.webp',
+        '.ico',
+        '.pdf',
+        '.zip',
+        '.tar',
+        '.gz',
+        '.woff',
+        '.woff2',
+        '.ttf',
+        '.eot',
+        '.mp4',
+        '.mp3',
+        '.lock',
+      ])
+      const LOCKFILES = new Set([
+        'package-lock.json',
+        'pnpm-lock.yaml',
+        'yarn.lock',
+        'bun.lockb',
+        'Cargo.lock',
+      ])
+      const candidateRelPaths: string[] = []
       let usedGit = false
       try {
-        const { stdout } = await execFileAsync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { cwd: resolved, timeout: 6000, maxBuffer: 4 * 1024 * 1024 })
-        const gitFiles = stdout.split('\n').map((l) => l.trim()).filter(Boolean)
+        const { stdout } = await execFileAsync(
+          'git',
+          ['ls-files', '--cached', '--others', '--exclude-standard'],
+          { cwd: resolved, timeout: 6000, maxBuffer: 4 * 1024 * 1024 }
+        )
+        const gitFiles = stdout
+          .split('\n')
+          .map((l) => l.trim())
+          .filter(Boolean)
         if (gitFiles.length > 0) {
           usedGit = true
           gitFiles.sort((a, b) => a.localeCompare(b))
           for (const rel of gitFiles) candidateRelPaths.push(rel)
         }
       } catch {}
-
       if (!usedGit) {
-        async function walkFallback(dir, depth) {
+        const walkFallback = async (dir: string, depth: number): Promise<void> => {
           if (depth > 10 || candidateRelPaths.length >= 400) return
           const entries = await fs.readdir(dir, { withFileTypes: true })
-          entries.sort((a, b) => Number(b.isDirectory()) - Number(a.isDirectory()) || a.name.localeCompare(b.name))
+          entries.sort(
+            (a, b) =>
+              Number(b.isDirectory()) - Number(a.isDirectory()) || a.name.localeCompare(b.name)
+          )
           for (const ent of entries) {
             if (ent.name.startsWith('.') && ent.name !== '.env.example') continue
             if (IGNORED.has(ent.name)) continue
@@ -467,13 +564,11 @@ const server = http.createServer(async (req, res) => {
         }
         await walkFallback(resolved, 0)
       }
-
-      const files = []
-      const treeLines = []
+      const files: PackedFileItem[] = []
+      const treeLines: string[] = []
       let totalBytes = 0
       const MAX_BYTES = 180 * 1024
       const MAX_FILES = 60
-
       for (const rel of candidateRelPaths) {
         const parts = rel.split('/')
         if (parts.some((seg) => seg.startsWith('.') && seg !== '.env.example')) continue
@@ -490,57 +585,70 @@ const server = http.createServer(async (req, res) => {
           const rawFull = await fs.readFile(full, 'utf8')
           if (rawFull.includes('\u0000')) continue
           const MAX_FILE_CHARS = 96 * 1024
-          const raw = rawFull.length > MAX_FILE_CHARS
-            ? rawFull.slice(0, MAX_FILE_CHARS) + '\n\n[... truncated at 96 KB ...]'
-            : rawFull
+          const raw =
+            rawFull.length > MAX_FILE_CHARS
+              ? rawFull.slice(0, MAX_FILE_CHARS) + '\n\n[... truncated at 96 KB ...]'
+              : rawFull
           totalBytes += Buffer.byteLength(raw, 'utf8')
-          files.push({ rel, ext: ext.replace(/^\./, '') || 'txt', content: raw })
+          files.push({ rel, ext: ext.replace(/^./, '') || 'txt', content: raw })
         } catch {}
       }
-
       const folderName = path.basename(resolved)
       const bodySections = [
         '#### Included Files (' + treeLines.length + ' total, ' + files.length + ' inlined)',
-        '```text',
+        'text',
         treeLines.join('\n') || '(empty)',
-        '```',
+        '',
         '',
       ]
       for (const f of files) {
-        bodySections.push('#### File: `' + f.rel + '`', '````' + f.ext, f.content.trim(), '````', '')
+        const BT4 = String.fromCodePoint(96, 96, 96, 96)
+        bodySections.push('#### File: ' + f.rel, BT4 + f.ext, f.content.trim(), BT4, '')
       }
       const bodyText = bodySections.join('\n')
       const tokensEst = Math.max(1, Math.round(bodyText.length / 4))
       const packed = [
-        '### Folder Context Pack: ' + (relDir || folderName) + '',
+        '### Folder Context Pack: ' + (relDir || folderName),
         '',
-        '> ' + files.length + ' file(s) packed (~' + tokensEst + ' tokens' + (usedGit ? ', .gitignore respected' : '') + ')',
+        '> ' +
+          files.length +
+          ' file(s) packed (~' +
+          tokensEst +
+          ' tokens' +
+          (usedGit ? ', .gitignore respected' : '') +
+          ')',
         '',
         bodyText,
       ].join('\n')
       res.writeHead(200)
-      res.end(JSON.stringify({
-        ok: true,
-        folderName,
-        fileCount: files.length,
-        tokensEst,
-        content: packed,
-      }))
-    } catch (err) {
+      res.end(
+        JSON.stringify({
+          ok: true,
+          folderName,
+          fileCount: files.length,
+          tokensEst,
+          content: packed,
+        })
+      )
+    } catch (err: unknown) {
       res.writeHead(500)
       res.end(JSON.stringify({ ok: false, error: String(err) }))
     }
     return
   }
-
   if (parsedUrl.pathname === '/write-file' && req.method === 'POST') {
     try {
       const body = await readJsonBody(req, 600 * 1024)
-      const relPath = String(body.relPath || '').trim()
+      const relPath = typeof body.relPath === 'string' ? body.relPath.trim() : ''
       const content = typeof body.content === 'string' ? body.content : ''
       if (!relPath || relPath.endsWith('/') || !path.extname(path.basename(relPath))) {
         res.writeHead(400)
-        res.end(JSON.stringify({ ok: false, error: 'File path must include a file extension (e.g. .ts, .py)' }))
+        res.end(
+          JSON.stringify({
+            ok: false,
+            error: 'File path must include a file extension (e.g. .ts, .py)',
+          })
+        )
         return
       }
       if (Buffer.byteLength(content, 'utf8') > 512 * 1024) {
@@ -558,13 +666,12 @@ const server = http.createServer(async (req, res) => {
       await fs.writeFile(resolved, content, 'utf8')
       res.writeHead(200)
       res.end(JSON.stringify({ ok: true, relPath, bytes: Buffer.byteLength(content, 'utf8') }))
-    } catch (err) {
+    } catch (err: unknown) {
       res.writeHead(500)
       res.end(JSON.stringify({ ok: false, error: String(err) }))
     }
     return
   }
-
   if (parsedUrl.pathname === '/file') {
     try {
       const relPath = parsedUrl.searchParams.get('path') || ''
@@ -585,17 +692,15 @@ const server = http.createServer(async (req, res) => {
       res.end(
         JSON.stringify({ relPath, name: path.basename(resolved), content, length: content.length })
       )
-    } catch (err) {
+    } catch (err: unknown) {
       res.writeHead(404)
       res.end(JSON.stringify({ error: String(err) }))
     }
     return
   }
-
   res.writeHead(404)
   res.end(JSON.stringify({ error: 'Not found' }))
 })
-
 server.listen(PORT, '127.0.0.1', () => {
   console.log('[Vexel Bridge] Pret sur http://127.0.0.1:' + PORT + ' (Racine: ' + ROOT_DIR + ')')
 })

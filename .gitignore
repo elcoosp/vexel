@@ -14,3 +14,4 @@ scripts/.demo-workspace/
 *.gif
 .cws-profile/
 packages/extension/src/locales/**/*.js
+docs/store-deploy-env.md

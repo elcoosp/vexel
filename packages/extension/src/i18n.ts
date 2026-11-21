@@ -42,10 +42,15 @@ export function detectLocale(): SupportedLocale {
     const normOverride = normalizeLocale(o)
     if (normOverride) return normOverride
   } catch {}
-  const uiLang = (typeof chrome !== 'undefined' && chrome.i18n?.getUILanguage?.()) || (typeof navigator !== 'undefined' && navigator.language) || 'en'
+  const uiLang =
+    (typeof chrome !== 'undefined' && chrome.i18n?.getUILanguage?.()) ||
+    (typeof navigator !== 'undefined' && navigator.language) ||
+    'en'
   return normalizeLocale(uiLang) ?? 'en'
 }
 
-export function setLocale(locale: SupportedLocale): void { i18n.activate(locale) }
+export function setLocale(locale: SupportedLocale): void {
+  i18n.activate(locale)
+}
 setLocale(detectLocale())
 export { i18n }

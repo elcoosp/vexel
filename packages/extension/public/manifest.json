@@ -3,14 +3,8 @@
   "name": "Vexel",
   "version": "0.2.5",
   "description": "Local coding workspace for Google AI Mode: / slash skills, @ repo context, 1-click Save to file & fast virtualization.",
-  "permissions": [
-    "clipboardWrite",
-    "storage"
-  ],
-  "host_permissions": [
-    "http://127.0.0.1:49152/*",
-    "http://localhost:49152/*"
-  ],
+  "permissions": ["clipboardWrite", "storage"],
+  "host_permissions": ["http://127.0.0.1:49152/*", "http://localhost:49152/*"],
   "background": {
     "service_worker": "background.js",
     "type": "module"
@@ -28,9 +22,7 @@
         "https://google.fr/search*"
       ],
       "all_frames": false,
-      "js": [
-        "content.js"
-      ],
+      "js": ["content.js"],
       "run_at": "document_start"
     }
   ],

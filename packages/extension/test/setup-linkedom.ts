@@ -1,6 +1,6 @@
-import { parseHTML } from 'linkedom';
+import { parseHTML } from 'linkedom'
 
-const dom = parseHTML('<!doctype html><html><head></head><body></body></html>');
+const dom = parseHTML('<!doctype html><html><head></head><body></body></html>')
 
 Object.assign(globalThis, {
   window: dom.window,
@@ -16,15 +16,16 @@ Object.assign(globalThis, {
   KeyboardEvent: dom.KeyboardEvent,
   DOMParser: dom.DOMParser,
   XMLSerializer: dom.XMLSerializer,
-});
+})
 
 if (!globalThis.navigator) {
   Object.defineProperty(globalThis, 'navigator', {
     value: { clipboard: { writeText: async () => {} } },
     configurable: true,
-  });
+  })
 }
 
 if (!globalThis.requestAnimationFrame) {
-  globalThis.requestAnimationFrame = (cb: FrameRequestCallback) => setTimeout(() => cb(Date.now()), 0) as unknown as number;
+  globalThis.requestAnimationFrame = (cb: FrameRequestCallback) =>
+    setTimeout(() => cb(Date.now()), 0) as unknown as number
 }
