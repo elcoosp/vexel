@@ -3,6 +3,7 @@ import '../i18n'
 import { browseLocalFs, writeLocalFsFile } from './local-fs'
 import { animate } from 'motion'
 import { createLucideIcon, createFileOrFolderIcon } from './icons'
+import { UI_COLORS, UI_RADII, UI_SHADOWS } from './ui-tokens'
 import { loadRecentFiles } from './palette-files'
 import type { BrowseEntry } from './palette-ui'
 
@@ -178,9 +179,10 @@ export function initCodeSave(showToast: (msg: string) => void): void {
       lineHeight: '1',
       cursor: 'pointer',
       userSelect: 'none',
-      boxShadow: '0 1px 2px rgba(60, 64, 67, 0.05)',
+      opacity: '1',
+      boxShadow: UI_SHADOWS.subtle,
       transition:
-        'background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease',
+        'opacity 0.16s ease, background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease',
     })
 
     let drawerEl: HTMLDivElement | null = null
@@ -293,11 +295,11 @@ export function initCodeSave(showToast: (msg: string) => void): void {
         zIndex: '2147483645',
         margin: '0',
         padding: '11px 12px',
-        borderRadius: '16px',
-        backgroundColor: 'rgba(255, 255, 255, 0.98)',
+        borderRadius: UI_RADII.card,
+        backgroundColor: UI_COLORS.surface,
         backdropFilter: 'blur(18px)',
-        border: '1px solid #dadce0',
-        boxShadow: '0 14px 36px rgba(60, 64, 67, 0.18), 0 2px 6px rgba(60, 64, 67, 0.08)',
+        border: `1px solid ${UI_COLORS.border}`,
+        boxShadow: UI_SHADOWS.floating,
         display: 'flex',
         flexDirection: 'column',
         gap: '8px',
@@ -810,6 +812,18 @@ export function initCodeSave(showToast: (msg: string) => void): void {
       mountSaveButton(container)
       if (container.hasAttribute('data-vexel-save')) {
         pre.dataset.vexelSaveBound = '1'
+        const btn = container.querySelector<HTMLButtonElement>('button[data-vexel-ui="true"]')
+        if (btn) {
+          container.addEventListener('pointerenter', () => {
+            btn.style.opacity = '1'
+            btn.style.pointerEvents = 'auto'
+          })
+          container.addEventListener('pointerleave', () => {
+            if (btn.style.backgroundColor === 'rgb(232, 240, 254)') return
+            btn.style.opacity = '0'
+            btn.style.pointerEvents = 'none'
+          })
+        }
       }
     })
   }

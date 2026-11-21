@@ -6,10 +6,15 @@ export type LucideIconName =
   | 'file-text'
   | 'download'
   | 'check'
+  | 'search'
+  | 'arrow-left'
+  | 'x'
+  | 'star'
+  | 'alert-circle'
 
 const SVG_NS = ['http', '://www.w3.org/2000/svg'].join('')
 
-const LUCIDE_SHAPES: Record<LucideIconName, Array<[string, Record<string, string>]>> = {
+const LUCIDE_SHAPES: Record<LucideIconName, [string, Record<string, string>][]> = {
   copy: [
     ['rect', { width: '14', height: '14', x: '8', y: '8', rx: '2', ry: '2' }],
     ['path', { d: 'M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2' }],
@@ -53,6 +58,32 @@ const LUCIDE_SHAPES: Record<LucideIconName, Array<[string, Record<string, string
     ['line', { x1: '12', x2: '12', y1: '15', y2: '3' }],
   ],
   check: [['polyline', { points: '20 6 9 17 4 12' }]],
+  search: [
+    ['circle', { cx: '11', cy: '11', r: '8' }],
+    ['path', { d: 'm21 21-4.3-4.3' }],
+  ],
+  'arrow-left': [
+    ['path', { d: 'm12 19-7-7 7-7' }],
+    ['path', { d: 'M19 12H5' }],
+  ],
+  x: [
+    ['path', { d: 'M18 6 6 18' }],
+    ['path', { d: 'm6 6 12 12' }],
+  ],
+  star: [
+    [
+      'polygon',
+      {
+        points:
+          '12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2',
+      },
+    ],
+  ],
+  'alert-circle': [
+    ['circle', { cx: '12', cy: '12', r: '10' }],
+    ['line', { x1: '12', x2: '12', y1: '8', y2: '12' }],
+    ['line', { x1: '12', x2: '12.01', y1: '16', y2: '16' }],
+  ],
 }
 
 export function createLucideIcon(

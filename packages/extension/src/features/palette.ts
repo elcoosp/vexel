@@ -142,7 +142,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
   tabs.append(tabPill, tabSkills, tabFiles)
   const btnExport = document.createElement('button')
   btnExport.type = 'button'
-  btnExport.className = 'export-btn'
+  btnExport.className = 'action-pill'
   const setExportIdle = () => {
     btnExport.classList.remove('done')
     btnExport.replaceChildren(
@@ -152,17 +152,14 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
   }
   setExportIdle()
   const headerRight = document.createElement('div')
-  headerRight.style.display = 'inline-flex'
-  headerRight.style.alignItems = 'center'
-  headerRight.style.gap = '6px'
+  headerRight.className = 'header-actions'
   const btnTour = document.createElement('button')
   btnTour.type = 'button'
-  btnTour.className = 'export-btn'
+  btnTour.className = 'action-pill icon-only'
   btnTour.title = t`Interactive welcome tour & local folder setup`
   const btnLang = document.createElement('button')
   btnLang.type = 'button'
-  btnLang.className = 'export-btn'
-  Object.assign(btnLang.style, { minWidth: 'auto', padding: '5px 9px' })
+  btnLang.className = 'action-pill lang-pill'
   const syncLangBtn = () => {
     const cur = detectLocale()
     btnLang.textContent = cur.split('-')[0].toUpperCase()
@@ -182,21 +179,14 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
     window.location.reload()
   })
   btnTour.textContent = '?'
-  Object.assign(btnTour.style, {
-    width: '28px',
-    height: '28px',
-    minWidth: '28px',
-    padding: '0',
-    borderRadius: '999px',
-    justifyContent: 'center',
-  })
+
   btnTour.addEventListener('click', () => {
     closeMenu()
     openOnboardingModal(showToast)
   })
   const btnCopy = document.createElement('button')
   btnCopy.type = 'button'
-  btnCopy.className = 'export-btn'
+  btnCopy.className = 'action-pill'
   btnCopy.title = t`Copy clean Markdown thread to clipboard`
   const setCopyIdle = () => {
     btnCopy.classList.remove('done')
@@ -223,11 +213,43 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
   popover.appendChild(breadcrumbsEl)
   const searchRow = document.createElement('div')
   searchRow.className = 'search-row'
+  const searchIconWrap = document.createElement('span')
+  searchIconWrap.className = 'search-icon'
+  searchIconWrap.append(createLucideIcon('search', 14, 'currentColor'))
+  const backRefsBtn = document.createElement('button')
+  backRefsBtn.type = 'button'
+  backRefsBtn.className = 'back-pill'
+  backRefsBtn.append(
+    createLucideIcon('arrow-left', 11, 'currentColor'),
+    document.createTextNode(t`Skills`)
+  )
+  backRefsBtn.addEventListener('mousedown', (ev) => {
+    ev.preventDefault()
+    ev.stopPropagation()
+    switchMode('skills', '')
+  })
   const filterInput = document.createElement('input')
   filterInput.type = 'text'
   filterInput.placeholder = t`Search a skill or file...`
   filterInput.autocomplete = 'off'
-  searchRow.appendChild(filterInput)
+  const clearInputBtn = document.createElement('button')
+  clearInputBtn.type = 'button'
+  clearInputBtn.className = 'clear-input-btn'
+  clearInputBtn.title = t`Clear search`
+  clearInputBtn.append(createLucideIcon('x', 11, 'currentColor'))
+  const syncSearchControls = () => {
+    backRefsBtn.classList.toggle('visible', mode === 'refs')
+    clearInputBtn.classList.toggle('visible', filterInput.value.length > 0)
+  }
+  clearInputBtn.addEventListener('mousedown', (ev) => {
+    ev.preventDefault()
+    ev.stopPropagation()
+    filterInput.value = ''
+    syncSearchControls()
+    applyFilter('')
+    filterInput.focus()
+  })
+  searchRow.append(searchIconWrap, backRefsBtn, filterInput, clearInputBtn)
   popover.appendChild(searchRow)
   const listEl = document.createElement('div')
   listEl.className = 'list'
@@ -466,6 +488,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
     listEl.replaceChildren(rowHighlight, empty)
   }
   function renderBreadcrumbs(): void {
+    syncSearchControls()
     if (mode !== 'files') {
       breadcrumbsEl.classList.remove('visible')
       return
@@ -1454,6 +1477,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
           activeSkill = s
           mode = 'refs'
           filterInput.value = ''
+          syncSearchControls()
           applyFilter('')
         }
       } else if (e.key === 'Enter' && !e.shiftKey) {
@@ -1485,7 +1509,10 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
       setExportIdle()
     }, 1600)
   })
-  filterInput.addEventListener('input', () => applyFilter(filterInput.value))
+  filterInput.addEventListener('input', () => {
+    syncSearchControls()
+    applyFilter(filterInput.value)
+  })
   document.addEventListener('mousedown', (e) => {
     if (!isOpen) return
     const path = e.composedPath()
