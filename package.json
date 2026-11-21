@@ -18,14 +18,14 @@
     "zip:store": "pnpm build && node scripts/build-store-zips.ts",
     "marketing:assets": "node scripts/capture-live-assets.ts",
     "marketing:mock": "pnpm build && node scripts/generate-store-assets.ts",
-    "store:validate": "node scripts/sync-store-listing.ts --validate-only --target all",
-    "store:sync": "pnpm zip:store && node scripts/sync-store-listing.ts --target all",
-    "store:dry-run": "pnpm zip:store && node scripts/sync-store-listing.ts --dry-run --target all",
+    "store:validate": "extship --validate-only",
+    "store:sync": "pnpm zip:store && extship --target all",
+    "store:dry-run": "pnpm zip:store && extship --dry-run --target all",
     "i18n:extract": "pnpm --filter @vexel/extension exec lingui extract",
     "i18n:check": "pnpm --filter @vexel/extension exec lingui check missing --mode catalog",
-    "store:sync:chrome": "pnpm zip:store && node scripts/sync-store-listing.ts --target chrome",
-    "store:sync:edge": "pnpm zip:store && node scripts/sync-store-listing.ts --target edge",
-    "store:sync:firefox": "pnpm zip:store && node scripts/sync-store-listing.ts --target firefox",
+    "store:sync:chrome": "pnpm zip:store && extship --target chrome",
+    "store:sync:edge": "pnpm zip:store && extship --target edge",
+    "store:sync:firefox": "pnpm zip:store && extship --target firefox",
     "typecheck": "pnpm --filter @vexel/extension exec tsc -p ../../tsconfig.json --noEmit && pnpm --filter @vexel/extension exec tsc --noEmit"
   },
   "devDependencies": {
@@ -40,3 +40,6 @@
     "yaml": "^2.9.1"
   }
 }
+
+
+

@@ -3,6 +3,7 @@ import './i18n'
 import { animate } from 'motion'
 import { initOnboarding } from './features/onboarding'
 import { initCodeSave } from './features/code-save'
+import { initCodeRepair } from './features/code-repair'
 import { initDomBooster } from './features/dom-booster'
 import {
   MAX_SAFE_LENGTH,
@@ -118,6 +119,7 @@ if (window === window.top) {
     initAutoFilePaste()
     initCommandPalette(showToast)
     initThreadTools(showToast)
+    initCodeRepair(showToast)
     initCodeSave(showToast)
     initOnboarding(showToast)
   }

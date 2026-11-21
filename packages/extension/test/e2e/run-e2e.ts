@@ -34,21 +34,41 @@ const AIM_HTML = [
 let bridgeProc: ChildProcess | null = null
 let context: BrowserContext | undefined
 try {
-  bridgeProc = spawn(process.execPath, ['packages/bridge/src/server.ts'], {
-    env: { ...process.env, VEXEL_PORT: '49152', VEXEL_ROOT_DIR: workspaceDir },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
-  await new Promise<void>((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error('Bridge startup timeout')), 5000)
-    let out = ''
-    bridgeProc?.stdout?.on('data', (c: Buffer) => {
-      out += c.toString()
-      if (out.includes('127.0.0.1:')) {
-        clearTimeout(t)
-        resolve()
+  let bridgePort = 0
+  for (let cand = 37117; cand <= 37126; cand += 1) {
+    try {
+      const probe = await fetch(`http://127.0.0.1:${cand}/skills`)
+      if (probe.ok) {
+        bridgePort = cand
+        break
       }
+    } catch {}
+  }
+  if (bridgePort === 0) {
+    bridgePort = 37126
+    let stderrBuf = ''
+    bridgeProc = spawn(process.execPath, ['packages/bridge/src/server.ts'], {
+      env: { ...process.env, VEXEL_PORT: String(bridgePort), VEXEL_ROOT_DIR: workspaceDir },
+      stdio: ['ignore', 'pipe', 'pipe'],
     })
-  })
+    bridgeProc.stderr?.on('data', (c: Buffer) => {
+      stderrBuf += c.toString()
+    })
+    await new Promise<void>((resolve, reject) => {
+      const t = setTimeout(
+        () => reject(new Error(`Bridge startup timeout on :${bridgePort}: ${stderrBuf.trim()}`)),
+        8000
+      )
+      let out = ''
+      bridgeProc?.stdout?.on('data', (c: Buffer) => {
+        out += c.toString()
+        if (out.includes(`127.0.0.1:${bridgePort}`)) {
+          clearTimeout(t)
+          resolve()
+        }
+      })
+    })
+  }
 
   context = await chromium.launchPersistentContext(userDataDir, {
     headless: false,

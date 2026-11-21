@@ -138,9 +138,13 @@ function inferSuggestedPath(
 export function initCodeSave(showToast: (msg: string) => void): void {
   const mountSaveButton = (container: HTMLElement) => {
     if (container.getAttribute('data-vexel-save') === 'true') return
+    if (container.closest('[data-vexel-repaired-followup]')) return
     const codeEl = container.querySelector('code')
+    const pre = container.querySelector('pre')
+    const rawCodeTxt = (codeEl?.textContent || '').trim()
+    if (rawCodeTxt.includes('<FollowUp>') && rawCodeTxt.includes('</FollowUp>')) return
     const header =
-      container.querySelector<HTMLElement>('.a2TNg') ||
+      (pre?.parentElement?.previousElementSibling as HTMLElement | null) ||
       (container.firstElementChild as HTMLElement | null)
     if (!codeEl || !header) return
     container.setAttribute('data-vexel-save', 'true')

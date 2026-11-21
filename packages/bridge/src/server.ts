@@ -636,6 +636,71 @@ const server = http.createServer(async (req, res) => {
     }
     return
   }
+  if (parsedUrl.pathname === '/format' && req.method === 'POST') {
+    try {
+      const body = await readJsonBody(req, 512 * 1024)
+      const code = typeof body.code === 'string' ? body.code : ''
+      const lang = typeof body.lang === 'string' ? body.lang.toLowerCase().trim() : 'txt'
+      if (!code.trim()) {
+        res.writeHead(200)
+        res.end(JSON.stringify({ ok: true, formatted: code, engine: 'empty' }))
+        return
+      }
+      const runStdinFormatter = (
+        bin: string,
+        args: string[],
+        engine: string
+      ): Promise<{ formatted: string; engine: string } | null> =>
+        new Promise((resolve) => {
+          const child = execFile(
+            bin,
+            args,
+            { timeout: 1500, maxBuffer: 1024 * 1024 },
+            (err, stdout) => {
+              if (err || !stdout || !stdout.trim()) resolve(null)
+              else resolve({ formatted: stdout.replace(/\n$/, ''), engine })
+            }
+          )
+          child.stdin?.write(code)
+          child.stdin?.end()
+        })
+
+      let result: { formatted: string; engine: string } | null = null
+      if (lang === 'py' || lang === 'python') {
+        result =
+          (await runStdinFormatter(
+            'ruff',
+            ['format', '--stdin-filename', 'snippet.py', '-'],
+            'ruff'
+          )) || (await runStdinFormatter('black', ['-q', '-'], 'black'))
+      } else if (
+        ['ts', 'tsx', 'js', 'jsx', 'json', 'css', 'html', 'md', 'yaml', 'yml'].includes(lang)
+      ) {
+        const ext = lang === 'yml' ? 'yaml' : lang
+        const localOxfmt = path.resolve(process.cwd(), 'node_modules/.bin/oxfmt')
+        result =
+          (await runStdinFormatter(localOxfmt, ['--stdin-filepath', 'snippet.' + ext], 'oxfmt')) ||
+          (await runStdinFormatter('oxfmt', ['--stdin-filepath', 'snippet.' + ext], 'oxfmt'))
+      } else if (lang === 'rs' || lang === 'rust') {
+        result = await runStdinFormatter('rustfmt', ['--emit', 'stdout'], 'rustfmt')
+      } else if (lang === 'go') {
+        result = await runStdinFormatter('gofmt', [], 'gofmt')
+      }
+
+      res.writeHead(200)
+      res.end(
+        JSON.stringify({
+          ok: true,
+          formatted: result ? result.formatted : code,
+          engine: result ? result.engine : 'fallback',
+        })
+      )
+    } catch (err: unknown) {
+      res.writeHead(200)
+      res.end(JSON.stringify({ ok: false, error: getErrorMessage(err) }))
+    }
+    return
+  }
   if (parsedUrl.pathname === '/write-file' && req.method === 'POST') {
     try {
       const body = await readJsonBody(req, 600 * 1024)
