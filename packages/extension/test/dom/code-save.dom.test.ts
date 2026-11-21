@@ -32,7 +32,10 @@ export const retry = () => true;</code></pre>
     code.dispatchEvent(new Event('pointerover', { bubbles: true }))
     await new Promise((r) => setTimeout(r, 20))
 
-    const btn = document.querySelector('button[data-vexel-ui="true"]') as HTMLButtonElement
+    const card = document.querySelector('[data-hveid="card-1"]') as HTMLElement
+    expect(card.textContent).not.toContain('Save to file')
+    const host = card.querySelector('span[data-vexel-ui="true"]') as HTMLElement
+    const btn = host?.shadowRoot?.querySelector('button') as HTMLButtonElement
     expect(btn).toBeTruthy()
     btn.click()
 
@@ -73,16 +76,16 @@ export const retry = () => true;</code></pre>
     codes.item(2)?.dispatchEvent(new Event('pointerover', { bubbles: true }))
     await new Promise((r) => setTimeout(r, 20))
 
-    const buttons = document.querySelectorAll<HTMLButtonElement>('button[data-vexel-ui="true"]')
-    expect(buttons.length).toBe(2)
+    const hosts = document.querySelectorAll<HTMLElement>('span[data-vexel-ui="true"]')
+    expect(hosts.length).toBe(2)
 
-    buttons.item(0)?.click()
+    hosts.item(0)?.shadowRoot?.querySelector('button')?.click()
     const goInput = document.querySelector('input[type="text"]') as HTMLInputElement
     expect(goInput.value).toBe('cmd/worker/main.go')
     goInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     await new Promise((r) => setTimeout(r, 220))
 
-    buttons.item(1)?.click()
+    hosts.item(1)?.shadowRoot?.querySelector('button')?.click()
     const allInputs = document.querySelectorAll<HTMLInputElement>('input[type="text"]')
     const pyInput = allInputs.item(allInputs.length - 1)
     expect(pyInput?.value).toBe('pkg/handlers/script.py')

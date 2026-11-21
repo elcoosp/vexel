@@ -147,6 +147,17 @@ export function initCodeSave(showToast: (msg: string) => void): void {
 
     const lang = detectLanguage(container, codeEl, header)
 
+    const triggerHost = document.createElement('span')
+    triggerHost.setAttribute('data-vexel-ui', 'true')
+    Object.assign(triggerHost.style, {
+      display: 'inline-flex',
+      alignItems: 'center',
+      marginLeft: '8px',
+      opacity: '1',
+      transition: 'opacity 0.16s ease',
+    })
+    const triggerShadow = triggerHost.attachShadow({ mode: 'open' })
+
     const triggerBtn = document.createElement('button')
     triggerBtn.type = 'button'
     triggerBtn.setAttribute('data-vexel-ui', 'true')
@@ -166,7 +177,6 @@ export function initCodeSave(showToast: (msg: string) => void): void {
       alignItems: 'center',
       gap: '6px',
       height: '28px',
-      marginLeft: '8px',
       padding: '0 11px 0 9px',
       borderRadius: '999px',
       border: '1px solid #e1e3e6',
@@ -179,11 +189,11 @@ export function initCodeSave(showToast: (msg: string) => void): void {
       lineHeight: '1',
       cursor: 'pointer',
       userSelect: 'none',
-      opacity: '1',
       boxShadow: UI_SHADOWS.subtle,
       transition:
-        'opacity 0.16s ease, background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease',
+        'background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease',
     })
+    triggerShadow.appendChild(triggerBtn)
 
     let drawerEl: HTMLDivElement | null = null
     let isOpen = false
@@ -790,7 +800,7 @@ export function initCodeSave(showToast: (msg: string) => void): void {
       }
       triggerAutocomplete()
     })
-    header.appendChild(triggerBtn)
+    header.appendChild(triggerHost)
   }
 
   let lastCheckedPre: HTMLPreElement | null = null
@@ -812,16 +822,17 @@ export function initCodeSave(showToast: (msg: string) => void): void {
       mountSaveButton(container)
       if (container.hasAttribute('data-vexel-save')) {
         pre.dataset.vexelSaveBound = '1'
-        const btn = container.querySelector<HTMLButtonElement>('button[data-vexel-ui="true"]')
-        if (btn) {
+        const host = container.querySelector<HTMLElement>('span[data-vexel-ui="true"]')
+        const btn = host?.shadowRoot?.querySelector<HTMLButtonElement>('button')
+        if (host && btn) {
           container.addEventListener('pointerenter', () => {
-            btn.style.opacity = '1'
-            btn.style.pointerEvents = 'auto'
+            host.style.opacity = '1'
+            host.style.pointerEvents = 'auto'
           })
           container.addEventListener('pointerleave', () => {
             if (btn.style.backgroundColor === 'rgb(232, 240, 254)') return
-            btn.style.opacity = '0'
-            btn.style.pointerEvents = 'none'
+            host.style.opacity = '0'
+            host.style.pointerEvents = 'none'
           })
         }
       }
