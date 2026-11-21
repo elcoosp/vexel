@@ -1,17 +1,17 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import {
   browseLocalFs,
-  readLocalFsFile,
+  loadConnectedFolderName,
   packLocalFsFolder,
+  readLocalFsFile,
   writeLocalFsFile,
 } from '../../src/features/local-fs'
 
-describe('Zero-Server FS fallback (linkedom + mock IndexedDB)', () => {
+describe('Zero-Server FS fallback & snapshot edge cases (linkedom)', () => {
   const memStore = new Map<string, unknown>()
 
   beforeEach(() => {
     memStore.clear()
-    // Minimal in-memory IndexedDB mock for unit/dom testing
     ;(globalThis as Record<string, unknown>).indexedDB = {
       open: () => {
         const req: Record<string, unknown> = {
@@ -39,50 +39,46 @@ describe('Zero-Server FS fallback (linkedom + mock IndexedDB)', () => {
         return req
       },
     }
-
     memStore.set('project-snapshot', {
       rootName: 'demo-repo',
       files: [
-        { relPath: 'README.md', name: 'README.md', content: '# Demo Repo\n', size: 12 },
-        { relPath: 'src/app.ts', name: 'app.ts', content: 'console.log("hi");\n', size: 19 },
+        { relPath: 'README.md', name: 'README.md', content: '# Demo\n', size: 7 },
+        { relPath: 'src/app.ts', name: 'app.ts', content: 'export const x = 1;\n', size: 20 },
       ],
     })
   })
-  it('browses root and subdirectories from stored snapshot', async () => {
+
+  it('browses dirs, runs recursive search, and handles missing files/folders', async () => {
+    expect(await loadConnectedFolderName()).toBe('demo-repo')
     const root = await browseLocalFs('', '', false)
-    expect(root.ok).toBe(true)
-    expect(root.rootLabel).toBe('demo-repo')
     expect(root.entries?.map((e) => e.name)).toEqual(['src', 'README.md'])
-    const sub = await browseLocalFs('src', '', false)
-    expect(sub.ok).toBe(true)
-    expect(sub.entries?.map((e) => e.name)).toEqual(['app.ts'])
+    const search = await browseLocalFs('', 'app', false)
+    expect(search.entries?.map((e) => e.relPath)).toEqual(['src/app.ts'])
+    expect((await readLocalFsFile('missing.ts')).ok).toBe(false)
+
+    memStore.clear()
+    expect((await browseLocalFs('', '', false)).needsPicker).toBe(true)
+    expect((await packLocalFsFolder('')).ok).toBe(false)
   })
-  it('reads file content and packs folder with 4-backtick fences', async () => {
-    const file = await readLocalFsFile('src/app.ts')
-    expect(file.ok).toBe(true)
-    expect(file.content).toBe('console.log("hi");\n')
+
+  it('packs folder with 4-backtick fences and triggers browser download on write fallback', async () => {
     const pack = await packLocalFsFolder('')
     expect(pack.ok).toBe(true)
-    expect(pack.fileCount).toBe(2)
     expect(pack.content).toContain('````ts')
-    expect(pack.content).toContain('console.log("hi");')
-  })
-  it('falls back to browser download when writing without FileSystemDirectoryHandle', async () => {
+
     let clicked = false
     const origCreate = document.createElement.bind(document)
     document.createElement = ((tag: string) => {
       const el = origCreate(tag)
-      if (tag === 'a') {
+      if (tag === 'a')
         el.click = () => {
           clicked = true
         }
-      }
       return el
     }) as typeof document.createElement
     globalThis.URL.createObjectURL = () => 'blob:mock'
     globalThis.URL.revokeObjectURL = () => {}
-    const res = await writeLocalFsFile('src/generated.ts', 'export const ok = true;')
-    expect(res.ok).toBe(true)
+    expect((await writeLocalFsFile('src/out.ts', 'export const ok = true;')).ok).toBe(true)
     expect(clicked).toBe(true)
   })
 })

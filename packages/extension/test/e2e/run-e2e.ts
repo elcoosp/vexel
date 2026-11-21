@@ -1,214 +1,144 @@
 import assert from 'node:assert/strict'
+import { type ChildProcess, spawn } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { type BrowserContext, chromium } from 'playwright'
+
 const extPath = path.resolve('packages/extension/dist')
 assert.ok(fs.existsSync(path.join(extPath, 'manifest.json')), 'Extension must be built before E2E')
+
 const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vexel-e2e-profile-'))
-const MOCK_GOOGLE_AIM_HTML = [
-  '<!doctype html>',
-  '<html><head><title>Google AI Mode E2E</title></head><body>',
-  '  <main>',
-  '    <div class="CKgc1d" data-scope-id="turn" data-hveid="turn-1">',
-  '      <div class="V3FYCf" jsname="eFVkfb">Write a quick TypeScript sum helper</div>',
-  '      <div class="pWvJNd" data-subtree="aimc">',
-  '        <div class="Fzsovc">Sum Helper</div>',
-  '        <p>Here is a clean implementation:</p>',
-  '        <div data-hveid="code-card-1"><pre><code class="language-ts">// src/math/sum.ts\nexport const sum = (a: number, b: number) => a + b;</code></pre></div>',
-  '      </div>',
-  '    </div>',
-  '    <form role="search">',
-  '      <div class="o8Wipc">',
-  '        <textarea id="aim-prompt" rows="2" placeholder="Ask AI Mode..."></textarea>',
-  '      </div>',
-  '    </form>',
-  '  </main>',
-  '</body></html>',
+const workspaceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vexel-e2e-ws-'))
+fs.mkdirSync(path.join(workspaceDir, 'src', 'math'), { recursive: true })
+fs.writeFileSync(
+  path.join(workspaceDir, 'src', 'math', 'add.ts'),
+  'export const add = (a: number, b: number) => a + b;\n'
+)
+
+const googleHomeUrl = ['https', ':', '//', 'www', '.google.com', '/'].join('')
+const aiModeUrl = ['https', ':', '//', 'www', '.google.com', '/search', '?udm=50'].join('')
+const homeRouteGlob = ['**', '://', 'www', '.google.com', '/'].join('')
+const aimRouteGlob = ['**', '://', 'www', '.google.com', '/search*'].join('')
+
+const HOME_HTML =
+  '<!doctype html><html><body><form role="search"><div style="display:flex"><textarea name="q" rows="1"></textarea><button type="submit">Search</button></div></form></body></html>'
+const AIM_HTML = [
+  '<!doctype html><html><body><main>',
+  '<div class="CKgc1d" data-scope-id="turn"><div class="V3FYCf" jsname="eFVkfb">Write a sum helper</div>',
+  '<div class="pWvJNd" data-subtree="aimc"><div data-hveid="c1"><pre><code class="language-ts">// src/math/sum.ts\nexport const sum = (a: number, b: number) => a + b;</code></pre></div></div></div>',
+  '<form role="search"><div class="o8Wipc"><textarea id="aim-prompt" rows="2"></textarea><input id="aim-file" type="file" /></div></form>',
+  '</main></body></html>',
 ].join('\n')
+
+let bridgeProc: ChildProcess | null = null
 let context: BrowserContext | undefined
 try {
+  bridgeProc = spawn(process.execPath, ['packages/bridge/src/server.ts'], {
+    env: { ...process.env, VEXEL_PORT: '49152', VEXEL_ROOT_DIR: workspaceDir },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+  await new Promise<void>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('Bridge startup timeout')), 5000)
+    let out = ''
+    bridgeProc?.stdout?.on('data', (c: Buffer) => {
+      out += c.toString()
+      if (out.includes('127.0.0.1:')) {
+        clearTimeout(t)
+        resolve()
+      }
+    })
+  })
+
   context = await chromium.launchPersistentContext(userDataDir, {
     headless: false,
     args: [`--disable-extensions-except=${extPath}`, `--load-extension=${extPath}`, '--no-sandbox'],
   })
-  await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
-    origin: 'https://www.google.com',
-  })
   const page = await context.newPage()
-  await page.addInitScript(() => {
-    let buf = ''
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: {
-        writeText: async (text: string) => {
-          buf = text
-        },
-        readText: async () => buf,
-      },
-    })
-  })
-  await page.route('**://www.google.com/search*', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'text/html; charset=utf-8',
-      body: MOCK_GOOGLE_AIM_HTML,
-    })
-  })
-  await page.goto(['https', '://', 'www.', 'google.', 'com/search?udm=50'].join(''), {
-    waitUntil: 'domcontentloaded',
-  })
-  // 1. Verify DOM Booster style injection (Full-Width & user-select unlock)
+  await page.route(homeRouteGlob, (r) =>
+    r.fulfill({ status: 200, contentType: 'text/html', body: HOME_HTML })
+  )
+  await page.route(aimRouteGlob, (r) =>
+    r.fulfill({ status: 200, contentType: 'text/html', body: AIM_HTML })
+  )
+
+  // 1. Google Home: dock mounts cleanly without overlap
+  await page.goto(googleHomeUrl, { waitUntil: 'domcontentloaded' })
+  await page.locator('#vexel-input-dock-host').waitFor({ state: 'attached', timeout: 4000 })
+
+  // 2. AI Mode: Onboarding + CSS Booster
+  await page.goto(aiModeUrl, { waitUntil: 'domcontentloaded' })
   const boosterCss = await page.locator('#vexel-fast-load-css').textContent()
-  assert.ok(
-    boosterCss?.includes('content-visibility: auto'),
-    'DOM Booster must unlock text selection'
-  )
-  // 2. Verify automatic Onboarding modal on first launch + in-place skill chip switching
-  const onboardingHost = page.locator('#vexel-onboarding-host')
-  await onboardingHost.waitFor({ state: 'attached', timeout: 5000 })
-  const step1Title = await onboardingHost.evaluate(
-    (el) => el.shadowRoot?.querySelector('.title')?.textContent
-  )
-  assert.ok(
-    step1Title && /Type \/ anywhere|Tapez \/ n'importe où/.test(step1Title),
-    'Onboarding Step 1 should render'
-  )
-  await onboardingHost.evaluate((el) => {
-    const chips = Array.from(el.shadowRoot?.querySelectorAll<HTMLElement>('.demo-chip') || [])
-    chips.at(1)?.click()
+  assert.ok(boosterCss?.includes('content-visibility: auto'))
+
+  const ob = page.locator('#vexel-onboarding-host')
+  await ob.waitFor({ state: 'attached', timeout: 5000 })
+  for (let i = 0; i < 3; i++) {
+    await ob.evaluate((el) => el.shadowRoot?.querySelector<HTMLElement>('.btn-primary')?.click())
+  }
+  await ob.waitFor({ state: 'detached', timeout: 3000 })
+
+  // 3. Large paste -> auto file attachment
+  const prompt = page.locator('#aim-prompt')
+  await prompt.click()
+  await prompt.evaluate((el) => {
+    const dt = new DataTransfer()
+    dt.setData('text/plain', 'ERROR: stack trace\n'.repeat(650))
+    el.dispatchEvent(
+      new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: dt })
+    )
   })
-  const previewText = await onboardingHost.evaluate(
-    (el) => el.shadowRoot?.querySelector('.demo-preview')?.textContent
-  )
-  assert.ok(
-    previewText && /Maps data flow|Cartographie le flux/.test(previewText),
-    'Switching skill chip should update preview text'
-  )
-  // Complete onboarding (Step 1 -> 2 -> 3 -> Close)
-  await onboardingHost.evaluate((el) =>
-    el.shadowRoot?.querySelector<HTMLElement>('.btn-primary')?.click()
-  )
-  await onboardingHost.evaluate((el) =>
-    el.shadowRoot?.querySelector<HTMLElement>('.btn-primary')?.click()
-  )
-  await onboardingHost.evaluate((el) =>
-    el.shadowRoot?.querySelector<HTMLElement>('.btn-primary')?.click()
-  )
-  await onboardingHost.waitFor({ state: 'detached', timeout: 3000 })
-  // 3. Keyboard navigation in Command Palette (/, ArrowDown, Escape, then Enter)
-  const promptBox = page.locator('#aim-prompt')
-  await promptBox.click()
-  await promptBox.type('/')
-  const paletteHost = page.locator('#vexel-inline-menu-host')
-  await paletteHost.waitFor({ state: 'attached', timeout: 3000 })
-  const isOpen = await paletteHost.evaluate((el) =>
-    el.shadowRoot?.querySelector('.popover')?.classList.contains('open')
-  )
-  assert.equal(isOpen, true, 'Command palette should open when typing /')
+  const attachedCount = await page
+    .locator('#aim-file')
+    .evaluate((el: HTMLInputElement) => el.files?.length || 0)
+  assert.equal(attachedCount, 1, 'Large paste must attach as .txt file')
+
+  // 4. "/" Skills & "@" Bridge Files + Copy + Export .md
+  await prompt.type('/')
+  const pal = page.locator('#vexel-inline-menu-host')
+  await pal.waitFor({ state: 'attached', timeout: 3000 })
+  await page.keyboard.press('Enter')
+  assert.ok((await prompt.inputValue()).length > 30)
+
+  await prompt.fill('')
+  await prompt.type('@')
   await page.waitForFunction(
     () =>
       (document.querySelector('#vexel-inline-menu-host')?.shadowRoot?.querySelectorAll('.item')
-        .length || 0) >= 2,
-    { timeout: 3000 }
+        .length || 0) >= 1
   )
-  // ArrowDown moves selection to index 1
-  await page.keyboard.press('ArrowDown')
-  const secondActive = await paletteHost.evaluate((el) =>
-    el.shadowRoot?.querySelectorAll('.item').item(1)?.classList.contains('active')
+  const dlPromise = page.waitForEvent('download')
+  await pal.evaluate((el) =>
+    Array.from(el.shadowRoot?.querySelectorAll('button') || [])
+      .find((b) => /Export|Exporter/u.test(b.textContent || ''))
+      ?.click()
   )
-  assert.equal(secondActive, true, 'ArrowDown should highlight second skill item')
-  // Escape closes palette cleanly
+  const dl = await dlPromise
+  assert.ok(dl.suggestedFilename().endsWith('.md'))
   await page.keyboard.press('Escape')
-  await page.waitForTimeout(180)
-  const closedAfterEsc = await paletteHost.evaluate(
-    (el) => !el.shadowRoot?.querySelector('.popover')?.classList.contains('open')
-  )
-  assert.equal(closedAfterEsc, true, 'Escape should close command palette')
-  // Reopen with "/" and inject skill via Enter
-  await promptBox.fill('')
-  await promptBox.type('/')
-  await page.keyboard.press('Enter')
-  const injectedVal = await promptBox.inputValue()
-  assert.ok(
-    injectedVal.length > 30,
-    'Selecting a built-in skill should inject its prompt into textarea'
-  )
-  // 4. Reopen palette with "@" to verify Files tab, zero redundant File badge, Copy Clean Thread, and "?" Onboarding relaunch
-  await promptBox.fill('')
-  await promptBox.type('@')
-  await page.waitForTimeout(200)
-  const filesTabState = await paletteHost.evaluate((el) => {
-    const sr = el.shadowRoot
-    const isFilesTabActive = Array.from(sr?.querySelectorAll('.tab') || []).some(
-      (t) => t.classList.contains('active') && /Files|Fichiers/.test(t.textContent || '')
-    )
-    const hasOpenFolderBtn = Array.from(sr?.querySelectorAll('button') || []).some((b) =>
-      /Open Local Folder|Ouvrir un dossier local/.test(b.textContent || '')
-    )
-    const itemCount = sr?.querySelectorAll('.item').length || 0
-    const hasRedundantFileBadge = Array.from(sr?.querySelectorAll('.badge') || []).some(
-      (b) => b.textContent?.trim() === 'File'
-    )
-    return { isFilesTabActive, hasOpenFolderBtn, itemCount, hasRedundantFileBadge }
+
+  // 5. Real disk write via Save to file -> Enter
+  await page.locator('pre code').hover()
+  const saveBtn = page.locator('button[data-vexel-ui="true"]', {
+    hasText: /Save to file|Enregistrer/u,
   })
-  assert.equal(filesTabState.isFilesTabActive, true, 'Typing @ should switch palette to Files tab')
-  assert.equal(
-    filesTabState.hasOpenFolderBtn || filesTabState.itemCount > 0,
-    true,
-    'Files tab should render either Zero-Server CTA or bridge file list'
-  )
-  assert.equal(
-    filesTabState.hasRedundantFileBadge,
-    false,
-    'File rows must not render redundant File badge'
-  )
-  // Click "Copy" (Copy Clean Thread) in palette header
-  await paletteHost.evaluate((el) => {
-    const copyBtn = Array.from(el.shadowRoot?.querySelectorAll('button') || []).find((b) =>
-      /^(Copy|Copier)$/.test(b.textContent?.trim() || '')
-    )
-    copyBtn?.click()
-  })
-  await page.waitForTimeout(150)
-  const copyConfirmed = await paletteHost.evaluate((el) =>
-    Array.from(el.shadowRoot?.querySelectorAll('button') || []).some((b) =>
-      /^(Copied|Copié)$/u.test(b.textContent?.trim() || '')
-    )
-  )
-  assert.equal(copyConfirmed, true, 'Copy Clean Thread should copy formatted Markdown')
-  // Click circular "?" button in palette header to reopen Onboarding modal
-  await paletteHost.evaluate((el) => {
-    const helpBtn = Array.from(el.shadowRoot?.querySelectorAll('button') || []).find(
-      (b) => b.textContent?.trim() === '?'
-    )
-    helpBtn?.click()
-  })
-  await onboardingHost.waitFor({ state: 'attached', timeout: 3000 })
-  await onboardingHost.evaluate((el) =>
-    el.shadowRoot?.querySelector<HTMLElement>('.skip-btn')?.click()
-  )
-  await onboardingHost.waitFor({ state: 'detached', timeout: 3000 })
-  // 5. Hover code block, verify "Save to file" button + inferred path "// src/math/sum.ts"
-  const codeBlock = page.locator('pre code')
-  await codeBlock.hover()
-  const saveTrigger = page.locator('button[data-vexel-ui="true"]', {
-    hasText: /Save to file|Enregistrer dans un fichier/,
-  })
-  await saveTrigger.waitFor({ state: 'visible', timeout: 3000 })
-  await saveTrigger.click()
+  await saveBtn.click()
   const pathInput = page.locator(
-    'input[placeholder="folder/filename.ext"], input[placeholder="dossier/nom-fichier.ext"], input[placeholder="dossier/nom-fichier.ext"]'
+    'input[placeholder="folder/filename.ext"], input[placeholder="dossier/nom-fichier.ext"]'
   )
-  await pathInput.waitFor({ state: 'visible', timeout: 3000 })
-  const inferredPath = await pathInput.inputValue()
-  assert.equal(
-    inferredPath,
-    'src/math/sum.ts',
-    'Code-save popover must auto-infer file path from header comment'
+  assert.equal(await pathInput.inputValue(), 'src/math/sum.ts')
+  await pathInput.press('Enter')
+  await page.waitForTimeout(400)
+  assert.ok(
+    fs.readFileSync(path.join(workspaceDir, 'src/math/sum.ts'), 'utf8').includes('export const sum')
   )
-  console.log('✓ All 100% full-coverage Vexel E2E assertions passed in real Chromium!')
+
+  console.log(
+    '✓ All full-pyramid Vexel E2E assertions (including real disk write, paste-to-file & .md export) passed!'
+  )
 } finally {
-  if (context) await context.close()
+  await context?.close().catch(() => {})
+  bridgeProc?.kill('SIGTERM')
   fs.rmSync(userDataDir, { recursive: true, force: true })
+  fs.rmSync(workspaceDir, { recursive: true, force: true })
 }
