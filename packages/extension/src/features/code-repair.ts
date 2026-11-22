@@ -697,16 +697,10 @@ async function repairBrokenSequenceFromCodeCard(
     turnRoot.getAttribute('data-complete') === 'true' ||
     turnRoot.querySelector('[data-zzy="1"]') !== null
 
-  const rawCodeLen = codeEl.childNodes.length + ':' + (codeEl.lastChild?.textContent?.length ?? 0)
+  const rawCodeLen = (codeEl.textContent || '').length
   const nextSib = anchorBlock.nextElementSibling
   const nextSibSig = nextSib
-    ? nextSib.tagName +
-      ':' +
-      nextSib.className +
-      ':' +
-      nextSib.childNodes.length +
-      ':' +
-      (nextSib.lastChild?.textContent?.length ?? 0)
+    ? nextSib.tagName + ':' + nextSib.className + ':' + (nextSib.textContent || '').length
     : 'none'
   const cardSig = rawCodeLen + '|' + nextSibSig + '|' + (isTurnFinished ? '1' : '0')
   if (scannedCardSignatures.get(codeCard) === cardSig) return
@@ -889,20 +883,12 @@ async function repairBrokenSequenceFromCodeCard(
       }
     }
     const postNextSib = anchorBlock.nextElementSibling
-    const postCodeLen =
-      codeEl.childNodes.length + ':' + (codeEl.lastChild?.textContent?.length ?? 0)
-    const postSibSig = postNextSib
-      ? postNextSib.tagName +
-        ':' +
-        postNextSib.className +
-        ':' +
-        postNextSib.childNodes.length +
-        ':' +
-        (postNextSib.lastChild?.textContent?.length ?? 0)
+    const postNextSig = postNextSib
+      ? `${postNextSib.tagName}:${postNextSib.className}:${(postNextSib.textContent || '').length}`
       : 'none'
     scannedCardSignatures.set(
       codeCard,
-      postCodeLen + '|' + postSibSig + '|' + (isTurnFinished ? '1' : '0')
+      `${(codeEl.textContent || '').length}|${postNextSig}|${isTurnFinished ? '1' : '0'}`
     )
     if (reachedTerminalBoundary || isTurnFinished) {
       codeCard.setAttribute('data-vexel-repaired-final', '1')
