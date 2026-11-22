@@ -8,6 +8,7 @@ interface CachedTurnSnapshot {
 }
 
 const CACHE_STORAGE_KEY = 'vexel:thread-cache:v2'
+const LEGACY_CACHE_KEY = 'vexel:thread-cache:v1'
 const MAX_CACHED_THREADS = 25
 const ALLOWED_TAGS = new Set([
   'P',
@@ -46,7 +47,7 @@ const getConversationCacheKey = (): string | null => {
     if (mstk) return 'mstk:' + mstk
     const udm = url.searchParams.get('udm')
     const q = (url.searchParams.get('q') || '').trim().slice(0, 120)
-    if (udm === '50' && q) return 'q:' + q
+    if ((udm === '50' || url.searchParams.get('atvm') === '1') && q) return 'q:' + q
     return null
   } catch {
     return null
@@ -293,11 +294,11 @@ export const initInstantThreadCache = (): void => {
   }
 
   const saveSnapshot = () => {
-    const turns = Array.from(document.querySelectorAll('[data-scope-id="turn"]'))
+    const turns = Array.from(document.querySelectorAll<HTMLElement>('[data-scope-id="turn"]'))
     if (turns.length === 0) return
     const lastTurn = turns[turns.length - 1]
-    const promptEl = lastTurn.querySelector('.V3FYCf, [jsname="eFVkfb"]')
-    const answerEl = lastTurn.querySelector('[data-subtree="aimc"], .pWvJNd')
+    const promptEl = lastTurn.querySelector<HTMLElement>('.V3FYCf, [jsname="eFVkfb"]')
+    const answerEl = lastTurn.querySelector<HTMLElement>('[data-subtree="aimc"], .pWvJNd')
     const prompt = (promptEl?.textContent || '').trim().slice(0, 1200)
     const answerMarkdown = answerEl
       ? htmlNodeToMarkdown(answerEl)
@@ -306,6 +307,7 @@ export const initInstantThreadCache = (): void => {
           .slice(0, 14000)
       : ''
     if (!prompt && !answerMarkdown) return
+
     try {
       chrome.storage?.local?.get(CACHE_STORAGE_KEY, (res) => {
         const map = (res?.[CACHE_STORAGE_KEY] || {}) as Record<string, CachedTurnSnapshot>
@@ -317,14 +319,35 @@ export const initInstantThreadCache = (): void => {
       })
     } catch {}
   }
+
   try {
-    chrome.storage?.local?.get(CACHE_STORAGE_KEY, (res) => {
-      const snap = (res?.[CACHE_STORAGE_KEY] as Record<string, CachedTurnSnapshot> | undefined)?.[
+    chrome.storage?.local?.get([CACHE_STORAGE_KEY, LEGACY_CACHE_KEY], (res) => {
+      const v2 = (res?.[CACHE_STORAGE_KEY] as Record<string, CachedTurnSnapshot> | undefined)?.[
         cacheKey
       ]
-      if (snap && (snap.prompt || snap.answerMarkdown)) mountPreview(snap)
+      if (v2 && (v2.prompt || v2.answerMarkdown)) {
+        mountPreview(v2)
+        return
+      }
+      const v1 = (
+        res?.[LEGACY_CACHE_KEY] as
+          | Record<
+              string,
+              { prompt?: string; answer?: string; turnCount?: number; updatedAt?: number }
+            >
+          | undefined
+      )?.[cacheKey]
+      if (v1 && (v1.prompt || v1.answer)) {
+        mountPreview({
+          prompt: v1.prompt || '',
+          answerMarkdown: v1.answer || '',
+          turnCount: v1.turnCount || 1,
+          updatedAt: v1.updatedAt || Date.now(),
+        })
+      }
     })
   } catch {}
+
   const waitRealTurns = () => {
     if (!document.body) return
     let settleTimer = 0
@@ -334,6 +357,7 @@ export const initInstantThreadCache = (): void => {
         if (isRealLastTurnStable()) {
           obs.disconnect()
           dismissPreview(false)
+          saveSnapshot()
         }
       }, 900)
     })
@@ -342,6 +366,7 @@ export const initInstantThreadCache = (): void => {
   }
   if (document.body) waitRealTurns()
   else document.addEventListener('DOMContentLoaded', waitRealTurns, { once: true })
+
   document.addEventListener(
     'aimRenderComplete',
     () => {
