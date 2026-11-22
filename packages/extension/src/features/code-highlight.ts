@@ -498,10 +498,11 @@ export function renderHighlightedTail(tailEl: HTMLElement, code: string, lang: s
         let j = i + 1
         while (j < line.length && /[A-Za-z0-9_]/.test(line[j])) j += 1
         const word = line.slice(i, j)
-        const after = line.slice(j).trimStart()
+        let k = j
+        while (k < line.length && (line[k] === ' ' || line[k] === '\t')) k += 1
         if (keywords.has(word)) {
           emitToken('keyword', word)
-        } else if (after.startsWith('(')) {
+        } else if (line[k] === '(') {
           emitToken('function', word)
         } else if (/^[A-Z][A-Za-z0-9_]*$/.test(word) && word.length > 1) {
           emitToken('type', word)
