@@ -91,38 +91,56 @@ function hasUnclosedCodeDelimiter(code: string): boolean {
     if (!marker || !fullMatch) continue
     const startPos = (m.index ?? 0) + fullMatch.length
     const afterStart = code.slice(startPos)
-    const closedRe = new RegExp(`(?:^|\n)\\s*${marker}\\s*(?:\n|$)`)
+    const closedRe = new RegExp('(?:^|\\n)\\s*' + marker + '\\s*(?:\\n|$)')
     if (!closedRe.test(afterStart)) return true
   }
-  const tripleDouble = (code.match(/"""/g) || []).length
-  if (tripleDouble % 2 === 1) return true
-  const tripleSingle = (code.match(/'''/g) || []).length
-  if (tripleSingle % 2 === 1) return true
 
-  // Scan structural braces/brackets & backticks outside comments and quoted strings
   let braceBalance = 0
-  let unescapedBackticks = 0
-  let quote: '"' | "'" | null = null
+  let quote: '"' | "'" | '`' | '"""' | "'''" | null = null
+  let rawRustHashes = -1
   let inLineComment = false
+  let inBlockComment = false
+  let unescapedBackticks = 0
 
-  for (let i = 0; i < code.length; i += 1) {
+  for (let i = 0; i < code.length; i++) {
     const ch = code[i]
     const next = code[i + 1]
 
-    if (ch === '\n') {
-      inLineComment = false
+    if (inLineComment) {
+      if (ch === '\n') inLineComment = false
       continue
     }
-    if (inLineComment) continue
-
+    if (inBlockComment) {
+      if (ch === '*' && next === '/') {
+        inBlockComment = false
+        i += 1
+      }
+      continue
+    }
+    if (rawRustHashes >= 0) {
+      if (ch === '"') {
+        let hashes = 0
+        while (code[i + 1 + hashes] === '#') hashes += 1
+        if (hashes >= rawRustHashes) {
+          i += rawRustHashes
+          rawRustHashes = -1
+        }
+      }
+      continue
+    }
     if (quote) {
-      if (ch === '\\' && quote === '"') {
+      if (quote === '"""' || quote === "'''") {
+        if (code.slice(i, i + 3) === quote) {
+          quote = null
+          i += 2
+        }
+        continue
+      }
+      if (ch === '\\' && quote !== '`') {
         i += 1
         continue
       }
-      if (ch === quote) {
-        quote = null
-      }
+      if (ch === quote) quote = null
       continue
     }
 
@@ -131,8 +149,44 @@ function hasUnclosedCodeDelimiter(code: string): boolean {
       i += 1
       continue
     }
+    if (ch === '/' && next === '*') {
+      inBlockComment = true
+      i += 1
+      continue
+    }
     if (ch === '#' && (i === 0 || /\s/.test(code[i - 1]))) {
       inLineComment = true
+      continue
+    }
+    if (
+      (ch === 'r' || (ch === 'b' && next === 'r')) &&
+      (i === 0 || !/[a-zA-Z0-9_]/.test(code[i - 1]))
+    ) {
+      let scan = ch === 'b' ? i + 2 : i + 1
+      let hashes = 0
+      while (code[scan] === '#') {
+        hashes += 1
+        scan += 1
+      }
+      if (code[scan] === '"') {
+        rawRustHashes = hashes
+        i = scan
+        continue
+      }
+    }
+    if (code.slice(i, i + 3) === '"""') {
+      quote = '"""'
+      i += 2
+      continue
+    }
+    if (code.slice(i, i + 3) === "'''") {
+      quote = "'''"
+      i += 2
+      continue
+    }
+    if (ch === '`') {
+      unescapedBackticks += 1
+      quote = '`'
       continue
     }
     if (ch === '"') {
@@ -148,16 +202,28 @@ function hasUnclosedCodeDelimiter(code: string): boolean {
       quote = "'"
       continue
     }
-
     if (ch === '{' || ch === '[') braceBalance += 1
     else if (ch === '}' || ch === ']') braceBalance -= 1
-    else if (ch === '`' && (i === 0 || code[i - 1] !== '\\')) {
-      unescapedBackticks += 1
-    }
   }
 
+  if (rawRustHashes >= 0 || quote === '"""' || quote === "'''") return true
   if (unescapedBackticks % 2 === 1) return true
-  return braceBalance >= 1
+  if (braceBalance >= 1) return true
+
+  const nonEmptyLines = code
+    .split('\n')
+    .map((l) => l.replace(/#.*$/, '').trimEnd())
+    .filter((l) => l.trim().length > 0)
+  const lastCodeLine = nonEmptyLines[nonEmptyLines.length - 1] || ''
+  if (
+    /^\s*(?:async\s+def|def|class|if|elif|else|for|while|try|except|finally|with|match|case)\b.*:\s*$/.test(
+      lastCodeLine
+    )
+  ) {
+    return true
+  }
+
+  return false
 }
 
 function looksLikeCodeFragment(text: string): boolean {
@@ -167,9 +233,10 @@ function looksLikeCodeFragment(text: string): boolean {
     .filter(Boolean)
   if (lines.length === 0) return false
   if (
-    /^(?:pub(?:\s*\([^)]*\))?\s+)?(?:async\s+)?(?:unsafe\s+)?(?:extern\s+(?:"[^"]*"\s+)?)?(?:fn|struct|enum|trait|impl|mod|type|const|static|macro_rules!|function|class|interface|export|import|def|async\s+def|func|package)\b/.test(
+    /^(?:@[a-zA-Z_][a-zA-Z0-9_.]*|#\[(?:cfg|derive|allow|test|tokio|async_trait)|#(?:include|define|ifdef|ifndef|pragma)\b|(?:pub(?:\s*\([^)]*\))?\s+|public\s+|private\s+|protected\s+|internal\s+|final\s+|sealed\s+|abstract\s+|open\s+|override\s+|static\s+|async\s+|unsafe\s+|extern\s+(?:"[^"]*"\s+)?)*(?:fn|struct|enum|trait|impl|mod|type|const|static|macro_rules!|function|class|data\s+class|interface|protocol|extension|actor|object|namespace|template\s*<|typedef|export|import|from\s+\S+\s+import|def|func|package|CREATE\s+(?:OR\s+REPLACE\s+)?(?:TABLE|VIEW|FUNCTION|PROCEDURE|INDEX|TRIGGER)|SELECT|INSERT\s+INTO|UPDATE|DELETE\s+FROM|ALTER\s+TABLE)\b)/.test(
       lines[0]
-    )
+    ) ||
+    /^(?:"""|'''|r#*["']|`|EOF)\s*(?:;|\)|\]|\})?\s*$/.test(lines[lines.length - 1])
   ) {
     return true
   }

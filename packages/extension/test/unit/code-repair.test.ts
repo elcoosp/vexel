@@ -52,4 +52,13 @@ describe('reconstructIndentation', () => {
 
     expect(repaired).toContain(' job.execute()')
   })
+
+  it('reindents Python and Rust raw-string fragments cleanly', () => {
+    const pyHead = 'def run_pipeline(items):\n    results = []'
+    const pyTail = 'for item in items:\n    if item:\n        results.append(item)\nreturn results'
+    const pyOut = reconstructIndentation(pyHead, pyTail, 'python')
+    expect(pyOut).toContain('    for item in items:')
+    expect(pyOut).toContain('        if item:')
+    expect(pyOut).toContain('            results.append(item)')
+  })
 })

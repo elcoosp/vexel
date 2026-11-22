@@ -1163,4 +1163,77 @@ Exécute \`./wr.sh\` avec ce script.
       g.chrome = prevChrome
     }
   })
+
+  it('repairs indentation-based Python block truncated after def header and absorbs indented body + trailing function', async () => {
+    document.body.innerHTML = ''
+    const g = globalThis as { chrome?: { runtime?: { sendMessage?: unknown } } }
+    const prevChrome = g.chrome
+    g.chrome = {
+      runtime: {
+        sendMessage: (msg: { code?: string }, cb: (res: unknown) => void) => {
+          cb({ ok: true, formatted: msg.code || '', engine: 'mock-ruff' })
+        },
+      },
+    }
+
+    try {
+      const turn = document.createElement('div')
+      turn.setAttribute('data-scope-id', 'turn')
+      turn.setAttribute('data-complete', 'true')
+
+      const card = document.createElement('div')
+      card.className = 'BpxUDf aiModeUiCodeBlock__Container'
+      card.setAttribute('data-hveid', 'CARD_PY_INDENT')
+      card.innerHTML =
+        '<div><div class="a2TNg"><div class="GlO4G">python</div></div>' +
+        '<div class="PGvq2d"><pre><code></code></pre></div></div>' +
+        '<div class="iMHp6c"><div class="ZIumpf">Utilisez le code avec précaution.</div></div>'
+      const codeEl = card.querySelector('code')!
+      codeEl.textContent =
+        'from dataclasses import dataclass\n\n' +
+        'def summarize_events(events: list[str]) -> str:\n'
+
+      const sib1 = document.createElement('div')
+      sib1.className = 'n6owBd awi2gc'
+      sib1.setAttribute('data-sfc-cp', '')
+      sib1.innerHTML =
+        '    banner = """<br>' +
+        '=== AUDIT REPORT ===<br>' +
+        'Service: api-gateway<br>' +
+        'Status: degraded<br>' +
+        '"""<br>' +
+        '    return f"{banner}\nCount={len(events)}"'
+
+      const sib2 = document.createElement('div')
+      sib2.className = 'n6owBd awi2gc'
+      sib2.setAttribute('data-sfc-cp', '')
+      sib2.innerHTML =
+        '@dataclass<br>' +
+        'class AuditSummary:<br>' +
+        '    total: int<br>' +
+        '    raw_dump: str = """<br>' +
+        'line 1 plain text<br>' +
+        'line 2 plain text<br>' +
+        'line 3 plain text<br>' +
+        '"""'
+
+      const footer = document.createElement('div')
+      footer.setAttribute('data-xid', 'Gd7Hsc')
+      footer.textContent = "Les réponses de l'IA peuvent contenir des erreurs. En savoir plus"
+
+      turn.append(card, sib1, sib2, footer)
+      document.body.appendChild(turn)
+
+      scanAndRepairCodeBlocks(document, () => {})
+      await new Promise((r) => setTimeout(r, 40))
+
+      expect(card.getAttribute('data-vexel-repaired-final')).toBe('1')
+      expect(sib1.isConnected).toBe(false)
+      expect(sib2.isConnected).toBe(false)
+      expect(codeEl.textContent).toContain('=== AUDIT REPORT ===')
+      expect(codeEl.textContent).toContain('class AuditSummary:')
+    } finally {
+      g.chrome = prevChrome
+    }
+  })
 })
