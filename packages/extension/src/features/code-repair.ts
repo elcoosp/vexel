@@ -83,7 +83,7 @@ function hasUnclosedCodeDelimiter(code: string): boolean {
     }
   }
   if (unescapedBackticks % 2 === 1) return true
-  return braceBalance >= 2
+  return braceBalance >= 1
 }
 
 function looksLikeCodeFragment(text: string): boolean {
@@ -93,22 +93,31 @@ function looksLikeCodeFragment(text: string): boolean {
     .filter(Boolean)
   if (lines.length === 0) return false
   let hits = 0
+  let codeLines = 0
+  let commentLines = 0
   for (const line of lines) {
+    if (/^(?:\/\/|#|\/\*|\*(?:\/|$|\s)|--(?:\s|$))/.test(line)) {
+      commentLines += 1
+      continue
+    }
+    codeLines += 1
     if (
-      /^(?:if|else|for|while|switch|case|return|const|let|var|function|async|await|class|interface|type|enum|export|import|try|catch|finally|throw|new|this\.|self\.|def|fn|pub|struct|impl|match|func|package)\b/.test(
+      /^(?:if|else|for|while|switch|case|return|const|let|var|function|async|await|class|interface|type|enum|export|import|try|catch|finally|throw|new|readonly|public|private|protected|static|abstract|override|declare|namespace|module|this\.|self\.|def|fn|pub|struct|impl|match|func|package)\b/.test(
         line
       ) ||
       /[{};=]$/.test(line) ||
       /^\}[;,]?$/.test(line) ||
       /^[a-zA-Z_$][a-zA-Z0-9_$.]*\s*\(/.test(line) ||
-      /^[a-zA-Z_$][a-zA-Z0-9_$]*\s*:\s*/.test(line) ||
+      /^[a-zA-Z_$][a-zA-Z0-9_$?]*\s*:\s*\S+/.test(line) ||
       /^@[a-zA-Z_][a-zA-Z0-9_.]*/.test(line) ||
       /^[a-zA-Z_][a-zA-Z0-9_.,[\]]*\s*(?:\+=|-=|\*=|\/=|=)\s*[^=]/.test(line)
     ) {
       hits += 1
     }
   }
-  return hits / lines.length >= 0.45
+  if (codeLines === 0) return commentLines > 0
+  if (lines.length === 1 && /:\s*$/.test(lines[0])) return false
+  return hits / codeLines >= 0.45
 }
 
 function isPoisonedMarkdownCodeBlock(card: Element): boolean {
@@ -170,7 +179,14 @@ function isNaturalLanguageProseBlock(text: string): boolean {
     proseCandidate.length >= 18 ? franc(proseCandidate, { minLength: 10 }) : 'und'
   const isNaturalLang = detectedLang !== 'und'
   const startsCapitalizedSentence = /^[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ][a-zàâäéèêëîïôöùûüç]+/.test(firstLine)
-  return startsCapitalizedSentence && (isNaturalLang || words.length >= 6)
+  const isLeadInColonSentence =
+    startsCapitalizedSentence &&
+    words.length >= 3 &&
+    firstLine.endsWith(':') &&
+    !/[={};()]/.test(firstLine)
+  return (
+    isLeadInColonSentence || (startsCapitalizedSentence && (isNaturalLang || words.length >= 6))
+  )
 }
 
 function formatWithBridge(
@@ -621,7 +637,11 @@ async function repairBrokenSequenceFromCodeCard(
       const rawTextNode = (node.textContent || '').replace(/\u00a0/g, ' ').trim()
       if (!rawTextNode) continue
       const assembledSoFar = [headCode, previousTail, ...spilledChunks].filter(Boolean).join('\n')
-      if (hasUnclosedCodeDelimiter(assembledSoFar) || looksLikeCodeFragment(rawTextNode)) {
+      const stillOpen = hasUnclosedCodeDelimiter(assembledSoFar)
+      if (!stillOpen && isNaturalLanguageProseBlock(rawTextNode)) {
+        break
+      }
+      if (stillOpen || looksLikeCodeFragment(rawTextNode)) {
         spilledSiblings.push(node)
         spilledChunks.push(rawTextNode)
       } else {
@@ -659,7 +679,20 @@ async function repairBrokenSequenceFromCodeCard(
       if (!cleaned) continue
       const assembledSoFar = [headCode, previousTail, ...spilledChunks].filter(Boolean).join('\n')
       const stillOpen = hasUnclosedCodeDelimiter(assembledSoFar)
-      if (!stillOpen && isNaturalLanguageProseBlock(cleaned)) {
+      const isNaturalIntroColon =
+        /^[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ][a-zàâäéèêëîïôöùûüç]+(?:\s+[a-zàâäéèêëîïôöùûüçA-Z0-9_-]+){2,}:$/.test(
+          cleaned
+        )
+      if ((!stillOpen && isNaturalLanguageProseBlock(cleaned)) || isNaturalIntroColon) {
+        break
+      }
+      if (
+        !stillOpen &&
+        spilledChunks.length === 0 &&
+        /^[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ][a-zàâäéèêëîïôöùûüç]+(?:s+[a-zàâäéèêëîïôöùûüçA-Z0-9_-]+){2,}:$/.test(
+          cleaned
+        )
+      ) {
         break
       }
       if (stillOpen || looksLikeCodeFragment(cleaned)) {
@@ -705,7 +738,15 @@ async function repairBrokenSequenceFromCodeCard(
   }
 }
 export function scanAndRepairCodeBlocks(root: ParentNode, showToast: (msg: string) => void): void {
-  const candidates = Array.from(root.querySelectorAll('[data-hveid]'))
+  const cardSet = new Set<Element>(Array.from(root.querySelectorAll('[data-hveid]')))
+  for (const codeNode of Array.from(root.querySelectorAll('pre code'))) {
+    const cardContainer =
+      codeNode.closest('[data-hveid], [data-sfc-cp]') ||
+      codeNode.closest('pre')?.parentElement?.parentElement ||
+      codeNode.closest('pre')?.parentElement
+    if (cardContainer) cardSet.add(cardContainer)
+  }
+  const candidates = Array.from(cardSet)
 
   // Pass 1: repair truncated / broken code cards (which may absorb & clean trailing poisoned FollowUp blocks)
   for (const card of candidates) {

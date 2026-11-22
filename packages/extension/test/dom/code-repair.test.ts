@@ -314,4 +314,88 @@ describe('code-repair DOM integration', () => {
     expect(record?.code).toContain('PIPELINE_DONE')
     expect(document.querySelector('[data-hveid="CODE_SPLIT_TAIL"]')).toBeNull()
   })
+
+  it('absorbs spilled TypeScript sections separated by banner comments (// ===) after class closing brace', async () => {
+    ;(globalThis as Record<string, unknown>).chrome = {
+      runtime: {
+        sendMessage: (_msg: unknown, cb?: (res: unknown) => void) => {
+          cb?.({ ok: false })
+        },
+      },
+    }
+    const longHead = [
+      'export class BusEvenements {',
+      '  private running = false;',
+      ...Array.from({ length: 180 }, (_, i) => '  private field' + i + ' = ' + i + ';'),
+      '  private async traiterFile(): Promise<void> {',
+      '    if (!this.running) {',
+      '      continue;',
+      '    }',
+    ].join('\n')
+
+    document.body.innerHTML = [
+      '<div data-scope-id="turn" data-last-turn="true">',
+      '  <div data-subtree="aimc">',
+      '    <div data-container-id="22">',
+      '      <div data-hveid="CODE_TS_BANNER" data-sfc-cp="">',
+      '        <div><div>typescript</div></div>',
+      '        <pre><code>' +
+        longHead.replace(/</g, '&lt;').replace(/>/g, '&gt;') +
+        '</code></pre>',
+      '      </div>',
+      '      <div data-sfc-cp="">    }<br>  }<br>}</div>',
+      '      <div data-sfc-cp="">// ============================================================================<br>// Modélisation des Tâches et de l\'Exécution Distribuée<br>// ============================================================================</div>',
+      "      <div data-sfc-cp=\"\">export enum StatutTache {<br>  EN_ATTENTE = 'EN_ATTENTE',<br>  TERMINEE = 'TERMINEE'<br>}</div>",
+      '      <div data-xid="Gd7Hsc" data-sfc-cp="">Les réponses de l\'IA peuvent contenir des erreurs.</div>',
+      '    </div>',
+      '  </div>',
+      '</div>',
+    ].join('')
+
+    scanAndRepairCodeBlocks(document, () => {})
+    await new Promise((r) => setTimeout(r, 80))
+
+    const card = document.querySelector('[data-hveid="CODE_TS_BANNER"]')!
+    const record = getRepairedCodeForContainer(card)
+    expect(record?.code).toContain('Modélisation des Tâches')
+    expect(record?.code).toContain('StatutTache')
+    expect(document.querySelectorAll('[data-container-id="22"] > [data-sfc-cp]').length).toBe(2)
+  })
+
+  it('repairs code cards without data-hveid and absorbs comment-heavy TypeScript fragments with single open brace', async () => {
+    ;(globalThis as Record<string, unknown>).chrome = {
+      runtime: {
+        sendMessage: (_msg: unknown, cb?: (res: unknown) => void) => {
+          cb?.({ ok: false })
+        },
+      },
+    }
+    const shortUnclosedHead = [
+      'export interface OrchestratorConfig {',
+      '  readonly maxWorkers: number;',
+    ].join('\n')
+
+    document.body.innerHTML = [
+      '<div data-scope-id="turn" data-last-turn="true">',
+      '  <div data-subtree="aimc">',
+      '    <div data-container-id="99">',
+      '      <div class="code-wrapper-no-hveid" data-sfc-cp="">',
+      '        <div><div>typescript</div></div>',
+      '        <pre><code>' + shortUnclosedHead + '</code></pre>',
+      '      </div>',
+      '      <div data-sfc-cp="">// ==========================================<br>// Section configuration réseau<br>// ==========================================<br>  readonly retryLimit: number;<br>  readonly timeoutMs: number;<br>}</div>',
+      '      <div data-xid="Gd7Hsc" data-sfc-cp="">Les réponses de l\'IA peuvent contenir des erreurs.</div>',
+      '    </div>',
+      '  </div>',
+      '</div>',
+    ].join('')
+
+    scanAndRepairCodeBlocks(document, () => {})
+    await new Promise((r) => setTimeout(r, 80))
+
+    const card = document.querySelector('.code-wrapper-no-hveid')!
+    const record = getRepairedCodeForContainer(card)
+    expect(record?.code).toContain('Section configuration réseau')
+    expect(record?.code).toContain('timeoutMs: number;')
+  })
 })
