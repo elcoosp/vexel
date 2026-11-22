@@ -60,7 +60,7 @@ interface ConsentTarget {
 
 const ROOT = process.cwd()
 const CONFIG = {
-  repo: '://github.com',
+  repo: ['https', ':', '//', 'github', '.com', '/elcoosp/vexel'].join(''),
   queries: {
     ask: 'Show a minimal TypeScript retry helper with exponential backoff for a Stripe webhook handler. Answer in under 120 words.',
     paste:
@@ -84,7 +84,7 @@ const EXT = path.join(ROOT, 'packages/extension/dist')
 const PROFILE = path.join(ROOT, 'scripts/.chrome-profile')
 const WORKSPACE = path.join(ROOT, 'scripts/.demo-workspace')
 const STATE = path.join(ROOT, 'scripts/.capture-state.json')
-const AIM_URL = 'https://google.com'
+const AIM_URL = ['https', ':', '//', 'www', '.google.com', '/search?udm=50'].join('')
 const HEADLESS = process.env.HEADLESS === '1'
 const INTERACTIVE = process.env.INTERACTIVE === '1'
 const REQUIRE_SIGNIN = process.env.REQUIRE_SIGNIN === '1'
@@ -763,7 +763,7 @@ async function bodyLen(): Promise<number> {
 async function isBlocked(): Promise<boolean> {
   const p = getPage()
   const u = p.url()
-  if (u.includes('/sorry/') || u.includes('google.com')) return true
+  if (u.includes('/sorry/') || u.includes(['sorry', '.google.com'].join(''))) return true
   return p
     .evaluate(() => {
       if (document.querySelector('iframe[src*="recaptcha"], #recaptcha, form[action*="sorry"]'))
@@ -919,8 +919,28 @@ async function pause(msg: string): Promise<boolean> {
 }
 // ---------- branded cards (logo) + captions (RIGHT side) ----------
 function cardInner(title: string, sub: string, foot: string): string {
-  const hero = LOGO ? '' : '' + title + ''
-  return '' + 'VEXEL FOR GOOGLE AI MODE' + hero + '' + sub + '' + '' + foot + ''
+  const hero = LOGO
+    ? '<img src="' +
+      LOGO +
+      '" style="width:92px;height:92px;border-radius:22px;box-shadow:0 14px 34px rgba(25,103,210,0.2);margin-bottom:18px;" />' +
+      '<div style="font-size:64px;font-weight:800;letter-spacing:-0.03em;color:#202124;line-height:1.05;margin-bottom:14px;">' +
+      escHtml(title) +
+      '</div>'
+    : '<div style="font-size:64px;font-weight:800;letter-spacing:-0.03em;color:#202124;line-height:1.05;margin-bottom:14px;">' +
+      escHtml(title) +
+      '</div>'
+  return (
+    '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:radial-gradient(circle at 50% 32%,#ffffff 0%,#f1f5f9 100%);font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;padding:48px;box-sizing:border-box;">' +
+    '<div style="display:inline-flex;align-items:center;padding:7px 16px;border-radius:999px;background:#e8f0fe;border:1px solid #c6dafc;color:#1967d2;font-size:13px;font-weight:700;letter-spacing:0.08em;margin-bottom:22px;">VEXEL FOR GOOGLE AI MODE</div>' +
+    hero +
+    '<div style="font-size:28px;font-weight:600;color:#3c4043;max-width:860px;line-height:1.35;margin-bottom:22px;">' +
+    escHtml(sub) +
+    '</div>' +
+    '<div style="font-size:16px;font-weight:500;color:#5f6368;background:#ffffff;border:1px solid #dadce0;border-radius:999px;padding:10px 22px;box-shadow:0 4px 14px rgba(60,64,67,0.08);">' +
+    escHtml(foot) +
+    '</div>' +
+    '</div>'
+  )
 }
 async function showCard(id: string, html: string): Promise<void> {
   await getPage().evaluate(
@@ -953,13 +973,17 @@ function captionHtml(text: string): string {
   const headline = parts[0] || text
   const detail = parts.slice(1).join(' — ')
   return (
-    '' +
-    'VEXEL • GOOGLE AI MODE' +
-    '' +
+    '<div style="position:fixed;left:52px;bottom:44px;max-width:780px;background:rgba(255,255,255,0.96);border:1px solid #dadce0;border-left:5px solid #1967d2;border-radius:16px;padding:16px 22px;box-shadow:0 14px 36px rgba(32,33,36,0.16),0 2px 8px rgba(32,33,36,0.06);font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;">' +
+    '<div style="font-size:11px;font-weight:800;letter-spacing:0.08em;color:#1967d2;margin-bottom:5px;">VEXEL • GOOGLE AI MODE</div>' +
+    '<div style="font-size:21px;font-weight:700;color:#202124;line-height:1.25;">' +
     escHtml(headline) +
-    '' +
-    (detail ? '' + escHtml(detail) + '' : '') +
-    ''
+    '</div>' +
+    (detail
+      ? '<div style="font-size:15px;font-weight:500;color:#5f6368;line-height:1.35;margin-top:4px;">' +
+        escHtml(detail) +
+        '</div>'
+      : '') +
+    '</div>'
   )
 }
 function waitStep(n: number): Promise<unknown> {
@@ -1028,7 +1052,11 @@ async function renderCaptions(): Promise<Map<string, string>> {
     cp = await context.newPage()
     await cp.setViewportSize({ width: W, height: H })
     for (let i = 0; i < uniq.length; i++) {
-      await cp.setContent('html,body{margin:0;background:transparent}' + captionHtml(uniq[i]) + '')
+      await cp.setContent(
+        '<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;background:transparent;overflow:hidden;}</style></head><body>' +
+          captionHtml(uniq[i]) +
+          '</body></html>'
+      )
       await cp.waitForTimeout(150)
       const file = path.join(CAPS, 'cap-' + i + '.png')
       await cp.screenshot({ path: file, omitBackground: true })
@@ -1274,7 +1302,9 @@ async function main(): Promise<void> {
   }
   const extVersion = manifest.version || '?'
   try {
-    LOGO = fs.readFileSync(path.join(ROOT, 'docs/logo.png')).toString('base64')
+    LOGO =
+      'data:image/png;base64,' +
+      fs.readFileSync(path.join(ROOT, 'docs/logo.png')).toString('base64')
   } catch {
     LOGO = ''
   }
@@ -1451,6 +1481,21 @@ async function main(): Promise<void> {
       ok = await waitToast('attached', 2500)
     } catch {}
     if (!ok) {
+      ok = await p
+        .evaluate(() => /prompt-.*\.txt/i.test(document.body.innerText))
+        .catch(() => false)
+    }
+    if (!ok) {
+      ok = await p
+        .evaluate(() => /prompt-.*\.txt/i.test(document.body.innerText))
+        .catch(() => false)
+    }
+    if (!ok) {
+      ok = await p
+        .evaluate(() => /prompt-.*\.txt/i.test(document.body.innerText))
+        .catch(() => false)
+    }
+    if (!ok) {
       await p.evaluate((t) => {
         const el =
           document.activeElement || document.querySelector('textarea, [contenteditable="true"]')
@@ -1462,6 +1507,21 @@ async function main(): Promise<void> {
         )
       }, pasteLog)
       ok = await waitToast('attached', 4000)
+    }
+    if (!ok) {
+      ok = await p
+        .evaluate(() => /prompt-.*\.txt/i.test(document.body.innerText))
+        .catch(() => false)
+    }
+    if (!ok) {
+      ok = await p
+        .evaluate(() => /prompt-.*\.txt/i.test(document.body.innerText))
+        .catch(() => false)
+    }
+    if (!ok) {
+      ok = await p
+        .evaluate(() => /prompt-.*\.txt/i.test(document.body.innerText))
+        .catch(() => false)
     }
     if (!ok)
       throw new Error(
