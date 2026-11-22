@@ -5,6 +5,12 @@ function injectInstantVirtualizationCSS(): void {
   const style = document.createElement('style')
   style.id = 'vexel-fast-load-css'
   style.textContent = `
+    html.vexel-booting *,
+    html.vexel-booting *::before,
+    html.vexel-booting *::after {
+      animation-duration: 0.001ms !important;
+      transition-duration: 0.001ms !important;
+    }
     html.vexel-booting [data-scope-id="turn"]:not(:last-of-type),
     html.vexel-resizing [data-scope-id="turn"]:not(:nth-last-of-type(-n+2)) {
       content-visibility: hidden !important;
@@ -133,4 +139,59 @@ export function initDomBooster(): void {
   } else {
     runInitialAutoScroll()
   }
+
+  // Reversible True DOM Pruning for long threads (>12 turns): detaches offscreen older turn children
+  // into a WeakMap<HTMLElement, DocumentFragment> while preserving exact height & Wiz node identities.
+  const prunedTurns = new WeakMap<HTMLElement, { fragment: DocumentFragment; height: number }>()
+
+  const restoreTurn = (turn: HTMLElement) => {
+    const entry = prunedTurns.get(turn)
+    if (!entry) return
+    prunedTurns.delete(turn)
+    turn.replaceChildren(entry.fragment)
+    turn.style.minHeight = ''
+    delete turn.dataset.vexelPruned
+  }
+
+  const pruneObserver =
+    typeof IntersectionObserver !== 'undefined'
+      ? new IntersectionObserver(
+          (entries) => {
+            for (const entry of entries) {
+              if (entry.isIntersecting) {
+                const el = entry.target as HTMLElement
+                pruneObserver?.unobserve(el)
+                restoreTurn(el)
+              }
+            }
+          },
+          { rootMargin: '900px 0px' }
+        )
+      : null
+
+  const pruneOldTurns = () => {
+    if (document.documentElement.classList.contains('vexel-booting')) return
+    const turns = Array.from(document.querySelectorAll<HTMLElement>('[data-scope-id="turn"]'))
+    if (turns.length <= 12) return
+    const candidates = turns.slice(0, -8)
+    for (const turn of candidates) {
+      if (prunedTurns.has(turn) || !turn.isConnected) continue
+      const rect = turn.getBoundingClientRect()
+      // Only prune turns well above the current viewport
+      if (rect.bottom > -900) continue
+      const height = Math.max(120, Math.round(rect.height))
+      const fragment = document.createDocumentFragment()
+      while (turn.firstChild) {
+        fragment.appendChild(turn.firstChild)
+      }
+      turn.appendChild(document.createComment('vexel-pruned'))
+      turn.style.minHeight = `${height}px`
+      turn.dataset.vexelPruned = '1'
+      prunedTurns.set(turn, { fragment, height })
+      pruneObserver?.observe(turn)
+    }
+  }
+
+  document.addEventListener('aimRenderComplete', () => window.setTimeout(pruneOldTurns, 400), true)
+  window.setTimeout(pruneOldTurns, 2600)
 }
