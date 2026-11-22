@@ -5,7 +5,7 @@ interface CachedTurnSnapshot extends LastExchangeSnapshot {
   updatedAt: number
 }
 
-const CACHE_STORAGE_KEY = 'vexel:thread-cache:v3'
+const CACHE_STORAGE_KEY = 'vexel:thread-cache:v4'
 const MAX_CACHED_THREADS = 25
 const ALLOWED_TAGS = new Set([
   'P',
@@ -160,10 +160,10 @@ export const initInstantThreadCache = (): void => {
     Object.assign(host.style, {
       position: 'fixed',
       left: '50%',
-      bottom: '112px',
+      bottom: '148px',
       transform: 'translateX(-50%)',
       width: 'min(740px, calc(100vw - 48px))',
-      maxHeight: '52vh',
+      maxHeight: 'calc(100vh - 220px)',
       zIndex: '2147483640',
       contain: 'content',
       pointerEvents: 'auto',
@@ -172,7 +172,7 @@ export const initInstantThreadCache = (): void => {
     const sr = host.attachShadow({ mode: 'open' })
     const style = document.createElement('style')
     style.textContent = [
-      '.card{background:#fff;border:1px solid #dadce0;border-radius:16px;box-shadow:0 8px 28px rgba(32,33,36,.14);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#202124;display:flex;flex-direction:column;max-height:52vh;overflow:hidden}',
+      '.card{background:#fff;border:1px solid #dadce0;border-radius:16px;box-shadow:0 8px 28px rgba(32,33,36,.14);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#202124;display:flex;flex-direction:column;max-height:calc(100vh - 220px);overflow:hidden}',
       '.hdr{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 14px;background:#f8f9fa;border-bottom:1px solid #e8eaed;font-size:12px;color:#3c4043;font-weight:500}',
       '.hdr-left{display:flex;align-items:center;gap:8px;min-width:0}',
       '.hdr-actions{display:flex;align-items:center;gap:6px}',
