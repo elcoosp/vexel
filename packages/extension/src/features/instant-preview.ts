@@ -124,7 +124,14 @@ const htmlNodeToMarkdown = (node: Node): string => {
   if (node.nodeType === Node.TEXT_NODE) return node.textContent || ''
   if (node.nodeType !== Node.ELEMENT_NODE) return ''
   const el = node as HTMLElement
-  if (el.closest('[data-vexel-ui]')) return ''
+  if (
+    el.closest(
+      '[data-vexel-ui], [aria-hidden="true"], [hidden], [role="dialog"], [role="menu"], form, button, svg, nav'
+    ) ||
+    el.style.display === 'none' ||
+    el.style.visibility === 'hidden'
+  )
+    return ''
   const tag = el.tagName
   const fence = String.fromCharCode(96, 96, 96)
   const tick = String.fromCharCode(96)
@@ -149,6 +156,25 @@ const htmlNodeToMarkdown = (node: Node): string => {
   if (tag === 'P' || tag === 'DIV' || tag === 'SECTION') return inner.trim() + '\n\n'
   if (tag === 'BR') return '\n'
   return inner
+}
+
+const stripGoogleFeedbackNoise = (md: string): string => {
+  const stopMarkers = [
+    '\nInapproprié\n',
+    '\nNe fonctionne pas\n',
+    '\nUne copie de cette discussion',
+    '\nGoogle peut utiliser les données',
+    '\nTout afficherAfficher moins',
+    '\nInappropriate\n',
+    '\nNot working\n',
+    '\nA copy of this conversation',
+  ]
+  let out = md
+  for (const marker of stopMarkers) {
+    const idx = out.indexOf(marker)
+    if (idx !== -1) out = out.slice(0, idx)
+  }
+  return out.replace(/\n{3,}/g, '\n\n').trim()
 }
 
 export const initInstantThreadCache = (): void => {
@@ -279,7 +305,7 @@ export const initInstantThreadCache = (): void => {
     if (snap.answerMarkdown) {
       const aEl = document.createElement('div')
       aEl.className = 'answer'
-      renderMarkdown(aEl, snap.answerMarkdown)
+      renderMarkdown(aEl, stripGoogleFeedbackNoise(snap.answerMarkdown))
       body.appendChild(aEl)
     }
     card.append(hdr, body)
