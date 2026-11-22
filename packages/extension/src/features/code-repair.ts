@@ -210,6 +210,10 @@ function isPoisonedMarkdownCodeBlock(card: Element): boolean {
 
 export const reconstructIndentation = reconstructStructuralIndentation
 
+function isSemanticHeadingElement(el: HTMLElement): boolean {
+  return el.getAttribute('role') === 'heading' || /^H[1-6]$/.test(el.tagName)
+}
+
 function isGoogleLegalFooterNode(el: HTMLElement): boolean {
   if (el.querySelector('a[href*="support.google.com"], a[href*="policies.google.com"]')) return true
   const txt = (el.textContent || '').trim()
@@ -825,6 +829,11 @@ async function repairBrokenSequenceFromCodeCard(
         if (!cleaned) continue
         const assembledSoFar = [headCode, previousTail, ...spilledChunks].filter(Boolean).join('\n')
         const stillOpen = hasUnclosedCodeDelimiter(assembledSoFar)
+        if (stillOpen && isSemanticHeadingElement(node)) {
+          spilledSiblings.push(node)
+          spilledChunks.push(`# ${cleaned}`)
+          continue
+        }
         const isNaturalIntroColon =
           /^[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ][a-zàâäéèêëîïôöùûüç]+(?:\s+[a-zàâäéèêëîïôöùûüçA-Z0-9_-]+){2,}:$/.test(
             cleaned

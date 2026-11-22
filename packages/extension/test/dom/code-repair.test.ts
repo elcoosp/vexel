@@ -918,4 +918,62 @@ Exécute \`./wr.sh\` avec ce script.
     expect(fullText).toContain('git status -s')
     expect(document.querySelector('[data-vexel-repaired-followup="true"]')).not.toBeNull()
   })
+  it('restores leaked # comments misparsed as role="heading" inside an unclosed heredoc and absorbs the remaining script', async () => {
+    document.body.innerHTML = `
+      <div class="mZJni" data-scope-id="turn" jsname="CS7uPe" data-complete="true">
+        <div class="BpxUDf aiModeUiCodeBlock__Container" data-sfc-cp="" data-hveid="CAIIDxAA">
+          <div>
+            <div class="rq1a2">
+              <div class="a2TNg"><div class="GlO4G">bash</div></div>
+              <div class="PGvq2d">
+                <pre><code>#!/usr/bin/env bash
+set -euo pipefail
+cd ~/Documents/Repos/context-braid
+
+python3 - &lt;&lt; 'PY'
+import re
+from pathlib import Path
+
+p_mac = Path("crates/braid/src/macos.rs")
+mtxt = p_mac.read_text(encoding="utf-8")
+</code></pre>
+              </div>
+            </div>
+            <div class="iMHp6c">
+              <div class="ZIumpf">Utilisez le code avec précaution.</div>
+              <div class="YHsVn"><button aria-label="Copier le texte du code dans le presse-papiers.">Copier</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="yhAwj" data-sfc-cp=""></div>
+        <div class="ZLzG0d ncoeY E8xBUb" role="heading" aria-level="4" data-sfc-cp="">Scinder dispatch_ipc_command en extrayant handle_sync_tabs et handle_get_dashboard</div>
+        <div class="n6owBd awi2gc" data-sfc-cp="">idx_disp = maintxt.index("async fn dispatch_ipc_command(")<br>idx_hc = maintxt.index("async fn handle_client(")<br>disp_body = maintxt[idx_disp:idx_hc]</div>
+        <div class="yhAwj" data-sfc-cp=""></div>
+        <div class="ZLzG0d ncoeY E8xBUb" role="heading" aria-level="4" data-sfc-cp="">Tests unitaires dans main.rs : 0 unwrap, 0 expect</div>
+        <div class="n6owBd awi2gc" data-sfc-cp="">p_main.write_text(maintxt, encoding="utf-8")<br>PY</div>
+        <div class="n6owBd awi2gc" data-sfc-cp="">cargo fmt --all</div>
+        <div class="n6owBd awi2gc" data-sfc-cp="">echo "=== 4. Etat Git ==="<br>git status -s</div>
+        <div class="yhAwj" data-sfc-cp=""></div>
+        <div class="fMjZBb"><div class="BpxUDf aiModeUiCodeBlock__Container" data-sfc-cp=""><div class="rq1a2"><div class="PGvq2d"><pre><code>&lt;FollowUp&gt;
+Exécute \`./wr.sh\` avec ce script.
+&lt;</FollowUp></pre></div></div></div></div>
+      </div>
+    `
+
+    scanAndRepairCodeBlocks(document, () => {})
+    await new Promise((r) => setTimeout(r, 40))
+
+    const codeCard = document.querySelector('.aiModeUiCodeBlock__Container')!
+    const fullText = codeCard.querySelector('pre code')?.textContent || ''
+    expect(fullText).toContain(
+      '# Scinder dispatch_ipc_command en extrayant handle_sync_tabs et handle_get_dashboard'
+    )
+    expect(fullText).toContain('idx_disp = maintxt.index("async fn dispatch_ipc_command(")')
+    expect(fullText).toContain('# Tests unitaires dans main.rs : 0 unwrap, 0 expect')
+    expect(fullText).toContain('PY')
+    expect(fullText).toContain('cargo fmt --all')
+    expect(fullText).toContain('git status -s')
+    expect(document.querySelectorAll('[role="heading"]').length).toBe(0)
+    expect(document.querySelector('[data-vexel-repaired-followup="true"]')).not.toBeNull()
+  })
 })
