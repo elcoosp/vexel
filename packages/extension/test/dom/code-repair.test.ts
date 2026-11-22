@@ -673,4 +673,51 @@ describe('code-repair DOM integration', () => {
     expect(record?.code).toContain("console.error('Bus', `Erreur sur ${evenement.type}`);")
     expect(record?.engine).toBe('oxfmt')
   })
+
+  it('mounts format badge with elapsed milliseconds in the bottom bar next to the copy button', async () => {
+    ;(globalThis as Record<string, unknown>).chrome = {
+      runtime: {
+        sendMessage: (msg: { code?: string }, cb?: (res: unknown) => void) => {
+          cb?.({ ok: true, formatted: msg.code, engine: 'oxfmt' })
+        },
+      },
+    }
+    const unclosedHead = [
+      'export function demo() {',
+      ...Array.from({ length: 160 }, (_, i) => '  const v' + i + ' = ' + i + ';'),
+      '  if (true) {',
+    ].join('\n')
+
+    document.body.innerHTML = [
+      '<div class="CKgc1d" data-last-turn="true" data-scope-id="turn">',
+      '  <div class="mZJni" data-container-id="main-col">',
+      '    <div style="display: contents" data-container-id="24">',
+      '      <div class="BpxUDf aiModeUiCodeBlock__Container" data-hveid="CAIIAAgJEAA">',
+      '        <div>',
+      '          <div class="rq1a2"><div><div>typescript</div></div><pre><code>' +
+        unclosedHead +
+        '</code></pre></div>',
+      '          <div class="iMHp6c"><div class="ZIumpf">Utilisez le code avec précaution.</div><div class="YHsVn"><button aria-label="Copier">Copy</button></div></div>',
+      '        </div>',
+      '      </div>',
+      '      <div class="n6owBd awi2gc">  }<br>}</div>',
+      '    </div>',
+      '  </div>',
+      '</div>',
+    ].join('')
+
+    scanAndRepairCodeBlocks(document, () => {})
+    await new Promise((r) => setTimeout(r, 80))
+
+    const card = document.querySelector<HTMLElement>('.aiModeUiCodeBlock__Container')!
+    const footer = card.querySelector<HTMLElement>('.iMHp6c')!
+    const badge = footer.querySelector<HTMLElement>('[data-vexel-format-badge="true"]')!
+    expect(badge).not.toBeNull()
+    expect(badge.nextElementSibling?.querySelector("button[aria-label='Copier']")).not.toBeNull()
+    const label =
+      badge.shadowRoot?.querySelector('[data-vexel-pill-label="true"]')?.textContent || ''
+    expect(label).toMatch(/· oxfmt · \d+ ms$/)
+    const record = getRepairedCodeForContainer(card)
+    expect(record?.durationMs).toBeGreaterThanOrEqual(1)
+  })
 })

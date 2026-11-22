@@ -12,6 +12,7 @@ export interface RepairedCodeRecord {
   code: string
   engine: string
   lang: string
+  durationMs: number
 }
 
 const repairedCodeByContainer = new WeakMap<HTMLElement, RepairedCodeRecord>()
@@ -242,12 +243,6 @@ function formatWithBridge(
       runtime.sendMessage({ type: 'FORMAT_CODE', code, lang, filename: filenameHint }, (res) => {
         const err = runtime.lastError?.message
         const payload = res?.data ?? res
-        console.info('[Vexel:format] bridge response:', {
-          lang,
-          err: err || null,
-          ok: res?.ok,
-          engine: payload?.engine,
-        })
         if (!err && res?.ok && typeof payload?.formatted === 'string') {
           done({ formatted: payload.formatted, engine: String(payload.engine || 'bridge') })
         } else {
@@ -260,15 +255,37 @@ function formatWithBridge(
   })
 }
 
-function mountFormatStatusPill(headerEl: HTMLElement, engine: string): void {
+function mountFormatStatusPill(
+  codeCard: Element,
+  preEl: HTMLElement,
+  headerEl: HTMLElement | null,
+  engine: string,
+  durationMs: number
+): void {
   const engineLabel = !engine || engine === 'fallback' ? 'local' : engine
-  const nextLabel = `${t`Repaired`} · ${engineLabel}`
-  const existing = headerEl.querySelector<HTMLElement>('[data-vexel-format-badge="true"]')
+  const nextLabel = `${t`Repaired`} · ${engineLabel} · ${durationMs} ms`
+  const existing = codeCard.querySelector<HTMLElement>('[data-vexel-format-badge="true"]')
   if (existing?.shadowRoot) {
     const labelSpan = existing.shadowRoot.querySelector('[data-vexel-pill-label="true"]')
     if (labelSpan) labelSpan.textContent = nextLabel
     return
   }
+
+  const candidateFooter = preEl.parentElement?.nextElementSibling
+  const footerEl =
+    candidateFooter instanceof HTMLElement &&
+    !candidateFooter.hasAttribute('data-vexel-ui') &&
+    candidateFooter.querySelector('button:not([data-vexel-ui])') !== null
+      ? candidateFooter
+      : null
+  const copyWrapper = footerEl
+    ? Array.from(footerEl.children).find(
+        (child): child is HTMLElement =>
+          child instanceof HTMLElement &&
+          !child.hasAttribute('data-vexel-ui') &&
+          Boolean(child.querySelector('button'))
+      ) || null
+    : null
 
   const host = document.createElement('span')
   host.setAttribute('data-vexel-ui', 'true')
@@ -278,13 +295,13 @@ function mountFormatStatusPill(headerEl: HTMLElement, engine: string): void {
     alignItems: 'center',
     flexShrink: '0',
     whiteSpace: 'nowrap',
-    marginLeft: '8px',
+    marginLeft: footerEl && copyWrapper ? 'auto' : '8px',
+    marginRight: footerEl && copyWrapper ? '8px' : '0',
     verticalAlign: 'middle',
   })
 
   const shadow = host.attachShadow({ mode: 'open' })
   const pill = document.createElement('span')
-  const labelText = nextLabel
   pill.title = t`Truncated code block automatically reassembled and formatted by Vexel`
   Object.assign(pill.style, {
     display: 'inline-flex',
@@ -309,13 +326,19 @@ function mountFormatStatusPill(headerEl: HTMLElement, engine: string): void {
   const labelSpan = document.createElement('span')
   labelSpan.setAttribute('data-vexel-pill-label', 'true')
   labelSpan.style.whiteSpace = 'nowrap'
-  labelSpan.textContent = labelText
+  labelSpan.textContent = nextLabel
   pill.append(createLucideIcon('sparkles', 11, 'currentColor'), labelSpan)
   shadow.appendChild(pill)
 
-  const saveHost = headerEl.querySelector('[data-vexel-ui="true"]')
-  if (saveHost) headerEl.insertBefore(host, saveHost)
-  else headerEl.appendChild(host)
+  if (footerEl && copyWrapper) {
+    footerEl.insertBefore(host, copyWrapper)
+  } else if (footerEl) {
+    footerEl.appendChild(host)
+  } else if (headerEl) {
+    const saveHost = headerEl.querySelector('[data-vexel-ui="true"]')
+    if (saveHost) headerEl.insertBefore(host, saveHost)
+    else headerEl.appendChild(host)
+  }
 }
 
 function extractRawMarkdownFromPoisonedCard(card: Element): string {
@@ -590,6 +613,7 @@ async function repairBrokenSequenceFromCodeCard(
   const codeEl = pre?.querySelector('code')
   if (!pre || !codeEl) return
   inFlightCards.add(codeCard)
+  const repairStartMs = performance.now()
   try {
     const existingTailEl = codeEl.querySelector<HTMLElement>('[data-vexel-repaired-tail="true"]')
     const previousTail = existingTailEl ? (existingTailEl.textContent || '').replace(/^\n/, '') : ''
@@ -773,9 +797,15 @@ async function repairBrokenSequenceFromCodeCard(
     if (reachedTerminalBoundary || turnRoot.querySelector('[data-zzy="1"]') !== null) {
       codeCard.setAttribute('data-vexel-repaired-final', '1')
     }
-    repairedCodeByContainer.set(codeCard as HTMLElement, { code: formatted, engine, lang })
+    const durationMs = Math.max(1, Math.round(performance.now() - repairStartMs))
+    repairedCodeByContainer.set(codeCard as HTMLElement, {
+      code: formatted,
+      engine,
+      lang,
+      durationMs,
+    })
     bindNativeCopyOverride(codeCard, showToast)
-    if (headerEl) mountFormatStatusPill(headerEl, engine)
+    mountFormatStatusPill(codeCard, pre, headerEl, engine, durationMs)
     if (poisonedHost && poisonedHost.parentNode && poisonedRawMarkdown.trim()) {
       renderCleanFollowUpCard(poisonedHost, poisonedRawMarkdown, showToast)
     }
