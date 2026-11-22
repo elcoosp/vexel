@@ -1236,4 +1236,51 @@ Exécute \`./wr.sh\` avec ce script.
       g.chrome = prevChrome
     }
   })
+
+  it('extracts authoritative full code from Wiz comment node and absorbs ISO-8601 log lines + Python __main__ strong tags', async () => {
+    const nl = String.fromCharCode(10)
+    const turn = document.createElement('div')
+    turn.setAttribute('data-scope-id', 'turn')
+    turn.setAttribute('data-complete', 'true')
+    const card = document.createElement('div')
+    card.setAttribute('data-hveid', 'CAIIAQ')
+    const header = document.createElement('div')
+    header.textContent = 'rust'
+    const preWrap = document.createElement('div')
+    const pre = document.createElement('pre')
+    const code = document.createElement('code')
+    code.className = 'language-rust'
+    const headCode = [
+      'fn main() {',
+      '    let logs = r#"',
+      '2026-11-22T08:00:08Z INFO [payment-gw] OK',
+    ].join(nl)
+    const fullCode = [
+      headCode,
+      '2026-11-22T08:01:10Z TRACE [metrics-agent] CPU 34%',
+      '"#;',
+      '}',
+    ].join(nl)
+    code.textContent = headCode
+    pre.appendChild(code)
+    preWrap.appendChild(pre)
+    card.append(header, preWrap)
+    card.appendChild(document.createComment('TgQPHd|||' + JSON.stringify([['rust', fullCode]])))
+    const spilled = document.createElement('div')
+    spilled.className = 'n6owBd'
+    spilled.setAttribute('data-sfc-cp', '')
+    spilled.innerHTML = '2026-11-22T08:01:10Z TRACE [metrics-agent] CPU 34%<br>"#;<br>}'
+    const prose = document.createElement('div')
+    prose.className = 'n6owBd'
+    prose.setAttribute('data-sfc-cp', '')
+    prose.textContent = 'Voici une synthèse complète de cette implémentation Rust.'
+    turn.append(card, spilled, prose)
+    document.body.appendChild(turn)
+    scanAndRepairCodeBlocks(document, () => {})
+    await new Promise((r) => setTimeout(r, 40))
+    expect(spilled.isConnected).toBe(false)
+    expect(prose.isConnected).toBe(true)
+    expect(code.textContent).toContain('2026-11-22T08:01:10Z TRACE [metrics-agent] CPU 34%')
+    expect(code.textContent?.trim().endsWith('}')).toBe(true)
+  })
 })

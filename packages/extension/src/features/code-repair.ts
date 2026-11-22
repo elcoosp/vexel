@@ -27,7 +27,7 @@ const scannedCardSignatures = new WeakMap<Element, string>()
 const cardTopologyCache = new WeakMap<Element, CardTopology>()
 
 function markCardFinal(codeCard: Element, pre?: Element | null): void {
-  markCardFinal(codeCard, pre)
+  codeCard.setAttribute('data-vexel-repaired-final', '1')
   const preEl = pre || codeCard.querySelector('pre')
   if (preEl) preEl.setAttribute('data-vexel-final-pre', '1')
 }
@@ -68,7 +68,7 @@ const NON_CODE_ELEMENT_TAGS = new Set([
   'SVG',
 ])
 
-function extractCleanSiblingCode(el: HTMLElement): string {
+function extractCleanSiblingCode(el: HTMLElement, lang = ''): string {
   if (NON_CODE_ELEMENT_TAGS.has(el.tagName.toUpperCase())) return ''
   const clone = el.cloneNode(true) as HTMLElement
   clone
@@ -77,6 +77,22 @@ function extractCleanSiblingCode(el: HTMLElement): string {
     )
     .forEach((node) => node.remove())
   clone.querySelectorAll('br').forEach((br) => br.replaceWith(document.createTextNode('\n')))
+  if (lang === 'python' || lang === 'py') {
+    for (const strongNode of Array.from(clone.querySelectorAll('strong, b'))) {
+      const inner = (strongNode.textContent || '').trim()
+      if (/^[a-zA-Z0-9_]+$/.test(inner)) {
+        strongNode.replaceWith(document.createTextNode('__' + inner + '__'))
+      }
+    }
+  }
+  if (lang === 'python' || lang === 'py') {
+    for (const strongNode of Array.from(clone.querySelectorAll('strong, b'))) {
+      const inner = (strongNode.textContent || '').trim()
+      if (/^[a-zA-Z0-9_]+$/.test(inner)) {
+        strongNode.replaceWith(document.createTextNode('__' + inner + '__'))
+      }
+    }
+  }
   for (const codeNode of Array.from(clone.querySelectorAll('code'))) {
     const inner = codeNode.textContent || ''
     codeNode.replaceWith(document.createTextNode(BT1 + inner + BT1))
@@ -254,6 +270,12 @@ function looksLikeCodeFragment(text: string): boolean {
         line
       ) ||
       /^!\s*[a-zA-Z0-9_./-]+/.test(line) ||
+      /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?\s+(?:TRACE|DEBUG|INFO|WARN|WARNING|ERROR|FATAL)\b/.test(
+        line
+      ) ||
+      /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?\s+(?:TRACE|DEBUG|INFO|WARN|WARNING|ERROR|FATAL)\b/.test(
+        line
+      ) ||
       /[{};=]$/.test(line) ||
       /^\}[;,]?$/.test(line) ||
       /^[a-zA-Z_$][a-zA-Z0-9_$.]*\s*\(/.test(line) ||
@@ -750,6 +772,35 @@ function bindNativeCopyOverride(codeCard: Element, showToast: (msg: string) => v
   )
 }
 
+function extractWizFullCodeFromCard(
+  codeCard: Element,
+  anchorBlock: Element
+): { lang: string; fullCode: string } | null {
+  const roots: Element[] = [codeCard]
+  if (anchorBlock !== codeCard) roots.push(anchorBlock)
+  if (anchorBlock.parentElement) roots.push(anchorBlock.parentElement)
+  for (const root of roots) {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT)
+    let current = walker.nextNode()
+    while (current) {
+      const val = current.nodeValue || ''
+      if (val.startsWith('TgQPHd|||[[')) {
+        try {
+          const parsed = JSON.parse(val.slice('TgQPHd|||'.length))
+          const first = Array.isArray(parsed) ? parsed.find(Array.isArray) : null
+          const lang = typeof first?.[0] === 'string' ? first[0].toLowerCase() : ''
+          const fullCode = typeof first?.[1] === 'string' ? first[1] : ''
+          if (fullCode.length > 0) {
+            return { lang, fullCode }
+          }
+        } catch {}
+      }
+      current = walker.nextNode()
+    }
+  }
+  return null
+}
+
 async function repairBrokenSequenceFromCodeCard(
   codeCard: Element,
   showToast: (msg: string) => void
@@ -807,7 +858,21 @@ async function repairBrokenSequenceFromCodeCard(
     } else {
       headCode = (codeEl.textContent || '').replace(/\n$/, '')
     }
-    if (headCode.length < TRUNCATION_MIN_CHARS && !hasUnclosedCodeDelimiter(headCode)) {
+    const headerEl = (pre.parentElement?.previousElementSibling as HTMLElement | null) || null
+    const detectedLang = detectSemanticLang(codeEl, headerEl)
+    const wizPayload = extractWizFullCodeFromCard(codeCard, anchorBlock)
+    const lang = detectedLang || wizPayload?.lang || ''
+    const wizFullCode =
+      wizPayload && wizPayload.fullCode.length > headCode.length + 12
+        ? wizPayload.fullCode.replace(/\n$/, '')
+        : ''
+    const expectedSpillChars = wizFullCode ? Math.max(0, wizFullCode.length - headCode.length) : 0
+
+    if (
+      !wizFullCode &&
+      headCode.length < TRUNCATION_MIN_CHARS &&
+      !hasUnclosedCodeDelimiter(headCode)
+    ) {
       if (isTurnFinished) markCardFinal(codeCard, pre)
       return
     }
@@ -857,18 +922,21 @@ async function repairBrokenSequenceFromCodeCard(
       walkEl = walkEl.parentElement
     }
 
+    let absorbedChars = previousTail.length
     for (const node of candidateNodes) {
+      const withinWizBudget = expectedSpillChars > 0 && absorbedChars < expectedSpillChars + 64
       if (node.nodeType === Node.TEXT_NODE) {
         const rawTextNode = (node.textContent || '').replace(/\u00a0/g, ' ').trim()
         if (!rawTextNode) continue
         const assembledSoFar = [headCode, previousTail, ...spilledChunks].filter(Boolean).join('\n')
         const stillOpen = hasUnclosedCodeDelimiter(assembledSoFar)
-        if (isNaturalLanguageProseBlock(rawTextNode)) {
+        if (!withinWizBudget && isNaturalLanguageProseBlock(rawTextNode)) {
           break
         }
-        if (stillOpen || looksLikeCodeFragment(rawTextNode)) {
+        if (withinWizBudget || stillOpen || looksLikeCodeFragment(rawTextNode)) {
           spilledSiblings.push(node)
           spilledChunks.push(rawTextNode)
+          absorbedChars += rawTextNode.length + 1
         } else {
           break
         }
@@ -909,47 +977,48 @@ async function repairBrokenSequenceFromCodeCard(
           reachedTerminalBoundary = true
           break
         }
-        const cleaned = extractCleanSiblingCode(node)
+        const cleaned = extractCleanSiblingCode(node, lang)
         if (!cleaned) continue
         const assembledSoFar = [headCode, previousTail, ...spilledChunks].filter(Boolean).join('\n')
         const stillOpen = hasUnclosedCodeDelimiter(assembledSoFar)
-        if (stillOpen && isSemanticHeadingElement(node)) {
+        if ((stillOpen || withinWizBudget) && isSemanticHeadingElement(node)) {
           spilledSiblings.push(node)
           spilledChunks.push(`# ${cleaned}`)
+          absorbedChars += cleaned.length + 3
           continue
         }
         const isNaturalIntroColon =
           /^[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ][a-zàâäéèêëîïôöùûüç]+(?:\s+[a-zàâäéèêëîïôöùûüçA-Z0-9_-]+){2,}:$/.test(
             cleaned
           )
-        if (isNaturalLanguageProseBlock(cleaned) || isNaturalIntroColon) {
+        if (!withinWizBudget && (isNaturalLanguageProseBlock(cleaned) || isNaturalIntroColon)) {
           reachedTerminalBoundary = true
           break
         }
         if (
+          !withinWizBudget &&
           !stillOpen &&
           spilledChunks.length === 0 &&
-          /^[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ][a-zàâäéèêëîïôöùûüç]+(?:s+[a-zàâäéèêëîïôöùûüçA-Z0-9_-]+){2,}:$/.test(
+          /^[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ][a-zàâäéèêëîïôöùûüç]+(?:\s+[a-zàâäéèêëîïôöùûüçA-Z0-9_-]+){2,}:$/.test(
             cleaned
           )
         ) {
           break
         }
-        if (stillOpen || looksLikeCodeFragment(cleaned)) {
+        if (withinWizBudget || stillOpen || looksLikeCodeFragment(cleaned)) {
           spilledSiblings.push(node)
           spilledChunks.push(cleaned)
+          absorbedChars += cleaned.length + 1
         } else {
           break
         }
       }
     }
-    if (spilledChunks.length === 0 && !poisonedHost) {
+    if (spilledChunks.length === 0 && !wizFullCode && !poisonedHost) {
       if (isTurnFinished) markCardFinal(codeCard, pre)
       return
     }
     codeCard.setAttribute('data-vexel-repaired', '1')
-    const headerEl = (pre.parentElement?.previousElementSibling as HTMLElement | null) || null
-    const lang = detectSemanticLang(codeEl, headerEl)
     const firstLine = (headCode.split('\n').find(() => true) || '').trim()
     const strippedComment = firstLine.replace(/^(?:\/\/|#|\/\*|<!--)\s*(?:file:\s*)?/i, '')
     const candidateToken = strippedComment.split(/\s+/).find(Boolean) || ''
@@ -957,8 +1026,9 @@ async function repairBrokenSequenceFromCodeCard(
       ? candidateToken
       : undefined
     const combinedTailRaw = [previousTail, ...spilledChunks].filter(Boolean).join('\n')
-    const reindented =
-      combinedTailRaw.length > 0
+    const reindented = wizFullCode
+      ? wizFullCode
+      : combinedTailRaw.length > 0
         ? reconstructIndentation(headCode, combinedTailRaw, lang)
         : headCode
     const { formatted, engine } = await formatWithBridge(reindented, lang, filenameHint)
