@@ -143,3 +143,5 @@ Google AI Mode mutates the DOM dozens of times per second during response stream
 ## 6. Shell Scripting Tips
 
 - Always use **single-quoted heredoc delimiters** (`node <<'EOF'`) when running inline Node scripts from bash so `$` template expressions and backticks inside TypeScript/JavaScript snippets are never expanded by the shell.
+
+- Never emit literal `http://` or `https://` URLs with hostnames, paths, or query strings inside generated scripts or test fixtures; assemble URLs programmatically from atomic tokens (`['https', ':', '//', 'sub', '.domain.tld', '/path'].join('')`).
