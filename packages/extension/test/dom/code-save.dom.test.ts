@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { scanAndRepairCodeBlocks } from '../../src/features/code-repair'
 import { initCodeSave } from '../../src/features/code-save'
 import { RECENT_FILES_KEY } from '../../src/features/palette-files'
 
@@ -89,5 +90,69 @@ export const retry = () => true;</code></pre>
     const allInputs = document.querySelectorAll<HTMLInputElement>('input[type="text"]')
     const pyInput = allInputs.item(allInputs.length - 1)
     expect(pyInput?.value).toBe('pkg/handlers/script.py')
+  })
+
+  it('writes the full reassembled & formatted code when saving a repaired code block', async () => {
+    const writtenPayloads: Array<{ relPath?: string; content?: string }> = []
+    ;(globalThis as Record<string, unknown>).chrome = {
+      runtime: {
+        lastError: null,
+        sendMessage: vi.fn(
+          (
+            msg: { type: string; code?: string; relPath?: string; content?: string },
+            cb?: (res: unknown) => void
+          ) => {
+            if (msg.type === 'FORMAT_CODE')
+              cb?.({
+                ok: true,
+                formatted: (msg.code || '') + '\n// formatted-by-bridge',
+                engine: 'oxfmt',
+              })
+            else if (msg.type === 'BROWSE_DIR') cb?.({ ok: true, data: { entries: [] } })
+            else if (msg.type === 'WRITE_FILE') {
+              writtenPayloads.push({ relPath: msg.relPath, content: msg.content })
+              cb?.({ ok: true, data: { ok: true, bytes: (msg.content || '').length } })
+            }
+          }
+        ),
+      },
+    }
+    const head = [
+      '// src/services/repaired.ts',
+      'export function computeTotal() {',
+      ...Array.from({ length: 130 }, (_, i) => '  const item' + i + ' = ' + i + ';'),
+      '  if (true) {',
+    ].join('\n')
+    document.body.innerHTML = [
+      '<div class="CKgc1d" data-last-turn="true" data-scope-id="turn">',
+      '  <div class="mZJni" data-container-id="main-col">',
+      '    <div style="display: contents" data-container-id="40">',
+      '      <div class="BpxUDf" data-hveid="card-repaired-save"><div><div class="a2TNg"><div>typescript</div></div><div><pre><code>' +
+        head +
+        '</code></pre></div><div data-testid="footer-save"><div>Caution</div><div><button aria-label="Copier">Copy</button></div></div></div></div>',
+      '      <div class="n6owBd">    return 42;<br>  }<br>}</div>',
+      '    </div>',
+      '  </div>',
+      '</div>',
+    ].join('')
+    initCodeSave(() => {})
+    scanAndRepairCodeBlocks(document, () => {})
+    await new Promise((r) => setTimeout(r, 80))
+    const code = document.querySelector('code') as HTMLElement
+    code.dispatchEvent(new Event('pointerover', { bubbles: true }))
+    await new Promise((r) => setTimeout(r, 20))
+    const saveHost = Array.from(
+      document.querySelectorAll<HTMLElement>('span[data-vexel-ui="true"]')
+    ).find((el) => !el.hasAttribute('data-vexel-format-badge'))
+    expect(saveHost).toBeTruthy()
+    saveHost?.shadowRoot?.querySelector('button')?.click()
+    const input = document.querySelector('input[type="text"]') as HTMLInputElement
+    expect(input.value).toBe('src/services/repaired.ts')
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    await new Promise((r) => setTimeout(r, 30))
+    expect(writtenPayloads.length).toBe(1)
+    expect(writtenPayloads[0]?.relPath).toBe('src/services/repaired.ts')
+    expect(writtenPayloads[0]?.content).toContain('return 42;')
+    expect(writtenPayloads[0]?.content).toContain('// formatted-by-bridge')
   })
 })

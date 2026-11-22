@@ -720,4 +720,112 @@ describe('code-repair DOM integration', () => {
     const record = getRepairedCodeForContainer(card)
     expect(record?.durationMs).toBeGreaterThanOrEqual(1)
   })
+
+  it('repairs truncated Python and Bash heredoc blocks with native engines in footer', async () => {
+    ;(globalThis as Record<string, unknown>).chrome = {
+      runtime: {
+        sendMessage: (msg: { code?: string }, cb?: (res: unknown) => void) => {
+          const engine = msg.code?.includes('def sync_records')
+            ? 'ruff'
+            : msg.code?.includes('#!/usr/bin/env bash')
+              ? 'shfmt'
+              : 'fallback'
+          cb?.({ ok: true, formatted: msg.code, engine })
+        },
+      },
+    }
+    const pyHead = [
+      'def sync_records(records: list[dict]):',
+      ...Array.from({ length: 180 }, (_, i) => '    processed_record_item_' + i + ' = ' + i),
+      '    if len(records) > 0:',
+    ].join('\n')
+    const shHead = [
+      '#!/usr/bin/env bash',
+      ...Array.from({ length: 180 }, (_, i) => 'echo "executing pipeline step ' + i + '"'),
+      "cat <<'EOF' > /tmp/config.yaml",
+      'server:',
+      '  port: 8080',
+    ].join('\n')
+    document.body.innerHTML = [
+      '<div class="CKgc1d" data-last-turn="true" data-scope-id="turn">',
+      '  <div class="mZJni" data-container-id="main-col">',
+      '    <div style="display: contents" data-container-id="10">',
+      '      <div class="BpxUDf aiModeUiCodeBlock__Container" data-hveid="card-py"><div><div><div>python</div></div><pre><code>' +
+        pyHead +
+        '</code></pre></div><div data-testid="footer-py"><div>Caution</div><div><button aria-label="Copier">Copy</button></div></div></div></div>',
+      '      <div class="n6owBd">        return len(records)</div>',
+      '    </div>',
+      '    <div class="n6owBd">Here is the deployment script:</div>',
+      '    <div style="display: contents" data-container-id="11">',
+      '      <div class="BpxUDf aiModeUiCodeBlock__Container" data-hveid="card-sh"><div><div><div>bash</div></div><pre><code>' +
+        shHead +
+        '</code></pre></div><div data-testid="footer-sh"><div>Caution</div><div><button aria-label="Copier">Copy</button></div></div></div></div>',
+      '      <div class="n6owBd">EOF<br>chmod 600 /tmp/config.yaml</div>',
+      '    </div>',
+      '  </div>',
+      '</div>',
+    ].join('')
+    scanAndRepairCodeBlocks(document, () => {})
+    await new Promise((r) => setTimeout(r, 90))
+    const pyCard = document.querySelector<HTMLElement>('[data-hveid="card-py"]')!
+    const pyRecord = getRepairedCodeForContainer(pyCard)
+    expect(pyRecord?.engine).toBe('ruff')
+    expect(pyRecord?.code).toContain('return len(records)')
+    expect(
+      document
+        .querySelector('[data-testid="footer-py"] [data-vexel-format-badge="true"]')
+        ?.shadowRoot?.querySelector('[data-vexel-pill-label="true"]')?.textContent || ''
+    ).toMatch(/· ruff · \d+ ms/)
+    const shCard = document.querySelector<HTMLElement>('[data-hveid="card-sh"]')!
+    const shRecord = getRepairedCodeForContainer(shCard)
+    expect(shRecord?.engine).toBe('shfmt')
+    expect(shRecord?.code).toContain('EOF\nchmod 600 /tmp/config.yaml')
+    expect(
+      document
+        .querySelector('[data-testid="footer-sh"] [data-vexel-format-badge="true"]')
+        ?.shadowRoot?.querySelector('[data-vexel-pill-label="true"]')?.textContent || ''
+    ).toMatch(/· shfmt · \d+ ms/)
+  })
+
+  it('updates existing footer badge and tail span cleanly across incremental streaming waves', async () => {
+    ;(globalThis as Record<string, unknown>).chrome = {
+      runtime: {
+        sendMessage: (msg: { code?: string }, cb?: (res: unknown) => void) => {
+          cb?.({ ok: true, formatted: msg.code, engine: 'oxfmt' })
+        },
+      },
+    }
+    const head = [
+      'export function streamDemo() {',
+      ...Array.from({ length: 140 }, (_, i) => '  const a' + i + ' = ' + i + ';'),
+      '  if (true) {',
+    ].join('\n')
+    document.body.innerHTML = [
+      '<div class="CKgc1d" data-last-turn="true" data-scope-id="turn">',
+      '  <div class="mZJni" data-container-id="main-col">',
+      '    <div style="display: contents" data-container-id="30">',
+      '      <div class="BpxUDf" data-hveid="card-stream"><div><div><div><div>typescript</div></div><div><pre><code>' +
+        head +
+        '</code></pre></div></div><div data-testid="footer-stream"><div>Caution</div><div><button aria-label="Copier">Copy</button></div></div></div></div>',
+      '      <div class="n6owBd">  const step = 1;</div>',
+      '    </div>',
+      '  </div>',
+      '</div>',
+    ].join('')
+    scanAndRepairCodeBlocks(document, () => {})
+    await new Promise((r) => setTimeout(r, 70))
+    const wave2 = document.createElement('div')
+    wave2.className = 'n6owBd'
+    wave2.innerHTML = '  }<br>}'
+    document.querySelector('[data-container-id="30"]')?.appendChild(wave2)
+    scanAndRepairCodeBlocks(document, () => {})
+    await new Promise((r) => setTimeout(r, 70))
+    expect(
+      document.querySelectorAll('[data-testid="footer-stream"] [data-vexel-format-badge="true"]')
+        .length
+    ).toBe(1)
+    const card = document.querySelector<HTMLElement>('[data-hveid="card-stream"]')!
+    expect(card.querySelectorAll('[data-vexel-repaired-tail="true"]').length).toBe(1)
+    expect(getRepairedCodeForContainer(card)?.code).toContain('const step = 1;')
+  })
 })

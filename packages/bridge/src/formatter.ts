@@ -1,8 +1,8 @@
-import { fileURLToPath } from 'node:url'
 import { execFile, spawn } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 
 const execFileAsync = promisify(execFile)
@@ -13,7 +13,7 @@ export interface FormatResult {
   engine: string
 }
 
-interface FormatterSpec {
+export interface FormatterSpec {
   engine: string
   binName: string
   args: (filename: string) => string[]
@@ -32,7 +32,6 @@ const OXFMT_EXTS = new Set([
   'jsonc',
   'yaml',
   'yml',
-  'toml',
   'html',
   'css',
   'scss',
@@ -46,7 +45,22 @@ const OXFMT_EXTS = new Set([
   'astro',
 ])
 
-const LANG_TO_EXT: Record<string, string> = {
+const CLANG_FORMAT_EXTS = new Set([
+  'c',
+  'h',
+  'cpp',
+  'hpp',
+  'cc',
+  'cxx',
+  'hh',
+  'm',
+  'mm',
+  'java',
+  'cs',
+  'proto',
+])
+
+export const LANG_TO_EXT: Record<string, string> = {
   typescript: 'ts',
   ts: 'ts',
   tsx: 'tsx',
@@ -54,27 +68,125 @@ const LANG_TO_EXT: Record<string, string> = {
   js: 'js',
   jsx: 'jsx',
   python: 'py',
+  python3: 'py',
   py: 'py',
+  pyi: 'pyi',
   rust: 'rs',
   rs: 'rs',
   go: 'go',
   golang: 'go',
   json: 'json',
+  jsonc: 'jsonc',
   yaml: 'yml',
   yml: 'yml',
   toml: 'toml',
   html: 'html',
   css: 'css',
   scss: 'scss',
+  less: 'less',
   markdown: 'md',
   md: 'md',
+  mdx: 'mdx',
+  graphql: 'graphql',
+  vue: 'vue',
+  svelte: 'svelte',
+  astro: 'astro',
   bash: 'sh',
   sh: 'sh',
   shell: 'sh',
   zsh: 'sh',
+  c: 'c',
+  cpp: 'cpp',
+  'c++': 'cpp',
+  cxx: 'cxx',
+  cc: 'cc',
+  objc: 'm',
+  'objective-c': 'm',
+  java: 'java',
+  csharp: 'cs',
+  'c#': 'cs',
+  cs: 'cs',
+  proto: 'proto',
+  protobuf: 'proto',
+  sql: 'sql',
+  postgres: 'sql',
+  postgresql: 'sql',
+  mysql: 'sql',
+  sqlite: 'sql',
+  terraform: 'tf',
+  tf: 'tf',
+  hcl: 'hcl',
+  nix: 'nix',
+  lua: 'lua',
+  zig: 'zig',
+  swift: 'swift',
+  kotlin: 'kt',
+  kt: 'kt',
+  kts: 'kts',
+}
+
+const FORMATTER_SPECS_BY_EXT: Record<string, FormatterSpec[]> = {
+  toml: [
+    { engine: 'taplo', binName: 'taplo', args: () => ['format', '-'] },
+    { engine: 'oxfmt', binName: 'oxfmt', args: (filename) => ['--stdin-filepath', filename] },
+  ],
+  py: [
+    {
+      engine: 'ruff',
+      binName: 'ruff',
+      args: (filename) => ['format', '--stdin-filename', filename, '-'],
+    },
+  ],
+  pyi: [
+    {
+      engine: 'ruff',
+      binName: 'ruff',
+      args: (filename) => ['format', '--stdin-filename', filename, '-'],
+    },
+  ],
+  rs: [
+    {
+      engine: 'rustfmt',
+      binName: 'rustfmt',
+      args: () => ['--emit', 'stdout', '--edition', '2024'],
+    },
+  ],
+  go: [{ engine: 'gofmt', binName: 'gofmt', args: () => [] }],
+  sh: [{ engine: 'shfmt', binName: 'shfmt', args: () => ['-i', '2', '-'] }],
+  bash: [{ engine: 'shfmt', binName: 'shfmt', args: () => ['-i', '2', '-'] }],
+  zsh: [{ engine: 'shfmt', binName: 'shfmt', args: () => ['-i', '2', '-'] }],
+  sql: [
+    { engine: 'sleek', binName: 'sleek', args: () => [] },
+    { engine: 'pg_format', binName: 'pg_format', args: () => ['-'] },
+  ],
+  tf: [
+    { engine: 'tofu', binName: 'tofu', args: () => ['fmt', '-'] },
+    { engine: 'terraform', binName: 'terraform', args: () => ['fmt', '-'] },
+  ],
+  tfvars: [
+    { engine: 'tofu', binName: 'tofu', args: () => ['fmt', '-'] },
+    { engine: 'terraform', binName: 'terraform', args: () => ['fmt', '-'] },
+  ],
+  hcl: [
+    { engine: 'tofu', binName: 'tofu', args: () => ['fmt', '-'] },
+    { engine: 'terraform', binName: 'terraform', args: () => ['fmt', '-'] },
+  ],
+  nix: [
+    { engine: 'alejandra', binName: 'alejandra', args: () => ['--quiet'] },
+    { engine: 'nixfmt', binName: 'nixfmt', args: () => [] },
+  ],
+  lua: [{ engine: 'stylua', binName: 'stylua', args: () => ['-'] }],
+  zig: [{ engine: 'zig', binName: 'zig', args: () => ['fmt', '--stdin'] }],
+  swift: [{ engine: 'swift-format', binName: 'swift-format', args: () => ['format'] }],
+  kt: [{ engine: 'ktfmt', binName: 'ktfmt', args: () => ['-'] }],
+  kts: [{ engine: 'ktfmt', binName: 'ktfmt', args: () => ['-'] }],
 }
 
 const binaryPathCache = new Map<string, string | null>()
+
+export function resetBinaryPathCacheForTests(): void {
+  binaryPathCache.clear()
+}
 
 function getSearchDirs(): string[] {
   const home = os.homedir()
@@ -133,7 +245,13 @@ async function resolveBinary(binName: string): Promise<string | null> {
   }
 }
 
-function getCandidateSpecs(ext: string): FormatterSpec[] {
+export function resolveTargetExtension(langOrExt: string, filenameHint?: string): string {
+  const cleanKey = (langOrExt || '').trim().toLowerCase().replace(/^\./, '')
+  const hintExt = filenameHint ? path.extname(filenameHint).toLowerCase().replace(/^\./, '') : ''
+  return hintExt || LANG_TO_EXT[cleanKey] || cleanKey || 'txt'
+}
+
+export function getCandidateSpecs(ext: string): FormatterSpec[] {
   if (OXFMT_EXTS.has(ext)) {
     return [
       {
@@ -148,50 +266,23 @@ function getCandidateSpecs(ext: string): FormatterSpec[] {
       },
     ]
   }
-  if (ext === 'py' || ext === 'pyi') {
+  if (CLANG_FORMAT_EXTS.has(ext)) {
     return [
       {
-        engine: 'ruff',
-        binName: 'ruff',
-        args: (filename) => ['format', '--stdin-filename', filename, '-'],
+        engine: 'clang-format',
+        binName: 'clang-format',
+        args: (filename) => [`--assume-filename=${filename}`],
       },
     ]
   }
-  if (ext === 'rs') {
-    return [
-      {
-        engine: 'rustfmt',
-        binName: 'rustfmt',
-        args: () => ['--emit', 'stdout', '--edition', '2024'],
-      },
-    ]
-  }
-  if (ext === 'go') {
-    return [
-      {
-        engine: 'gofmt',
-        binName: 'gofmt',
-        args: () => [],
-      },
-    ]
-  }
-  if (ext === 'sh' || ext === 'bash' || ext === 'zsh') {
-    return [
-      {
-        engine: 'shfmt',
-        binName: 'shfmt',
-        args: () => ['-i', '2', '-'],
-      },
-    ]
-  }
-  return []
+  return FORMATTER_SPECS_BY_EXT[ext] || []
 }
 
 function runProcessWithStdin(
   binPath: string,
   args: string[],
   stdinText: string,
-  timeoutMs = 600
+  timeoutMs = 800
 ): Promise<string | null> {
   return new Promise((resolve) => {
     let settled = false
@@ -237,9 +328,7 @@ export async function formatCodeWithNativeTool(
   langOrExt: string,
   filenameHint?: string
 ): Promise<FormatResult> {
-  const cleanKey = (langOrExt || '').trim().toLowerCase().replace(/^\./, '')
-  const hintExt = filenameHint ? path.extname(filenameHint).toLowerCase().replace(/^\./, '') : ''
-  const ext = hintExt || LANG_TO_EXT[cleanKey] || cleanKey || 'txt'
+  const ext = resolveTargetExtension(langOrExt, filenameHint)
   const safeName =
     filenameHint && path.basename(filenameHint) ? path.basename(filenameHint) : `snippet.${ext}`
 

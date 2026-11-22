@@ -26,7 +26,8 @@
     "store:sync:chrome": "pnpm zip:store && extship --target chrome",
     "store:sync:edge": "pnpm zip:store && extship --target edge",
     "store:sync:firefox": "pnpm zip:store && extship --target firefox",
-    "typecheck": "pnpm --filter @vexel/extension exec tsc -p ../../tsconfig.json --noEmit && pnpm --filter @vexel/extension exec tsc --noEmit"
+    "typecheck": "pnpm --filter @vexel/extension exec tsc -p ../../tsconfig.json --noEmit && pnpm --filter @vexel/extension exec tsc --noEmit",
+    "test:coverage": "LINGUI_CONFIG=packages/extension/lingui.config.ts vitest run --coverage"
   },
   "devDependencies": {
     "@lingui/vite-plugin": "^6.12.0",
