@@ -55,7 +55,6 @@ const CLANG_FORMAT_EXTS = new Set([
   'hh',
   'm',
   'mm',
-  'java',
   'cs',
   'proto',
 ])
@@ -123,6 +122,13 @@ export const LANG_TO_EXT: Record<string, string> = {
   kotlin: 'kt',
   kt: 'kt',
   kts: 'kts',
+  php: 'php',
+  rb: 'rb',
+  ruby: 'rb',
+  dart: 'dart',
+  ex: 'ex',
+  exs: 'exs',
+  elixir: 'ex',
 }
 
 const FORMATTER_SPECS_BY_EXT: Record<string, FormatterSpec[]> = {
@@ -180,6 +186,36 @@ const FORMATTER_SPECS_BY_EXT: Record<string, FormatterSpec[]> = {
   swift: [{ engine: 'swift-format', binName: 'swift-format', args: () => ['format'] }],
   kt: [{ engine: 'ktfmt', binName: 'ktfmt', args: () => ['-'] }],
   kts: [{ engine: 'ktfmt', binName: 'ktfmt', args: () => ['-'] }],
+  php: [
+    { engine: 'mago', binName: 'mago', args: () => ['fmt', '--stdin-input'] },
+    { engine: 'pretty-php', binName: 'pretty-php', args: () => [] },
+    {
+      engine: 'php-cs-fixer',
+      binName: 'php-cs-fixer',
+      args: () => ['fix', '--using-cache=no', '--quiet', '-'],
+    },
+  ],
+  rb: [
+    { engine: 'stree', binName: 'stree', args: () => ['format'] },
+    {
+      engine: 'rubocop',
+      binName: 'rubocop',
+      args: () => ['--stdin', 'snippet.rb', '-a', '--stderr'],
+    },
+  ],
+  dart: [
+    { engine: 'dart', binName: 'dart', args: () => ['format', '--output=show', '--summary=none'] },
+  ],
+  ex: [{ engine: 'mix', binName: 'mix', args: () => ['format', '-'] }],
+  exs: [{ engine: 'mix', binName: 'mix', args: () => ['format', '-'] }],
+  java: [
+    { engine: 'google-java-format', binName: 'google-java-format', args: () => ['-'] },
+    {
+      engine: 'clang-format',
+      binName: 'clang-format',
+      args: (filename) => ['--assume-filename=' + filename],
+    },
+  ],
 }
 
 const binaryPathCache = new Map<string, string | null>()

@@ -40,6 +40,10 @@ describe('formatter.ts native CLI routing & fallback matrix', () => {
     expect(resolveTargetExtension('postgresql')).toBe('sql')
     expect(resolveTargetExtension('terraform')).toBe('tf')
     expect(resolveTargetExtension('kotlin')).toBe('kt')
+    expect(resolveTargetExtension('ruby')).toBe('rb')
+    expect(resolveTargetExtension('elixir')).toBe('ex')
+    expect(resolveTargetExtension('php')).toBe('php')
+    expect(resolveTargetExtension('dart')).toBe('dart')
     expect(resolveTargetExtension('unknown', 'src/main.zig')).toBe('zig')
     expect(resolveTargetExtension('')).toBe('txt')
   })
@@ -51,7 +55,10 @@ describe('formatter.ts native CLI routing & fallback matrix', () => {
     expect(getCandidateSpecs('go').map((s) => s.engine)).toEqual(['gofmt'])
     expect(getCandidateSpecs('sh').map((s) => s.engine)).toEqual(['shfmt'])
     expect(getCandidateSpecs('cpp').map((s) => s.engine)).toEqual(['clang-format'])
-    expect(getCandidateSpecs('java').map((s) => s.engine)).toEqual(['clang-format'])
+    expect(getCandidateSpecs('java').map((s) => s.engine)).toEqual([
+      'google-java-format',
+      'clang-format',
+    ])
     expect(getCandidateSpecs('proto').map((s) => s.engine)).toEqual(['clang-format'])
     expect(getCandidateSpecs('sql').map((s) => s.engine)).toEqual(['sleek', 'pg_format'])
     expect(getCandidateSpecs('tf').map((s) => s.engine)).toEqual(['tofu', 'terraform'])
@@ -60,6 +67,14 @@ describe('formatter.ts native CLI routing & fallback matrix', () => {
     expect(getCandidateSpecs('zig').map((s) => s.engine)).toEqual(['zig'])
     expect(getCandidateSpecs('swift').map((s) => s.engine)).toEqual(['swift-format'])
     expect(getCandidateSpecs('kt').map((s) => s.engine)).toEqual(['ktfmt'])
+    expect(getCandidateSpecs('php').map((s) => s.engine)).toEqual([
+      'mago',
+      'pretty-php',
+      'php-cs-fixer',
+    ])
+    expect(getCandidateSpecs('rb').map((s) => s.engine)).toEqual(['stree', 'rubocop'])
+    expect(getCandidateSpecs('dart').map((s) => s.engine)).toEqual(['dart'])
+    expect(getCandidateSpecs('ex').map((s) => s.engine)).toEqual(['mix'])
     expect(getCandidateSpecs('unknown_ext')).toEqual([])
   })
   it('formats via native CLI binaries over stdin/stdout for C++, SQL, TOML, Terraform, Lua, Zig, Nix, Swift & Kotlin', async () => {
@@ -72,6 +87,11 @@ describe('formatter.ts native CLI routing & fallback matrix', () => {
     writeFakeFormatter('alejandra', 'printf "{ pkgs }: pkgs.hello\\n"')
     writeFakeFormatter('swift-format', 'printf "let x = 1\\n"')
     writeFakeFormatter('ktfmt', 'printf "val x = 1\\n"')
+    writeFakeFormatter('mago', 'printf "<?php\\n\\nfunction hi(): int\\n{\\n    return 1;\\n}\\n"')
+    writeFakeFormatter('stree', 'printf "def hi\\n  1\\nend\\n"')
+    writeFakeFormatter('dart', 'printf "void main() {\\n  print(1);\\n}\\n"')
+    writeFakeFormatter('mix', 'printf "defmodule M do\\n  def f, do: 1\\nend\\n"')
+    writeFakeFormatter('google-java-format', 'printf "class Main {}\\n"')
     const cppRes = await formatCodeWithNativeTool('int main(){return 0;}', 'cpp', 'src/app.cpp')
     expect(cppRes.engine).toBe('clang-format')
     expect(cppRes.formatted).toContain('// clang-formatted:--assume-filename=app.cpp')
@@ -91,6 +111,25 @@ describe('formatter.ts native CLI routing & fallback matrix', () => {
     expect(swiftRes).toEqual({ ok: true, formatted: 'let x = 1', engine: 'swift-format' })
     const ktRes = await formatCodeWithNativeTool('val x=1', 'kotlin')
     expect(ktRes).toEqual({ ok: true, formatted: 'val x = 1', engine: 'ktfmt' })
+    const phpRes = await formatCodeWithNativeTool('<?php function hi(){return 1;}', 'php')
+    expect(phpRes.engine).toBe('mago')
+    expect(phpRes.formatted).toContain('function hi(): int')
+    const rbRes = await formatCodeWithNativeTool('def hi; 1; end', 'ruby')
+    expect(rbRes).toEqual({ ok: true, formatted: 'def hi\n  1\nend', engine: 'stree' })
+    const dartRes = await formatCodeWithNativeTool('void main(){print(1);}', 'dart')
+    expect(dartRes).toEqual({
+      ok: true,
+      formatted: 'void main() {\n  print(1);\n}',
+      engine: 'dart',
+    })
+    const exRes = await formatCodeWithNativeTool('defmodule M do def f, do: 1 end', 'elixir')
+    expect(exRes).toEqual({
+      ok: true,
+      formatted: 'defmodule M do\n  def f, do: 1\nend',
+      engine: 'mix',
+    })
+    const javaRes = await formatCodeWithNativeTool('class Main{}', 'java')
+    expect(javaRes).toEqual({ ok: true, formatted: 'class Main {}', engine: 'google-java-format' })
   })
   it('falls back to secondary formatter candidate when primary exits non-zero, and to fallback when none succeed', async () => {
     writeFakeFormatter('sleek', 'exit 2')
