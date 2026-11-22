@@ -216,6 +216,241 @@ try {
   }
   assert.ok(fs.readFileSync(targetSumPath, 'utf8').includes('export const sum'))
 
+  logStep(
+    'Stage 5: Mocked Google AI Mode multi-language truncated repair & native formatter matrix'
+  )
+  const strictFormatters = process.env.VEXEL_E2E_STRICT_FORMATTERS === '1'
+  const NL = String.fromCharCode(10)
+  const formatterCases = [
+    {
+      lang: 'typescript',
+      expectedEngines: ['oxfmt', 'biome'],
+      head: [
+        'export function computeInvoiceTotal(items: Array<{ price: number; qty: number }>) {',
+        '  const subtotal = items.reduce((acc, item) => acc + item.price * item.qty, 0)',
+      ].join(NL),
+      spill: ['return Math.round(subtotal * 100) / 100', '}'].join(NL),
+      assertShape: (txt: string) =>
+        txt.includes('export function computeInvoiceTotal(') &&
+        txt.includes('return Math.round(subtotal * 100) / 100') &&
+        txt.trim().endsWith('}'),
+    },
+    {
+      lang: 'python',
+      expectedEngines: ['ruff'],
+      head: ['def audit_ledger(rows: list[dict[str, float]]) -> float:', '    if not rows:'].join(
+        NL
+      ),
+      spill: [
+        '        return 0.0',
+        '    total = sum(r["amount"] for r in rows)',
+        '    assert total >= 0',
+        '    return total',
+      ].join(NL),
+      assertShape: (txt: string) =>
+        txt.includes('def audit_ledger(') &&
+        txt.includes('assert total >= 0') &&
+        txt.trim().endsWith('return total'),
+    },
+    {
+      lang: 'rust',
+      expectedEngines: ['rustfmt'],
+      head: [
+        'pub fn normalize_code(input: &str) -> String {',
+        '    let trimmed = input.trim();',
+      ].join(NL),
+      spill: ['    trimmed.to_uppercase()', '}'].join(NL),
+      assertShape: (txt: string) =>
+        txt.includes('pub fn normalize_code(input: &str) -> String {') &&
+        txt.includes('trimmed.to_uppercase()') &&
+        txt.trim().endsWith('}'),
+    },
+    {
+      lang: 'go',
+      expectedEngines: ['gofmt'],
+      head: ['package main', 'func sumSlice(nums []int) int {', '\ttotal := 0'].join(NL),
+      spill: ['\tfor _, n := range nums { total += n }', '\treturn total', '}'].join(NL),
+      assertShape: (txt: string) =>
+        txt.includes('package main') &&
+        txt.includes('func sumSlice(nums []int) int {') &&
+        txt.trim().endsWith('}'),
+    },
+    {
+      lang: 'bash',
+      expectedEngines: ['shfmt'],
+      head: ['#!/usr/bin/env bash', 'deploy() {', '  set -euo pipefail'].join(NL),
+      spill: ['  echo "target-ready"', '}'].join(NL),
+      assertShape: (txt: string) =>
+        txt.includes('#!/usr/bin/env bash') &&
+        txt.includes('echo "target-ready"') &&
+        txt.trim().endsWith('}'),
+    },
+    {
+      lang: 'sql',
+      expectedEngines: ['sleek', 'pg_format'],
+      head: ['BEGIN;', 'SELECT company_name, total_eur FROM invoices WHERE meta = {'].join(NL),
+      spill: ['  "paid": true', '}', 'ORDER BY total_eur DESC;', 'COMMIT;'].join(NL),
+      assertShape: (txt: string) =>
+        /SELECT/i.test(txt) && /ORDER BY/i.test(txt) && txt.trim().endsWith('COMMIT;'),
+    },
+    {
+      lang: 'toml',
+      expectedEngines: ['taplo', 'oxfmt'],
+      head: ['[package]', 'name = "vexel-demo"', 'serde = {'].join(NL),
+      spill: ['  version = "1.0",', '  features = ["derive"]', '}'].join(NL),
+      assertShape: (txt: string) =>
+        txt.includes('[package]') && txt.includes('serde =') && txt.trim().endsWith('}'),
+    },
+    {
+      lang: 'cpp',
+      expectedEngines: ['clang-format'],
+      head: [
+        '#include <vector>',
+        'int accumulate_vec(const std::vector<int>& v) {',
+        '  int s = 0;',
+      ].join(NL),
+      spill: ['  for (int x : v) s += x;', '  return s;', '}'].join(NL),
+      assertShape: (txt: string) =>
+        txt.includes('int accumulate_vec(') &&
+        txt.includes('return s;') &&
+        txt.trim().endsWith('}'),
+    },
+    {
+      lang: 'terraform',
+      expectedEngines: ['tofu', 'terraform'],
+      head: ['resource "aws_s3_bucket" "audit" {', '  bucket = "vexel-audit-logs"'].join(NL),
+      spill: ['  force_destroy = false', '}'].join(NL),
+      assertShape: (txt: string) =>
+        txt.includes('resource "aws_s3_bucket" "audit"') &&
+        txt.includes('force_destroy = false') &&
+        txt.trim().endsWith('}'),
+    },
+    {
+      lang: 'lua',
+      expectedEngines: ['stylua'],
+      head: ['local cfg = {', '  enabled = true,'].join(NL),
+      spill: ['  retries = 3,', '}'].join(NL),
+      assertShape: (txt: string) =>
+        txt.includes('local cfg = {') && txt.includes('retries = 3') && txt.trim().endsWith('}'),
+    },
+    {
+      lang: 'zig',
+      expectedEngines: ['zig'],
+      head: ['pub fn add(a: i32, b: i32) i32 {', '    const res = a + b;'].join(NL),
+      spill: ['    return res;', '}'].join(NL),
+      assertShape: (txt: string) =>
+        txt.includes('pub fn add(a: i32, b: i32) i32 {') && txt.trim().endsWith('}'),
+    },
+    {
+      lang: 'nix',
+      expectedEngines: ['alejandra', 'nixfmt'],
+      head: ['{ pkgs ? import <nixpkgs> {} }:', 'pkgs.mkShell {', '  packages = ['].join(NL),
+      spill: ['    pkgs.nodejs_22', '  ];', '}'].join(NL),
+      assertShape: (txt: string) => txt.includes('pkgs.mkShell') && txt.trim().endsWith('}'),
+    },
+    {
+      lang: 'ruby',
+      expectedEngines: ['standardrb', 'rubocop'],
+      head: ['def format_price(cents)', '  opts = {'].join(NL),
+      spill: [
+        '    currency: "EUR",',
+        '    amount: cents / 100.0',
+        '  }',
+        '  format("$%.2f", opts[:amount])',
+        'end',
+      ].join(NL),
+      assertShape: (txt: string) =>
+        txt.includes('def format_price(cents)') && txt.trim().endsWith('end'),
+    },
+  ]
+
+  for (const tc of formatterCases) {
+    const turnId = `turn-fmt-${tc.lang}`
+    await page.evaluate(
+      ({ turnId, lang, head, spill }) => {
+        const main = document.querySelector('main')!
+        const turn = document.createElement('div')
+        turn.className = 'CKgc1d'
+        turn.setAttribute('data-scope-id', 'turn')
+        turn.setAttribute('data-hveid', turnId)
+        turn.setAttribute('data-complete', 'true')
+
+        const aimc = document.createElement('div')
+        aimc.className = 'pWvJNd'
+        aimc.setAttribute('data-subtree', 'aimc')
+
+        const card = document.createElement('div')
+        card.className = 'BpxUDf aiModeUiCodeBlock__Container'
+        card.setAttribute('data-hveid', `card-${turnId}`)
+        const header = document.createElement('div')
+        header.className = 'GlO4G'
+        header.textContent = lang
+        const pre = document.createElement('pre')
+        const code = document.createElement('code')
+        code.textContent = head
+        pre.appendChild(code)
+        const footer = document.createElement('div')
+        const btnWrap = document.createElement('div')
+        const copyBtn = document.createElement('button')
+        copyBtn.type = 'button'
+        copyBtn.setAttribute('aria-label', 'Copy code')
+        btnWrap.appendChild(copyBtn)
+        footer.appendChild(btnWrap)
+        card.append(header, pre, footer)
+
+        const sib = document.createElement('div')
+        sib.className = 'n6owBd awi2gc spilled-e2e'
+        sib.setAttribute('data-sfc-cp', '')
+        sib.innerHTML = spill.split(String.fromCharCode(10)).join('<br>')
+
+        aimc.append(card, sib)
+        turn.appendChild(aimc)
+        main.appendChild(turn)
+      },
+      { turnId, lang: tc.lang, head: tc.head, spill: tc.spill }
+    )
+
+    const turnLoc = page.locator(`[data-hveid="${turnId}"]`)
+    await turnLoc.locator('.spilled-e2e').waitFor({ state: 'detached', timeout: 6000 })
+    const badge = turnLoc.locator('[data-vexel-format-badge="true"]')
+    await badge.waitFor({ state: 'attached', timeout: 6000 })
+    if (strictFormatters) {
+      await page.waitForFunction(
+        (id) => {
+          const el = document.querySelector(`[data-hveid="${id}"] [data-vexel-format-badge="true"]`)
+          const txt =
+            el?.shadowRoot?.querySelector('[data-vexel-pill-label="true"]')?.textContent || ''
+          return txt.length > 0 && !txt.includes(' · local · ')
+        },
+        turnId,
+        { timeout: 6000 }
+      )
+    } else {
+      await page.waitForTimeout(350)
+    }
+    const badgeText = await badge.evaluate(
+      (el) =>
+        el.shadowRoot?.querySelector('[data-vexel-pill-label="true"]')?.textContent ||
+        el.textContent ||
+        ''
+    )
+    const codeText = (await turnLoc.locator('pre code').textContent()) || ''
+
+    assert.ok(
+      tc.assertShape(codeText),
+      `[${tc.lang}] Formatted output failed shape assertion. Badge="${badgeText}" Code:` +
+        NL +
+        codeText
+    )
+    if (strictFormatters) {
+      assert.ok(
+        tc.expectedEngines.some((eng) => badgeText.includes(eng)),
+        `[${tc.lang}] Expected one of native engines ${JSON.stringify(tc.expectedEngines)} in CI badge, got: "${badgeText}"`
+      )
+    }
+    logStep(`  ✓ [${tc.lang}] badge="${badgeText.trim()}"`)
+  }
+
   console.log(
     '✓ All full-pyramid Vexel E2E assertions (including real disk write, paste-to-file & .md export) passed!'
   )

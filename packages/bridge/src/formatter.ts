@@ -325,7 +325,7 @@ function runProcessWithStdin(
   binPath: string,
   args: string[],
   stdinText: string,
-  timeoutMs = 800
+  timeoutMs = 2500
 ): Promise<string | null> {
   return new Promise((resolve) => {
     let settled = false
