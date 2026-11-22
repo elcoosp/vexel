@@ -162,7 +162,7 @@ function getKeywordSet(lang: string): Set<string> {
 function stripPythonComment(line: string): string {
   let q: string | null = null
   for (let i = 0; i < line.length; i += 1) {
-    const ch = line.slice(i, i + 1)
+    const ch = line[i]
     if (q) {
       if (ch === '\\') i += 1
       else if (ch === q) q = null
@@ -199,7 +199,7 @@ export function reconstructStructuralIndentation(
       const codeOnly = stripPythonComment(trimmed)
       let q: string | null = null
       for (let i = 0; i < codeOnly.length; i += 1) {
-        const c = codeOnly.slice(i, i + 1)
+        const c = codeOnly[i]
         if (q) {
           if (c === '\\') i += 1
           else if (c === q) q = null
@@ -253,7 +253,7 @@ export function reconstructStructuralIndentation(
 
       let q: string | null = null
       for (let i = 0; i < codeOnly.length; i += 1) {
-        const c = codeOnly.slice(i, i + 1)
+        const c = codeOnly[i]
         if (q) {
           if (c === '\\') i += 1
           else if (c === q) q = null
@@ -285,8 +285,8 @@ export function reconstructStructuralIndentation(
   let inBacktick = false
   let inBlockComment = false
   for (let i = 0; i < headCode.length; i += 1) {
-    const ch = headCode.slice(i, i + 1)
-    const next = headCode.slice(i + 1, i + 2)
+    const ch = headCode[i]
+    const next = headCode[i + 1]
     if (inBlockComment) {
       if (ch === '*' && next === '/') {
         inBlockComment = false
@@ -336,7 +336,7 @@ export function reconstructStructuralIndentation(
     }
     let leadingClosers = 0
     for (let j = 0; j < line.length; j += 1) {
-      const c = line.slice(j, j + 1)
+      const c = line[j]
       if (c === '}' || c === ']' || c === ')') leadingClosers += 1
       else break
     }
@@ -346,7 +346,7 @@ export function reconstructStructuralIndentation(
     let s2 = false
     let s3 = false
     for (let j = 0; j < line.length; j += 1) {
-      const c = line.slice(j, j + 1)
+      const c = line[j]
       const n = line.slice(j + 1, j + 2)
       if (s1) {
         if (c === '\\') j += 1
@@ -432,8 +432,8 @@ export function renderHighlightedTail(tailEl: HTMLElement, code: string, lang: s
     const line = lines[lineIdx] || ''
     let i = 0
     while (i < line.length) {
-      const ch = line.slice(i, i + 1)
-      const next = line.slice(i + 1, i + 2)
+      const ch = line[i]
+      const next = line[i + 1]
       // Line comment
       if ((isPython && ch === '#') || (!isPython && ch === '/' && next === '/')) {
         appendToken(doc, frag, 'comment', line.slice(i))
@@ -449,7 +449,7 @@ export function renderHighlightedTail(tailEl: HTMLElement, code: string, lang: s
         const quote = isPrefixedStr ? next : ch
         let j = i + (isPrefixedStr ? 2 : 1)
         while (j < line.length) {
-          const c = line.slice(j, j + 1)
+          const c = line[j]
           if (c === String.fromCharCode(92)) {
             j += 2
             continue
@@ -464,17 +464,17 @@ export function renderHighlightedTail(tailEl: HTMLElement, code: string, lang: s
       // Decorator (@staticmethod, @dataclass)
       if (ch === '@' && /[A-Za-z_]/.test(next)) {
         let j = i + 1
-        while (j < line.length && /[A-Za-z0-9_.]/.test(line.slice(j, j + 1))) j += 1
+        while (j < line.length && /[A-Za-z0-9_.]/.test(line[j])) j += 1
         appendToken(doc, frag, 'decorator', line.slice(i, j))
         i = j
         continue
       }
       // Numeric literal
-      if (/[0-9]/.test(ch) && (i === 0 || !/[A-Za-z0-9_]/.test(line.slice(i - 1, i)))) {
+      if (/[0-9]/.test(ch) && (i === 0 || !/[A-Za-z0-9_]/.test(line[i - 1]))) {
         let j = i + 1
-        while (j < line.length && /[0-9a-fA-FxXoObB._eE+-]/.test(line.slice(j, j + 1))) {
-          const cur = line.slice(j, j + 1)
-          if ((cur === '+' || cur === '-') && !/[eE]/.test(line.slice(j - 1, j))) break
+        while (j < line.length && /[0-9a-fA-FxXoObB._eE+-]/.test(line[j])) {
+          const cur = line[j]
+          if ((cur === '+' || cur === '-') && !/[eE]/.test(line[j - 1])) break
           j += 1
         }
         appendToken(doc, frag, 'number', line.slice(i, j))
@@ -484,7 +484,7 @@ export function renderHighlightedTail(tailEl: HTMLElement, code: string, lang: s
       // Identifier / Keyword / Type / Function call
       if (/[A-Za-z_]/.test(ch)) {
         let j = i + 1
-        while (j < line.length && /[A-Za-z0-9_]/.test(line.slice(j, j + 1))) j += 1
+        while (j < line.length && /[A-Za-z0-9_]/.test(line[j])) j += 1
         const word = line.slice(i, j)
         const after = line.slice(j).trimStart()
         if (keywords.has(word)) {

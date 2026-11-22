@@ -17,6 +17,7 @@ export interface RepairedCodeRecord {
 
 const repairedCodeByContainer = new WeakMap<HTMLElement, RepairedCodeRecord>()
 const inFlightCards = new WeakSet<Element>()
+const scannedCardSignatures = new WeakMap<Element, string>()
 
 export function getRepairedCodeForContainer(
   container: HTMLElement
@@ -657,32 +658,53 @@ async function repairBrokenSequenceFromCodeCard(
   const pre = codeCard.querySelector('pre')
   const codeEl = pre?.querySelector('code')
   if (!pre || !codeEl) return
+
+  let anchorBlock: Element = codeCard
+  while (
+    !anchorBlock.nextElementSibling &&
+    anchorBlock.parentElement &&
+    !anchorBlock.parentElement.matches(
+      '[data-scope-id="turn"], [jsname="CS7uPe"], [data-subtree="aimc"], main, body'
+    ) &&
+    anchorBlock.parentElement.querySelectorAll('pre code').length === 1
+  ) {
+    anchorBlock = anchorBlock.parentElement
+  }
+
+  const turnRoot =
+    anchorBlock.closest('[data-scope-id="turn"], [jsname="CS7uPe"]') ||
+    anchorBlock.parentElement ||
+    document.body
+  const isTurnFinished =
+    turnRoot.querySelector('[data-zzy="1"]') !== null ||
+    turnRoot.getAttribute('data-complete') === 'true'
+
+  const rawCodeLen = (codeEl.textContent || '').length
+  const nextSib = anchorBlock.nextElementSibling
+  const nextSibSig = nextSib
+    ? `${nextSib.tagName}:${nextSib.className}:${(nextSib.textContent || '').length}`
+    : 'none'
+  const cardSig = `${rawCodeLen}|${nextSibSig}|${isTurnFinished ? '1' : '0'}`
+  if (scannedCardSignatures.get(codeCard) === cardSig) return
+  scannedCardSignatures.set(codeCard, cardSig)
+
   inFlightCards.add(codeCard)
   const repairStartMs = performance.now()
   try {
     const existingTailEl = codeEl.querySelector<HTMLElement>('[data-vexel-repaired-tail="true"]')
     const previousTail = existingTailEl ? (existingTailEl.textContent || '').replace(/^\n/, '') : ''
-    const codeClone = codeEl.cloneNode(true) as HTMLElement
-    codeClone.querySelector('[data-vexel-repaired-tail="true"]')?.remove()
-    const headCode = (codeClone.textContent || '').replace(/\n$/, '')
-    if (headCode.length < TRUNCATION_MIN_CHARS && !hasUnclosedCodeDelimiter(headCode)) return
-
-    let anchorBlock: Element = codeCard
-    while (
-      !anchorBlock.nextElementSibling &&
-      anchorBlock.parentElement &&
-      !anchorBlock.parentElement.matches(
-        '[data-scope-id="turn"], [jsname="CS7uPe"], [data-subtree="aimc"], main, body'
-      ) &&
-      anchorBlock.parentElement.querySelectorAll('pre code').length === 1
-    ) {
-      anchorBlock = anchorBlock.parentElement
+    let headCode = ''
+    if (existingTailEl) {
+      const codeClone = codeEl.cloneNode(true) as HTMLElement
+      codeClone.querySelector('[data-vexel-repaired-tail="true"]')?.remove()
+      headCode = (codeClone.textContent || '').replace(/\n$/, '')
+    } else {
+      headCode = (codeEl.textContent || '').replace(/\n$/, '')
     }
-
-    const turnRoot =
-      anchorBlock.closest('[data-scope-id="turn"], [jsname="CS7uPe"]') ||
-      anchorBlock.parentElement ||
-      document.body
+    if (headCode.length < TRUNCATION_MIN_CHARS && !hasUnclosedCodeDelimiter(headCode)) {
+      if (isTurnFinished) codeCard.setAttribute('data-vexel-repaired-final', '1')
+      return
+    }
 
     const spilledSiblings: ChildNode[] = []
     const spilledChunks: string[] = []
@@ -810,7 +832,10 @@ async function repairBrokenSequenceFromCodeCard(
         }
       }
     }
-    if (spilledChunks.length === 0 && !poisonedHost) return
+    if (spilledChunks.length === 0 && !poisonedHost) {
+      if (isTurnFinished) codeCard.setAttribute('data-vexel-repaired-final', '1')
+      return
+    }
     codeCard.setAttribute('data-vexel-repaired', '1')
     const headerEl = (pre.parentElement?.previousElementSibling as HTMLElement | null) || null
     const lang = detectSemanticLang(codeEl, headerEl)
@@ -839,7 +864,15 @@ async function repairBrokenSequenceFromCodeCard(
         if (!existingTailEl) codeEl.appendChild(tailSpan)
       }
     }
-    if (reachedTerminalBoundary || turnRoot.querySelector('[data-zzy="1"]') !== null) {
+    const postNextSib = anchorBlock.nextElementSibling
+    const postNextSig = postNextSib
+      ? `${postNextSib.tagName}:${postNextSib.className}:${(postNextSib.textContent || '').length}`
+      : 'none'
+    scannedCardSignatures.set(
+      codeCard,
+      `${(codeEl.textContent || '').length}|${postNextSig}|${isTurnFinished ? '1' : '0'}`
+    )
+    if (reachedTerminalBoundary || isTurnFinished) {
       codeCard.setAttribute('data-vexel-repaired-final', '1')
     }
     const durationMs = Math.max(1, Math.round(performance.now() - repairStartMs))
@@ -860,7 +893,7 @@ async function repairBrokenSequenceFromCodeCard(
   }
 }
 export function scanAndRepairCodeBlocks(root: ParentNode, showToast: (msg: string) => void): void {
-  const cardSet = new Set<Element>(Array.from(root.querySelectorAll('[data-hveid]')))
+  const cardSet = new Set<Element>()
   for (const codeNode of Array.from(root.querySelectorAll('pre code'))) {
     const cardContainer =
       codeNode.closest('[data-hveid], [data-sfc-cp]') ||
@@ -935,7 +968,13 @@ export function initCodeRepair(showToast: (msg: string) => void): void {
     for (const m of mutations) {
       for (let i = 0; i < m.addedNodes.length; i += 1) {
         const node = m.addedNodes[i]
-        if (node.nodeType === 1 && !(node as Element).hasAttribute('data-vexel-ui')) {
+        if (node.nodeType !== 1) continue
+        const el = node as Element
+        if (el.hasAttribute('data-vexel-ui') || el.closest('[data-vexel-ui]')) continue
+        if (
+          el.matches('pre, code, [data-sfc-cp], [data-zzy], .n6owBd, .Y3BBE') ||
+          el.querySelector('pre, code, [data-sfc-cp], [data-zzy]') !== null
+        ) {
           scheduleScan()
           return
         }
