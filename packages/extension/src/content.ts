@@ -1,5 +1,5 @@
 import { t } from '@lingui/core/macro'
-import './i18n'
+import { initLocaleSync } from './i18n'
 import { animate } from 'motion'
 import { initOnboarding } from './features/onboarding'
 import { initCodeSave } from './features/code-save'
@@ -129,6 +129,7 @@ const scheduleBackground = (fn: () => void): void => {
 }
 
 if (window === window.top) {
+  initLocaleSync()
   initDomBooster()
   const bootUi = () => {
     initAutoFilePaste()

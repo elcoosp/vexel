@@ -1,3 +1,13 @@
+import { t } from '@lingui/core/macro'
+import {
+  detectBrowserLocale,
+  initLocaleSync,
+  LOCALE_STORAGE_KEY,
+  normalizeLocale,
+  setLocale,
+  type SupportedLocale,
+} from './i18n'
+
 function makeSvgIcon(kind: 'star' | 'alert-circle'): SVGElement {
   const ns = 'http://w3.org'
   const svg = document.createElementNS(ns, 'svg')
@@ -35,6 +45,7 @@ function makeSvgIcon(kind: 'star' | 'alert-circle'): SVGElement {
   }
   return svg as SVGElement
 }
+
 function loadConnectedFolderName(): Promise<string | null> {
   return new Promise((resolve) => {
     try {
@@ -65,99 +76,71 @@ function loadConnectedFolderName(): Promise<string | null> {
   })
 }
 
-const STRINGS = {
-  en: {
-    zeroTitle: 'Zero-Server Mode Ready',
-    zeroSub: 'Type @ in Google AI Mode to pick a local folder, or start the optional CLI bridge:',
-    folderTitle: 'Local Folder Connected',
-    folderSub: 'Connected folder: ',
-    onlineTitle: 'Local Bridge Connected',
-    onlineSub: 'Workspace root: ',
-    copy: 'Copy',
-    copied: 'Copied',
-    openAim: 'Open Google AI Mode',
-    skills: 'Skills',
-    files: 'Files',
-    lastPrompt: 'Last prompt',
-    rate: 'Star on GitHub',
-    bug: 'Report a bug',
-  },
-  fr: {
-    zeroTitle: 'Mode Zéro-Serveur actif',
-    zeroSub:
-      'Tapez @ dans Google AI Mode pour choisir un dossier local, ou lancez le bridge CLI optionnel :',
-    folderTitle: 'Dossier local connecté',
-    folderSub: 'Dossier actif : ',
-    onlineTitle: 'Bridge local connecté',
-    onlineSub: 'Dossier actif : ',
-    copy: 'Copier',
-    copied: 'Copié',
-    openAim: 'Ouvrir Google AI Mode',
-    skills: 'Skills',
-    files: 'Fichiers',
-    lastPrompt: 'Dernier prompt',
-    rate: 'Étoiler sur GitHub',
-    bug: 'Signaler un bug',
-  },
-} as const
 const HEALTH_URL = ['http://', '127', '.', '0', '.', '0', '.', '1:49152/health'].join('')
 const AI_MODE_URL = ['https://', 'www', '.', 'google', '.', 'com/search?udm=50'].join('')
 const REPO_URL = ['https://', 'github', '.', 'com/elcoosp/vexel'].join('')
 const ISSUES_URL = REPO_URL + '/issues/new'
-type Locale = 'en' | 'fr'
-function getLocale(): Locale {
-  try {
-    const saved = localStorage.getItem('vexel:popup-locale')
-    if (saved === 'en' || saved === 'fr') return saved
-  } catch {}
-  return navigator.language.toLowerCase().startsWith('fr') ? 'fr' : 'en'
-}
-let currentLocale: Locale = getLocale()
+
+let overrideLocale: SupportedLocale | null = null
 let bridgeRoot: string | null = null
 let localFolderRoot: string | null = null
+
 function render(): void {
-  const s = STRINGS[currentLocale]
-  const langBtn = document.querySelector('#lang-toggle')
-  if (langBtn) langBtn.textContent = currentLocale.toUpperCase()
+  const browserLang = detectBrowserLocale()
+  setLocale(overrideLocale ?? browserLang)
+
+  const optAuto = document.querySelector<HTMLOptionElement>('#opt-auto')
+  if (optAuto) {
+    const code = browserLang.split('-')[0].toUpperCase()
+    optAuto.textContent = t`Auto (${code})`
+  }
+  const select = document.querySelector<HTMLSelectElement>('#lang-select')
+  if (select) {
+    select.value = overrideLocale ?? 'auto'
+  }
+
   const dot = document.querySelector('#bridge-dot')
   const title = document.querySelector('#bridge-title')
   const sub = document.querySelector('#bridge-sub')
   const cmdRow = document.querySelector<HTMLElement>('#bridge-cmd-row')
   if (bridgeRoot) {
     dot?.classList.add('online')
-    if (title) title.textContent = s.onlineTitle
-    if (sub) sub.textContent = s.onlineSub + bridgeRoot
+    if (title) title.textContent = t`Local Bridge Connected`
+    if (sub) sub.textContent = t`Workspace root: ${bridgeRoot}`
     if (cmdRow) cmdRow.style.display = 'none'
   } else if (localFolderRoot) {
     dot?.classList.add('online')
-    if (title) title.textContent = s.folderTitle
-    if (sub) sub.textContent = s.folderSub + localFolderRoot
+    if (title) title.textContent = t`Local Folder Connected`
+    if (sub) sub.textContent = t`Connected folder: ${localFolderRoot}`
     if (cmdRow) cmdRow.style.display = 'none'
   } else {
     dot?.classList.remove('online')
-    if (title) title.textContent = s.zeroTitle
-    if (sub) sub.textContent = s.zeroSub
+    if (title) title.textContent = t`Zero-Server Mode Ready`
+    if (sub) {
+      sub.textContent = t`Type @ in Google AI Mode to pick a local folder, or start the optional CLI bridge:`
+    }
     if (cmdRow) cmdRow.style.display = 'flex'
   }
   const copyBtn = document.querySelector('#copy-cmd')
-  if (copyBtn) copyBtn.textContent = s.copy
+  if (copyBtn) copyBtn.textContent = t`Copy`
   const openBtn = document.querySelector('#open-aim')
-  if (openBtn) openBtn.textContent = s.openAim
+  if (openBtn) openBtn.textContent = t`Open Google AI Mode`
   const lblSkills = document.querySelector('#lbl-skills')
-  if (lblSkills) lblSkills.textContent = s.skills
+  if (lblSkills) lblSkills.textContent = t`Skills`
   const lblFiles = document.querySelector('#lbl-files')
-  if (lblFiles) lblFiles.textContent = s.files
+  if (lblFiles) lblFiles.textContent = t`Files`
   const lblExport = document.querySelector('#lbl-export')
-  if (lblExport) lblExport.textContent = s.lastPrompt
+  if (lblExport) lblExport.textContent = t`Last prompt`
   const linkRate = document.querySelector('#link-rate')
   if (linkRate) {
-    linkRate.replaceChildren(makeSvgIcon('star'), document.createTextNode(s.rate))
+    linkRate.replaceChildren(makeSvgIcon('star'), document.createTextNode(t`Star on GitHub`))
   }
   const linkBug = document.querySelector('#link-bug')
   if (linkBug) {
-    linkBug.replaceChildren(makeSvgIcon('alert-circle'), document.createTextNode(s.bug))
+    linkBug.replaceChildren(makeSvgIcon('alert-circle'), document.createTextNode(t`Report a bug`))
   }
 }
+
 async function probeConnections(): Promise<void> {
   localFolderRoot = await loadConnectedFolderName().catch(() => null)
   render()
@@ -174,27 +157,49 @@ async function probeConnections(): Promise<void> {
     bridgeRoot = null
   }
 }
+
 document.addEventListener('DOMContentLoaded', () => {
   try {
     const v = chrome.runtime.getManifest().version
     const vEl = document.querySelector('#ext-version')
     if (vEl && v) vEl.textContent = 'v' + v
   } catch {}
+
+  try {
+    overrideLocale = normalizeLocale(localStorage.getItem(LOCALE_STORAGE_KEY))
+  } catch {}
   render()
-  void probeConnections()
-  document.querySelector('#lang-toggle')?.addEventListener('click', () => {
-    currentLocale = currentLocale === 'en' ? 'fr' : 'en'
+
+  initLocaleSync(() => {
     try {
-      localStorage.setItem('vexel:popup-locale', currentLocale)
+      overrideLocale = normalizeLocale(localStorage.getItem(LOCALE_STORAGE_KEY))
     } catch {}
     render()
   })
+
+  void probeConnections()
+
+  document.querySelector<HTMLSelectElement>('#lang-select')?.addEventListener('change', (ev) => {
+    const raw = (ev.currentTarget as HTMLSelectElement).value
+    overrideLocale = raw === 'auto' ? null : normalizeLocale(raw)
+    try {
+      if (overrideLocale) {
+        localStorage.setItem(LOCALE_STORAGE_KEY, overrideLocale)
+        void chrome.storage?.local?.set({ [LOCALE_STORAGE_KEY]: overrideLocale })
+      } else {
+        localStorage.removeItem(LOCALE_STORAGE_KEY)
+        void chrome.storage?.local?.remove(LOCALE_STORAGE_KEY)
+      }
+    } catch {}
+    render()
+  })
+
   document.querySelector('#copy-cmd')?.addEventListener('click', async (ev) => {
     const btn = ev.currentTarget as HTMLButtonElement
     await navigator.clipboard.writeText('npx @vexel/bridge').catch(() => {})
-    btn.textContent = STRINGS[currentLocale].copied
+    btn.textContent = t`Copied`
     globalThis.setTimeout(() => {
-      btn.textContent = STRINGS[currentLocale].copy
+      btn.textContent = t`Copy`
     }, 1500)
   })
   document.querySelector('#open-aim')?.addEventListener('click', () => {

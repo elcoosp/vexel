@@ -9,53 +9,53 @@ msgstr ""
 
 #. placeholder {0}: 0
 #. placeholder {0}: visibleFileItems.length
-#: src/features/palette.ts:263
-#: src/features/palette.ts:1061
+#: src/features/palette.ts:242
+#: src/features/palette.ts:1062
 msgid "{0, plural, one {# item} other {# items}}"
 msgstr "{0, plural, other {#개 항목}}"
 
 #. placeholder {0}: s.refCount
-#: src/features/palette.ts:891
+#: src/features/palette.ts:892
 msgid "{0, plural, one {# ref} other {# refs}}"
 msgstr "{0, plural, other {#개 참조}}"
 
-#: src/features/palette.ts:1012
+#: src/features/palette.ts:1013
 msgid "{installsCount} installs"
 msgstr "{installsCount}회 설치"
 
-#: src/features/palette.ts:867
+#: src/features/palette.ts:868
 msgid "{localCount} local"
 msgstr "로컬 {localCount}개"
 
-#: src/features/palette.ts:866
+#: src/features/palette.ts:867
 msgid "{localCount} local • {remoteCount} on skills.sh"
 msgstr "로컬 {localCount}개 • skills.sh {remoteCount}개"
 
-#: src/features/palette.ts:839
+#: src/features/palette.ts:840
 msgid "{refCount, plural, one {# ref — {skillTitle}} other {# refs — {skillTitle}}}"
 msgstr "{refCount, plural, other {#개 참조 — {skillTitle}}}"
 
-#: src/features/palette.ts:961
+#: src/features/palette.ts:962
 msgid "{remLocal} local"
 msgstr "로컬 {remLocal}개"
 
-#: src/features/palette.ts:960
+#: src/features/palette.ts:961
 msgid "{remLocal} local • {remRemote} on skills.sh"
 msgstr "로컬 {remLocal}개 • skills.sh {remRemote}개"
 
-#: src/features/palette.ts:1242
+#: src/features/palette.ts:1241
 msgid "{toastMsg} (copied)"
 msgstr "{toastMsg} (복사됨)"
 
-#: src/features/palette.ts:1309
+#: src/features/palette.ts:1308
 msgid "✓ \"{doneName}\" installed!"
 msgstr "✓ \"{doneName}\" 설치 완료!"
 
-#: src/features/palette.ts:1308
+#: src/features/palette.ts:1307
 msgid "✓ Skill \"{doneName}\" installed!"
 msgstr "✓ 스킬 \"{doneName}\" 설치 완료!"
 
-#: src/features/palette.ts:953
+#: src/features/palette.ts:954
 msgid "✓ Skill \"{removedName}\" removed!"
 msgstr "✓ 스킬 \"{removedName}\" 제거 완료!"
 
@@ -76,7 +76,11 @@ msgstr "@로 파일 첨부 및 전체 폴더 패키징"
 msgid "Attached file: {fileName} ({formattedLen} chars)"
 msgstr "첨부된 파일: {fileName} ({formattedLen}자)"
 
-#: src/features/palette.ts:1005
+#: src/popup.ts:95
+msgid "Auto ({code})"
+msgstr "자동 ({code})"
+
+#: src/features/palette.ts:1006
 msgid "Available on skills.sh"
 msgstr "skills.sh에서 사용 가능"
 
@@ -84,7 +88,7 @@ msgstr "skills.sh에서 사용 가능"
 msgid "Back"
 msgstr "뒤로"
 
-#: src/features/palette.ts:1174
+#: src/features/palette.ts:1173
 msgid "Browse"
 msgstr "찾아보기"
 
@@ -96,31 +100,31 @@ msgstr "매끄러운 키보드 중심 워크플로를 위한 설계"
 msgid "Cancel"
 msgstr "취소"
 
-#: src/features/thread-tools.ts:302
+#: src/features/thread-tools.ts:319
 msgid "Clean thread copied to clipboard ({kb} KB)"
 msgstr "정리된 스레드를 클립보드에 복사했습니다 ({kb} KB)"
 
-#: src/features/palette.ts:1151
+#: src/features/palette.ts:1150
 msgid "Clear"
 msgstr "지우기"
 
-#: src/features/palette.ts:238
+#: src/features/palette.ts:217
 msgid "Clear search"
 msgstr "검색 지우기"
 
-#: src/features/palette.ts:910
+#: src/features/palette.ts:911
 msgid "Click again to delete permanently"
 msgstr "영구 삭제하려면 다시 클릭하세요"
 
-#: src/features/thread-tools.ts:305
+#: src/features/thread-tools.ts:322
 msgid "Clipboard write blocked"
 msgstr "클립보드 쓰기가 차단되었습니다"
 
-#: src/features/palette.ts:916
+#: src/features/palette.ts:917
 msgid "Confirm?"
 msgstr "확인하시겠습니까?"
 
-#: src/features/palette.ts:600
+#: src/features/palette.ts:579
 msgid "Connect a local project folder to browse, pack & save files—zero server required."
 msgstr "서버 없이 로컬 프로젝트 폴더를 연결하여 탐색, 패키징 및 저장하세요."
 
@@ -133,9 +137,13 @@ msgid "Connect any local folder directly in Chrome—no terminal or background s
 msgstr "터미널이나 백그라운드 서버 없이 Chrome에서 로컬 폴더를 직접 연결하세요. 코드베이스를 패키징하거나 AI 코드 블록을 디스크에 바로 저장할 수 있습니다."
 
 #: src/features/onboarding.ts:221
-#: src/features/palette.ts:531
+#: src/features/palette.ts:510
 msgid "Connected folder: {folderName}"
 msgstr "연결된 폴더: {folderName}"
+
+#: src/popup.ts:114
+msgid "Connected folder: {localFolderRoot}"
+msgstr "연결된 폴더: {localFolderRoot}"
 
 #: src/features/onboarding.ts:211
 msgid "Connected: {connectedFolderName} (click to switch)"
@@ -145,24 +153,27 @@ msgstr "연결됨: {connectedFolderName} (클릭하여 전환)"
 msgid "Continue"
 msgstr "계속"
 
-#: src/features/thread-tools.ts:328
+#: src/features/thread-tools.ts:345
 msgid "Conversation exported ({kb} KB)"
 msgstr "대화를 내보냈습니다 ({kb} KB)"
 
-#: src/features/palette.ts:203
+#: src/features/palette.ts:182
+#: src/popup.ts:200
 msgid "Copied"
 msgstr "복사됨"
 
 #. placeholder {0}: record.engine
-#: src/features/code-repair.ts:461
+#: src/features/code-repair.ts:608
 msgid "Copied repaired & formatted code ({0})"
 msgstr "복구 및 포맷된 코드가 복사되었습니다 ({0})"
 
-#: src/features/palette.ts:193
+#: src/features/palette.ts:172
+#: src/popup.ts:125
+#: src/popup.ts:202
 msgid "Copy"
 msgstr "복사"
 
-#: src/features/palette.ts:190
+#: src/features/palette.ts:169
 msgid "Copy clean Markdown thread to clipboard"
 msgstr "정리된 Markdown 스레드를 클립보드에 복사"
 
@@ -170,7 +181,7 @@ msgstr "정리된 Markdown 스레드를 클립보드에 복사"
 msgid "Design pragmatic, scalable system architecture with clear trade-offs and data flow."
 msgstr "명확한 트레이드오프와 데이터 흐름을 갖춘 실용적이고 확장 가능한 시스템 아키텍처를 설계합니다."
 
-#: src/features/palette.ts:1064
+#: src/features/palette.ts:1065
 msgid "Empty folder or no matching files."
 msgstr "빈 폴더이거나 일치하는 파일이 없습니다."
 
@@ -182,7 +193,7 @@ msgstr "모든 기능은 정확히 필요한 순간이 오기 전까지 작업�
 msgid "Export .md"
 msgstr ".md 내보내기"
 
-#: src/features/palette.ts:1506
+#: src/features/palette.ts:1505
 msgid "Exported"
 msgstr "내보내기 완료"
 
@@ -191,19 +202,20 @@ msgid "Failed to write file"
 msgstr "파일 쓰기 실패"
 
 #: src/features/palette.ts:141
+#: src/popup.ts:131
 msgid "Files"
 msgstr "파일"
 
-#: src/features/palette.ts:691
+#: src/features/palette.ts:670
 msgid "Filter skills..."
 msgstr "스킬 필터링..."
 
-#: src/features/palette.ts:695
+#: src/features/palette.ts:674
 msgid "Filter this folder or search files..."
 msgstr "이 폴더 필터링 또는 파일 검색..."
 
 #: src/features/code-save.ts:503
-#: src/features/palette.ts:638
+#: src/features/palette.ts:617
 msgid "Folder"
 msgstr "폴더"
 
@@ -212,12 +224,12 @@ msgid "folder/filename.ext"
 msgstr "folder/filename.ext"
 
 #: src/features/code-repair.ts:430
-msgid "Follow-up copied to clipboard"
-msgstr "후속 질문이 클립보드에 복사되었습니다"
+#~ msgid "Follow-up copied to clipboard"
+#~ msgstr "후속 질문이 클립보드에 복사되었습니다"
 
 #: src/features/code-repair.ts:427
-msgid "Follow-up prompt filled"
-msgstr "후속 프롬프트가 입력되었습니다"
+#~ msgid "Follow-up prompt filled"
+#~ msgstr "후속 프롬프트가 입력되었습니다"
 
 #: src/features/builtin-skills.ts:76
 msgid "Generate high-signal unit and integration tests covering happy paths, boundaries, and failures."
@@ -227,7 +239,7 @@ msgstr "정상 경로, 경계 조건 및 오류 상황을 포괄하는 핵심 �
 msgid "Hover any code block to write"
 msgstr "코드 블록에 마우스를 올려 파일로 저장"
 
-#: src/features/palette.ts:1183
+#: src/features/palette.ts:1182
 msgid "Inject staged + unstaged repository changes"
 msgstr "스테이징된 변경사항 및 미스테이징 변경사항 삽입"
 
@@ -239,20 +251,20 @@ msgstr "시니어 코드 리뷰 체크리스트(엣지 케이스, 비동기 경�
 msgid "Insert prompt skill"
 msgstr "프롬프트 스킬 삽입"
 
-#: src/features/palette.ts:1042
+#: src/features/palette.ts:1043
 msgid "Install"
 msgstr "설치"
 
+#: src/features/palette.ts:1302
 #: src/features/palette.ts:1303
-#: src/features/palette.ts:1304
 msgid "Install failed: {errMsg}"
 msgstr "설치 실패: {errMsg}"
 
-#: src/features/palette.ts:1295
+#: src/features/palette.ts:1294
 msgid "Installing {instName} ({instRepo})..."
 msgstr "{instName} ({instRepo}) 설치 중..."
 
-#: src/features/palette.ts:1294
+#: src/features/palette.ts:1293
 msgid "Installing {instName} via npx..."
 msgstr "npx로 {instName} 설치 중..."
 
@@ -268,28 +280,40 @@ msgstr "근본 원인을 분리하고 실패 모드를 재현하여 정확한 �
 msgid "Jump to last user prompt"
 msgstr "마지막 사용자 프롬프트로 이동"
 
-#: src/features/palette.ts:696
+#: src/popup.ts:133
+msgid "Last prompt"
+msgstr "마지막 프롬프트"
+
+#: src/features/palette.ts:675
 msgid "Loading files..."
 msgstr "파일 불러오는 중..."
 
-#: src/features/palette.ts:570
-#: src/features/palette.ts:876
+#: src/features/palette.ts:549
+#: src/features/palette.ts:877
 msgid "Loading skills..."
 msgstr "스킬 불러오는 중..."
 
-#: src/features/palette.ts:1037
+#: src/features/palette.ts:1038
 msgid "Loading..."
 msgstr "불러오는 중..."
 
-#: src/features/palette.ts:573
+#: src/popup.ts:108
+msgid "Local Bridge Connected"
+msgstr "로컬 브리지 연결됨"
+
+#: src/features/palette.ts:552
 msgid "Local bridge unreachable (127.0.0.1:49152)"
 msgstr "로컬 브리지에 연결할 수 없습니다 (127.0.0.1:49152)"
+
+#: src/popup.ts:113
+msgid "Local Folder Connected"
+msgstr "로컬 폴더 연결됨"
 
 #: src/features/onboarding.ts:175
 msgid "Maps data flow, state boundaries, and bottlenecks in plain, structured diagrams."
 msgstr "데이터 흐름, 상태 경계 및 병목 지점을 명확하고 구조화된 다이어그램으로 시각화합니다."
 
-#: src/features/palette.ts:265
+#: src/features/palette.ts:244
 msgid "Navigate: arrows | Insert: Enter | Parent: left"
 msgstr "이동: 방향키 | 삽입: Enter | 상위 폴더: 왼쪽 화살표"
 
@@ -301,28 +325,32 @@ msgstr "새 폴더"
 msgid "New folder on save"
 msgstr "저장 시 새 폴더 생성"
 
-#: src/features/thread-tools.ts:296
 #: src/features/thread-tools.ts:313
+#: src/features/thread-tools.ts:330
 msgid "No conversation turns found"
 msgstr "대화 턴을 찾을 수 없습니다"
 
-#: src/features/palette.ts:1336
+#: src/features/palette.ts:1335
 msgid "No git repository found here"
 msgstr "여기서 Git 저장소를 찾을 수 없습니다"
 
-#: src/features/palette.ts:844
+#: src/features/palette.ts:845
 msgid "No matching references."
 msgstr "일치하는 참조가 없습니다."
 
-#: src/features/palette.ts:882
+#: src/features/palette.ts:883
 msgid "No matching skills."
 msgstr "일치하는 스킬이 없습니다."
 
-#: src/features/palette.ts:1302
+#: src/features/palette.ts:1301
 msgid "npx error"
 msgstr "npx 오류"
 
-#: src/features/palette.ts:609
+#: src/popup.ts:127
+msgid "Open Google AI Mode"
+msgstr "Google AI 모드 열기"
+
+#: src/features/palette.ts:588
 msgid "Open Local Folder"
 msgstr "로컬 폴더 열기"
 
@@ -334,15 +362,15 @@ msgstr "느린 SQL 쿼리, 복합 인덱스 및 실행 계획을 최적화합니
 msgid "Overwrite"
 msgstr "덮어쓰기"
 
-#: src/features/palette.ts:1095
+#: src/features/palette.ts:1094
 msgid "Pack"
 msgstr "패키징"
 
-#: src/features/palette.ts:1104
+#: src/features/palette.ts:1103
 msgid "Packing {dirName}/..."
 msgstr "{dirName}/ 패키징 중..."
 
-#: src/features/palette.ts:1333
+#: src/features/palette.ts:1332
 msgid "Packing Git diff..."
 msgstr "Git diff 패키징 중..."
 
@@ -350,43 +378,47 @@ msgstr "Git diff 패키징 중..."
 msgid "Recent:"
 msgstr "최근:"
 
-#: src/features/palette.ts:1147
+#: src/features/palette.ts:1146
 msgid "Recently Used"
 msgstr "최근 사용 항목"
 
-#: src/features/palette.ts:1092
+#: src/features/palette.ts:1091
 msgid "Recursively pack non-gitignored files into context"
 msgstr "gitignore되지 않은 파일을 재귀적으로 컨텍스트에 패키징"
 
 #. placeholder {0}: ref.relPath
-#: src/features/palette.ts:1278
+#: src/features/palette.ts:1277
 msgid "Reference \"{0}\" added"
 msgstr "참조 \"{0}\" 추가됨"
 
-#: src/features/palette.ts:947
+#: src/features/palette.ts:948
 msgid "remove error"
 msgstr "제거 오류"
 
-#: src/features/palette.ts:948
 #: src/features/palette.ts:949
+#: src/features/palette.ts:950
 msgid "Remove failed: {errMsg}"
 msgstr "제거 실패: {errMsg}"
 
-#: src/features/palette.ts:940
+#: src/features/palette.ts:941
 msgid "Removing {removingName}..."
 msgstr "{removingName} 제거 중..."
 
-#: src/features/palette.ts:914
+#: src/features/palette.ts:915
 msgid "Removing..."
 msgstr "제거 중..."
 
-#: src/features/code-repair.ts:239
+#: src/features/code-repair.ts:266
 msgid "Repaired"
 msgstr "복구됨"
 
 #: src/features/code-repair.ts:239
-msgid "Repaired · {engine}"
-msgstr "복구됨 · {engine}"
+#~ msgid "Repaired · {engine}"
+#~ msgstr "복구됨 · {engine}"
+
+#: src/popup.ts:140
+msgid "Report a bug"
+msgstr "버그 신고"
 
 #: src/features/code-save.ts:376
 #: src/features/code-save.ts:690
@@ -419,11 +451,11 @@ msgstr "로컬에 저장됨: {relPath} ({localBytes} B)"
 msgid "Saving..."
 msgstr "저장 중..."
 
-#: src/features/palette.ts:233
+#: src/features/palette.ts:212
 msgid "Search a skill or file..."
 msgstr "스킬 또는 파일 검색..."
 
-#: src/features/palette.ts:1002
+#: src/features/palette.ts:1003
 msgid "Searching skills.sh..."
 msgstr "skills.sh 검색 중..."
 
@@ -435,18 +467,23 @@ msgstr "버그, 보안 엣지 케이스, 경쟁 상태 및 유지보수성에 �
 msgid "Simplify complex functions, remove dead code, and improve type safety without behavior changes."
 msgstr "동작을 변경하지 않고 복잡한 함수를 깔끔하고 관용적이며 테스트 가능한 모듈로 변환합니다."
 
-#: src/features/palette.ts:1323
+#: src/features/palette.ts:1322
 msgid "Skill \"{addedSkill}\" added"
 msgstr "스킬 \"{addedSkill}\" 삽입됨"
 
 #: src/features/palette.ts:137
-#: src/features/palette.ts:224
+#: src/features/palette.ts:203
+#: src/popup.ts:129
 msgid "Skills"
 msgstr "스킬"
 
 #: src/features/onboarding.ts:78
 msgid "Skip"
 msgstr "건너뛰기"
+
+#: src/popup.ts:136
+msgid "Star on GitHub"
+msgstr "GitHub 스타"
 
 #: src/features/onboarding.ts:150
 msgid "Start using Vexel"
@@ -464,7 +501,7 @@ msgstr "2/3단계 · 무서버 워크스페이스"
 msgid "Step 3 of 3 · Flow & Speed"
 msgstr "3/3단계 · 흐름과 속도"
 
-#: src/features/palette.ts:509
+#: src/features/palette.ts:488
 msgid "Switch folder"
 msgstr "폴더 전환"
 
@@ -472,7 +509,7 @@ msgstr "폴더 전환"
 msgid "Systematic root-cause diagnosis from stack traces, logs, and code without guesswork."
 msgstr "추측 없이 스택 트레이스, 로그 및 코드를 바탕으로 체계적인 근본 원인을 진단합니다."
 
-#: src/features/code-repair.ts:240
+#: src/features/code-repair.ts:312
 msgid "Truncated code block automatically reassembled and formatted by Vexel"
 msgstr "잘린 코드 블록을 Vexel이 자동으로 재조립하고 포맷했습니다"
 
@@ -480,19 +517,23 @@ msgstr "잘린 코드 블록을 Vexel이 자동으로 재조립하고 포맷했�
 msgid "Turn repetitive engineering prompts into one-keystroke slash commands—ready out of the box with zero setup."
 msgstr "반복되는 엔지니어링 프롬프트를 원키 슬래시 명령으로 전환하세요. 별도 설정 없이 바로 사용할 수 있습니다."
 
+#: src/popup.ts:120
+msgid "Type @ in Google AI Mode to pick a local folder, or start the optional CLI bridge:"
+msgstr "Google AI 모드에서 @ 를 입력해 로컬 폴더를 선택하거나 선택적 CLI 브리지를 실행하세요:"
+
 #: src/features/onboarding.ts:168
 msgid "Type / anywhere to summon reusable skills"
 msgstr "어디서나 /를 입력하여 재사용 가능한 스킬 호출"
 
-#: src/features/palette.ts:1112
+#: src/features/palette.ts:1111
 msgid "Unable to pack folder"
 msgstr "폴더를 패키징할 수 없습니다"
 
-#: src/features/palette.ts:1366
+#: src/features/palette.ts:1365
 msgid "Unable to read {failedPath}"
 msgstr "{failedPath}을(를) 읽을 수 없습니다"
 
-#: src/features/palette.ts:910
+#: src/features/palette.ts:911
 msgid "Uninstall skill"
 msgstr "스킬 제거"
 
@@ -508,6 +549,14 @@ msgstr "Vexel: {message}"
 msgid "Welcome to Vexel"
 msgstr "Vexel에 오신 것을 환영합니다"
 
-#: src/features/palette.ts:635
+#: src/popup.ts:109
+msgid "Workspace root: {bridgeRoot}"
+msgstr "작업 폴더: {bridgeRoot}"
+
+#: src/features/palette.ts:614
 msgid "Zero-server mode"
 msgstr "무서버 모드"
+
+#: src/popup.ts:118
+msgid "Zero-Server Mode Ready"
+msgstr "서버리스 모드 준비 완료"

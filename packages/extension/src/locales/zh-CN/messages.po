@@ -9,53 +9,53 @@ msgstr ""
 
 #. placeholder {0}: 0
 #. placeholder {0}: visibleFileItems.length
-#: src/features/palette.ts:263
-#: src/features/palette.ts:1061
+#: src/features/palette.ts:242
+#: src/features/palette.ts:1062
 msgid "{0, plural, one {# item} other {# items}}"
 msgstr "{0, plural, other {# 项}}"
 
 #. placeholder {0}: s.refCount
-#: src/features/palette.ts:891
+#: src/features/palette.ts:892
 msgid "{0, plural, one {# ref} other {# refs}}"
 msgstr "{0, plural, other {# 个引用}}"
 
-#: src/features/palette.ts:1012
+#: src/features/palette.ts:1013
 msgid "{installsCount} installs"
 msgstr "{installsCount} 次安装"
 
-#: src/features/palette.ts:867
+#: src/features/palette.ts:868
 msgid "{localCount} local"
 msgstr "{localCount} 个本地"
 
-#: src/features/palette.ts:866
+#: src/features/palette.ts:867
 msgid "{localCount} local • {remoteCount} on skills.sh"
 msgstr "{localCount} 个本地 • skills.sh 上 {remoteCount} 个"
 
-#: src/features/palette.ts:839
+#: src/features/palette.ts:840
 msgid "{refCount, plural, one {# ref — {skillTitle}} other {# refs — {skillTitle}}}"
 msgstr "{refCount, plural, other {# 个引用 — {skillTitle}}}"
 
-#: src/features/palette.ts:961
+#: src/features/palette.ts:962
 msgid "{remLocal} local"
 msgstr "{remLocal} 个本地"
 
-#: src/features/palette.ts:960
+#: src/features/palette.ts:961
 msgid "{remLocal} local • {remRemote} on skills.sh"
 msgstr "{remLocal} 个本地 • skills.sh 上 {remRemote} 个"
 
-#: src/features/palette.ts:1242
+#: src/features/palette.ts:1241
 msgid "{toastMsg} (copied)"
 msgstr "{toastMsg}（已复制）"
 
-#: src/features/palette.ts:1309
+#: src/features/palette.ts:1308
 msgid "✓ \"{doneName}\" installed!"
 msgstr "✓ “{doneName}” 已安装！"
 
-#: src/features/palette.ts:1308
+#: src/features/palette.ts:1307
 msgid "✓ Skill \"{doneName}\" installed!"
 msgstr "✓ 技能 “{doneName}” 已安装！"
 
-#: src/features/palette.ts:953
+#: src/features/palette.ts:954
 msgid "✓ Skill \"{removedName}\" removed!"
 msgstr "✓ 技能 “{removedName}” 已移除！"
 
@@ -76,7 +76,11 @@ msgstr "使用 @ 附加文件并打包整个文件夹"
 msgid "Attached file: {fileName} ({formattedLen} chars)"
 msgstr "已附加文件：{fileName}（{formattedLen} 字符）"
 
-#: src/features/palette.ts:1005
+#: src/popup.ts:95
+msgid "Auto ({code})"
+msgstr "自动 ({code})"
+
+#: src/features/palette.ts:1006
 msgid "Available on skills.sh"
 msgstr "可在 skills.sh 获取"
 
@@ -84,7 +88,7 @@ msgstr "可在 skills.sh 获取"
 msgid "Back"
 msgstr "返回"
 
-#: src/features/palette.ts:1174
+#: src/features/palette.ts:1173
 msgid "Browse"
 msgstr "浏览"
 
@@ -96,31 +100,31 @@ msgstr "专为流畅的键盘操作流而打造"
 msgid "Cancel"
 msgstr "取消"
 
-#: src/features/thread-tools.ts:302
+#: src/features/thread-tools.ts:319
 msgid "Clean thread copied to clipboard ({kb} KB)"
 msgstr "已将整洁对话复制到剪贴板（{kb} KB）"
 
-#: src/features/palette.ts:1151
+#: src/features/palette.ts:1150
 msgid "Clear"
 msgstr "清除"
 
-#: src/features/palette.ts:238
+#: src/features/palette.ts:217
 msgid "Clear search"
 msgstr "清除搜索"
 
-#: src/features/palette.ts:910
+#: src/features/palette.ts:911
 msgid "Click again to delete permanently"
 msgstr "再次点击以永久删除"
 
-#: src/features/thread-tools.ts:305
+#: src/features/thread-tools.ts:322
 msgid "Clipboard write blocked"
 msgstr "剪贴板写入被阻止"
 
-#: src/features/palette.ts:916
+#: src/features/palette.ts:917
 msgid "Confirm?"
 msgstr "确认？"
 
-#: src/features/palette.ts:600
+#: src/features/palette.ts:579
 msgid "Connect a local project folder to browse, pack & save files—zero server required."
 msgstr "连接本地项目文件夹以浏览、打包和保存文件——无需启动服务器。"
 
@@ -133,9 +137,13 @@ msgid "Connect any local folder directly in Chrome—no terminal or background s
 msgstr "直接在 Chrome 中连接任意本地文件夹——无需终端或后台服务。打包代码库或将 AI 代码块直接写入磁盘。"
 
 #: src/features/onboarding.ts:221
-#: src/features/palette.ts:531
+#: src/features/palette.ts:510
 msgid "Connected folder: {folderName}"
 msgstr "已连接文件夹：{folderName}"
+
+#: src/popup.ts:114
+msgid "Connected folder: {localFolderRoot}"
+msgstr "当前文件夹：{localFolderRoot}"
 
 #: src/features/onboarding.ts:211
 msgid "Connected: {connectedFolderName} (click to switch)"
@@ -145,24 +153,27 @@ msgstr "已连接：{connectedFolderName}（点击切换）"
 msgid "Continue"
 msgstr "继续"
 
-#: src/features/thread-tools.ts:328
+#: src/features/thread-tools.ts:345
 msgid "Conversation exported ({kb} KB)"
 msgstr "对话已导出（{kb} KB）"
 
-#: src/features/palette.ts:203
+#: src/features/palette.ts:182
+#: src/popup.ts:200
 msgid "Copied"
 msgstr "已复制"
 
 #. placeholder {0}: record.engine
-#: src/features/code-repair.ts:461
+#: src/features/code-repair.ts:608
 msgid "Copied repaired & formatted code ({0})"
 msgstr "已复制修复并格式化的代码 ({0})"
 
-#: src/features/palette.ts:193
+#: src/features/palette.ts:172
+#: src/popup.ts:125
+#: src/popup.ts:202
 msgid "Copy"
 msgstr "复制"
 
-#: src/features/palette.ts:190
+#: src/features/palette.ts:169
 msgid "Copy clean Markdown thread to clipboard"
 msgstr "复制整洁的 Markdown 对话到剪贴板"
 
@@ -170,7 +181,7 @@ msgstr "复制整洁的 Markdown 对话到剪贴板"
 msgid "Design pragmatic, scalable system architecture with clear trade-offs and data flow."
 msgstr "设计务实、可扩展的系统架构，明确技术权衡与数据流向。"
 
-#: src/features/palette.ts:1064
+#: src/features/palette.ts:1065
 msgid "Empty folder or no matching files."
 msgstr "空文件夹或无匹配文件。"
 
@@ -182,7 +193,7 @@ msgstr "每个操作都在你需要的那一毫秒之前保持隐身，绝不打
 msgid "Export .md"
 msgstr "导出 .md"
 
-#: src/features/palette.ts:1506
+#: src/features/palette.ts:1505
 msgid "Exported"
 msgstr "已导出"
 
@@ -191,19 +202,20 @@ msgid "Failed to write file"
 msgstr "写入文件失败"
 
 #: src/features/palette.ts:141
+#: src/popup.ts:131
 msgid "Files"
 msgstr "文件"
 
-#: src/features/palette.ts:691
+#: src/features/palette.ts:670
 msgid "Filter skills..."
 msgstr "筛选技能..."
 
-#: src/features/palette.ts:695
+#: src/features/palette.ts:674
 msgid "Filter this folder or search files..."
 msgstr "筛选此文件夹或搜索文件..."
 
 #: src/features/code-save.ts:503
-#: src/features/palette.ts:638
+#: src/features/palette.ts:617
 msgid "Folder"
 msgstr "文件夹"
 
@@ -212,12 +224,12 @@ msgid "folder/filename.ext"
 msgstr "folder/filename.ext"
 
 #: src/features/code-repair.ts:430
-msgid "Follow-up copied to clipboard"
-msgstr "已将后续建议复制到剪贴板"
+#~ msgid "Follow-up copied to clipboard"
+#~ msgstr "已将后续建议复制到剪贴板"
 
 #: src/features/code-repair.ts:427
-msgid "Follow-up prompt filled"
-msgstr "已填充后续提示词"
+#~ msgid "Follow-up prompt filled"
+#~ msgstr "已填充后续提示词"
 
 #: src/features/builtin-skills.ts:76
 msgid "Generate high-signal unit and integration tests covering happy paths, boundaries, and failures."
@@ -227,7 +239,7 @@ msgstr "生成高价值的单元测试和集成测试，覆盖正常路径、边
 msgid "Hover any code block to write"
 msgstr "悬停任意代码块即可写入本地"
 
-#: src/features/palette.ts:1183
+#: src/features/palette.ts:1182
 msgid "Inject staged + unstaged repository changes"
 msgstr "注入暂存区与未暂存的仓库变更"
 
@@ -239,20 +251,20 @@ msgstr "注入资深代码审查清单：边界情况、异步竞态条件、安
 msgid "Insert prompt skill"
 msgstr "插入提示词技能"
 
-#: src/features/palette.ts:1042
+#: src/features/palette.ts:1043
 msgid "Install"
 msgstr "安装"
 
+#: src/features/palette.ts:1302
 #: src/features/palette.ts:1303
-#: src/features/palette.ts:1304
 msgid "Install failed: {errMsg}"
 msgstr "安装失败：{errMsg}"
 
-#: src/features/palette.ts:1295
+#: src/features/palette.ts:1294
 msgid "Installing {instName} ({instRepo})..."
 msgstr "正在安装 {instName}（{instRepo}）..."
 
-#: src/features/palette.ts:1294
+#: src/features/palette.ts:1293
 msgid "Installing {instName} via npx..."
 msgstr "正在通过 npx 安装 {instName}..."
 
@@ -268,28 +280,40 @@ msgstr "定位根本原因、复现故障模式并编写精准的回归测试。
 msgid "Jump to last user prompt"
 msgstr "跳转到最后一条用户提问"
 
-#: src/features/palette.ts:696
+#: src/popup.ts:133
+msgid "Last prompt"
+msgstr "上一条提示词"
+
+#: src/features/palette.ts:675
 msgid "Loading files..."
 msgstr "正在加载文件..."
 
-#: src/features/palette.ts:570
-#: src/features/palette.ts:876
+#: src/features/palette.ts:549
+#: src/features/palette.ts:877
 msgid "Loading skills..."
 msgstr "正在加载技能..."
 
-#: src/features/palette.ts:1037
+#: src/features/palette.ts:1038
 msgid "Loading..."
 msgstr "加载中..."
 
-#: src/features/palette.ts:573
+#: src/popup.ts:108
+msgid "Local Bridge Connected"
+msgstr "已连接本地桥接器"
+
+#: src/features/palette.ts:552
 msgid "Local bridge unreachable (127.0.0.1:49152)"
 msgstr "无法连接本地桥接服务 (127.0.0.1:49152)"
+
+#: src/popup.ts:113
+msgid "Local Folder Connected"
+msgstr "已连接本地文件夹"
 
 #: src/features/onboarding.ts:175
 msgid "Maps data flow, state boundaries, and bottlenecks in plain, structured diagrams."
 msgstr "以清晰的结构化图表梳理数据流、状态边界与性能瓶颈。"
 
-#: src/features/palette.ts:265
+#: src/features/palette.ts:244
 msgid "Navigate: arrows | Insert: Enter | Parent: left"
 msgstr "导航：方向键 | 插入：Enter | 上级目录：左方向键"
 
@@ -301,28 +325,32 @@ msgstr "新建文件夹"
 msgid "New folder on save"
 msgstr "保存时新建文件夹"
 
-#: src/features/thread-tools.ts:296
 #: src/features/thread-tools.ts:313
+#: src/features/thread-tools.ts:330
 msgid "No conversation turns found"
 msgstr "未找到对话轮次"
 
-#: src/features/palette.ts:1336
+#: src/features/palette.ts:1335
 msgid "No git repository found here"
 msgstr "此处未找到 Git 仓库"
 
-#: src/features/palette.ts:844
+#: src/features/palette.ts:845
 msgid "No matching references."
 msgstr "没有匹配的引用。"
 
-#: src/features/palette.ts:882
+#: src/features/palette.ts:883
 msgid "No matching skills."
 msgstr "没有匹配的技能。"
 
-#: src/features/palette.ts:1302
+#: src/features/palette.ts:1301
 msgid "npx error"
 msgstr "npx 错误"
 
-#: src/features/palette.ts:609
+#: src/popup.ts:127
+msgid "Open Google AI Mode"
+msgstr "打开 Google AI 模式"
+
+#: src/features/palette.ts:588
 msgid "Open Local Folder"
 msgstr "打开本地文件夹"
 
@@ -334,15 +362,15 @@ msgstr "优化慢 SQL 查询、复合索引与执行计划。"
 msgid "Overwrite"
 msgstr "覆盖"
 
-#: src/features/palette.ts:1095
+#: src/features/palette.ts:1094
 msgid "Pack"
 msgstr "打包"
 
-#: src/features/palette.ts:1104
+#: src/features/palette.ts:1103
 msgid "Packing {dirName}/..."
 msgstr "正在打包 {dirName}/..."
 
-#: src/features/palette.ts:1333
+#: src/features/palette.ts:1332
 msgid "Packing Git diff..."
 msgstr "正在打包 Git diff..."
 
@@ -350,43 +378,47 @@ msgstr "正在打包 Git diff..."
 msgid "Recent:"
 msgstr "最近："
 
-#: src/features/palette.ts:1147
+#: src/features/palette.ts:1146
 msgid "Recently Used"
 msgstr "最近使用"
 
-#: src/features/palette.ts:1092
+#: src/features/palette.ts:1091
 msgid "Recursively pack non-gitignored files into context"
 msgstr "递归打包未被 gitignore 忽略的文件到上下文"
 
 #. placeholder {0}: ref.relPath
-#: src/features/palette.ts:1278
+#: src/features/palette.ts:1277
 msgid "Reference \"{0}\" added"
 msgstr "已添加引用 “{0}”"
 
-#: src/features/palette.ts:947
+#: src/features/palette.ts:948
 msgid "remove error"
 msgstr "移除错误"
 
-#: src/features/palette.ts:948
 #: src/features/palette.ts:949
+#: src/features/palette.ts:950
 msgid "Remove failed: {errMsg}"
 msgstr "移除失败：{errMsg}"
 
-#: src/features/palette.ts:940
+#: src/features/palette.ts:941
 msgid "Removing {removingName}..."
 msgstr "正在移除 {removingName}..."
 
-#: src/features/palette.ts:914
+#: src/features/palette.ts:915
 msgid "Removing..."
 msgstr "正在移除..."
 
-#: src/features/code-repair.ts:239
+#: src/features/code-repair.ts:266
 msgid "Repaired"
 msgstr "已修复"
 
 #: src/features/code-repair.ts:239
-msgid "Repaired · {engine}"
-msgstr "已修复 · {engine}"
+#~ msgid "Repaired · {engine}"
+#~ msgstr "已修复 · {engine}"
+
+#: src/popup.ts:140
+msgid "Report a bug"
+msgstr "报告问题"
 
 #: src/features/code-save.ts:376
 #: src/features/code-save.ts:690
@@ -419,11 +451,11 @@ msgstr "已保存到本地：{relPath}（{localBytes} B）"
 msgid "Saving..."
 msgstr "正在保存..."
 
-#: src/features/palette.ts:233
+#: src/features/palette.ts:212
 msgid "Search a skill or file..."
 msgstr "搜索技能或文件..."
 
-#: src/features/palette.ts:1002
+#: src/features/palette.ts:1003
 msgid "Searching skills.sh..."
 msgstr "正在搜索 skills.sh..."
 
@@ -435,18 +467,23 @@ msgstr "资深代码审查，聚焦 Bug、安全边界、竞态条件与可维�
 msgid "Simplify complex functions, remove dead code, and improve type safety without behavior changes."
 msgstr "在不改变行为的前提下，将复杂函数重构为整洁、地道且易于测试的模块。"
 
-#: src/features/palette.ts:1323
+#: src/features/palette.ts:1322
 msgid "Skill \"{addedSkill}\" added"
 msgstr "已插入技能 “{addedSkill}”"
 
 #: src/features/palette.ts:137
-#: src/features/palette.ts:224
+#: src/features/palette.ts:203
+#: src/popup.ts:129
 msgid "Skills"
 msgstr "技能"
 
 #: src/features/onboarding.ts:78
 msgid "Skip"
 msgstr "跳过"
+
+#: src/popup.ts:136
+msgid "Star on GitHub"
+msgstr "在 GitHub 点星"
 
 #: src/features/onboarding.ts:150
 msgid "Start using Vexel"
@@ -464,7 +501,7 @@ msgstr "第 2 步，共 3 步 · 无服务器工作区"
 msgid "Step 3 of 3 · Flow & Speed"
 msgstr "第 3 步，共 3 步 · 流畅与速度"
 
-#: src/features/palette.ts:509
+#: src/features/palette.ts:488
 msgid "Switch folder"
 msgstr "切换文件夹"
 
@@ -472,7 +509,7 @@ msgstr "切换文件夹"
 msgid "Systematic root-cause diagnosis from stack traces, logs, and code without guesswork."
 msgstr "基于堆栈跟踪、日志和代码进行系统性根因诊断，拒绝盲目猜测。"
 
-#: src/features/code-repair.ts:240
+#: src/features/code-repair.ts:312
 msgid "Truncated code block automatically reassembled and formatted by Vexel"
 msgstr "Vexel 已自动重组并格式化被截断的代码块"
 
@@ -480,19 +517,23 @@ msgstr "Vexel 已自动重组并格式化被截断的代码块"
 msgid "Turn repetitive engineering prompts into one-keystroke slash commands—ready out of the box with zero setup."
 msgstr "将重复的工程提示词转化为一键斜杠命令——开箱即用，无需配置。"
 
+#: src/popup.ts:120
+msgid "Type @ in Google AI Mode to pick a local folder, or start the optional CLI bridge:"
+msgstr "在 Google AI 模式中输入 @ 选择本地文件夹，或启动可选的 CLI 桥接器："
+
 #: src/features/onboarding.ts:168
 msgid "Type / anywhere to summon reusable skills"
 msgstr "在任意位置输入 / 即可调用可复用技能"
 
-#: src/features/palette.ts:1112
+#: src/features/palette.ts:1111
 msgid "Unable to pack folder"
 msgstr "无法打包文件夹"
 
-#: src/features/palette.ts:1366
+#: src/features/palette.ts:1365
 msgid "Unable to read {failedPath}"
 msgstr "无法读取 {failedPath}"
 
-#: src/features/palette.ts:910
+#: src/features/palette.ts:911
 msgid "Uninstall skill"
 msgstr "卸载技能"
 
@@ -508,6 +549,14 @@ msgstr "Vexel：{message}"
 msgid "Welcome to Vexel"
 msgstr "欢迎使用 Vexel"
 
-#: src/features/palette.ts:635
+#: src/popup.ts:109
+msgid "Workspace root: {bridgeRoot}"
+msgstr "工作区根目录：{bridgeRoot}"
+
+#: src/features/palette.ts:614
 msgid "Zero-server mode"
 msgstr "无服务器模式"
+
+#: src/popup.ts:118
+msgid "Zero-Server Mode Ready"
+msgstr "无服务器模式已就绪"

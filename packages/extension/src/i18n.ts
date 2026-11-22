@@ -10,6 +10,7 @@ import { messages as koMessages } from './locales/ko/messages.po'
 
 export const SUPPORTED_LOCALES = ['en', 'fr', 'es', 'de', 'pt-BR', 'ja', 'zh-CN', 'ko'] as const
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]
+export const LOCALE_STORAGE_KEY = 'vexel:locale'
 
 i18n.load({
   en: enMessages,
@@ -22,8 +23,8 @@ i18n.load({
   ko: koMessages,
 })
 
-function normalizeLocale(raw: string | null | undefined): SupportedLocale | null {
-  if (!raw) return null
+export function normalizeLocale(raw: string | null | undefined): SupportedLocale | null {
+  if (!raw || raw === 'auto') return null
   const l = raw.toLowerCase().replace('_', '-')
   if (l.startsWith('fr')) return 'fr'
   if (l.startsWith('es')) return 'es'
@@ -36,12 +37,7 @@ function normalizeLocale(raw: string | null | undefined): SupportedLocale | null
   return null
 }
 
-export function detectLocale(): SupportedLocale {
-  try {
-    const o = typeof localStorage !== 'undefined' ? localStorage.getItem('vexel:locale') : null
-    const normOverride = normalizeLocale(o)
-    if (normOverride) return normOverride
-  } catch {}
+export function detectBrowserLocale(): SupportedLocale {
   const uiLang =
     (typeof chrome !== 'undefined' && chrome.i18n?.getUILanguage?.()) ||
     (typeof navigator !== 'undefined' && navigator.language) ||
@@ -49,8 +45,52 @@ export function detectLocale(): SupportedLocale {
   return normalizeLocale(uiLang) ?? 'en'
 }
 
-export function setLocale(locale: SupportedLocale): void {
-  i18n.activate(locale)
+export function detectLocale(): SupportedLocale {
+  try {
+    const o = typeof localStorage !== 'undefined' ? localStorage.getItem(LOCALE_STORAGE_KEY) : null
+    const normOverride = normalizeLocale(o)
+    if (normOverride) return normOverride
+  } catch {}
+  return detectBrowserLocale()
 }
+
+export function setLocale(locale: SupportedLocale): void {
+  if (i18n.locale !== locale) {
+    i18n.activate(locale)
+  }
+}
+
+export function initLocaleSync(onChange?: (locale: SupportedLocale) => void): void {
+  const applyOverride = (raw: unknown) => {
+    const norm = typeof raw === 'string' ? normalizeLocale(raw) : null
+    try {
+      if (typeof localStorage !== 'undefined') {
+        if (norm) localStorage.setItem(LOCALE_STORAGE_KEY, norm)
+        else localStorage.removeItem(LOCALE_STORAGE_KEY)
+      }
+    } catch {}
+    const resolved = norm ?? detectBrowserLocale()
+    setLocale(resolved)
+    onChange?.(resolved)
+  }
+
+  try {
+    if (typeof chrome !== 'undefined' && chrome.storage?.local?.get) {
+      chrome.storage.local.get(LOCALE_STORAGE_KEY, (items) => {
+        if (items && LOCALE_STORAGE_KEY in items) {
+          applyOverride(items[LOCALE_STORAGE_KEY])
+        }
+      })
+    }
+    if (typeof chrome !== 'undefined' && chrome.storage?.onChanged?.addListener) {
+      chrome.storage.onChanged.addListener((changes, areaName) => {
+        if (areaName === 'local' && changes[LOCALE_STORAGE_KEY]) {
+          applyOverride(changes[LOCALE_STORAGE_KEY].newValue)
+        }
+      })
+    }
+  } catch {}
+}
+
 setLocale(detectLocale())
 export { i18n }

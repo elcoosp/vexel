@@ -1,5 +1,5 @@
 import { t, plural } from '@lingui/core/macro'
-import { detectLocale, setLocale, SUPPORTED_LOCALES } from '../i18n'
+import '../i18n'
 import { browseLocalFs, packLocalFsFolder, pickLocalFolder, readLocalFsFile } from './local-fs'
 import { openOnboardingModal } from './onboarding'
 import { animate } from 'motion'
@@ -157,27 +157,6 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
   btnTour.type = 'button'
   btnTour.className = 'action-pill icon-only'
   btnTour.title = t`Interactive welcome tour & local folder setup`
-  const btnLang = document.createElement('button')
-  btnLang.type = 'button'
-  btnLang.className = 'action-pill lang-pill'
-  const syncLangBtn = () => {
-    const cur = detectLocale()
-    btnLang.textContent = cur.split('-')[0].toUpperCase()
-    btnLang.title = 'Language: ' + cur + ' (click to cycle)'
-  }
-  syncLangBtn()
-  btnLang.addEventListener('click', (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    const idx = SUPPORTED_LOCALES.indexOf(detectLocale())
-    const next = SUPPORTED_LOCALES[(idx + 1) % SUPPORTED_LOCALES.length]
-    try {
-      localStorage.setItem('vexel:locale', next)
-    } catch {}
-    setLocale(next)
-    syncLangBtn()
-    window.location.reload()
-  })
   btnTour.textContent = '?'
 
   btnTour.addEventListener('click', () => {
@@ -205,7 +184,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
       window.setTimeout(setCopyIdle, 1600)
     }
   })
-  headerRight.append(btnLang, btnCopy, btnExport, btnTour)
+  headerRight.append(btnCopy, btnExport, btnTour)
   header.append(tabs, headerRight)
   popover.appendChild(header)
   const breadcrumbsEl = document.createElement('div')
