@@ -113,15 +113,32 @@ function initAutoFilePaste(): void {
     true
   )
 }
+const scheduleBackground = (fn: () => void): void => {
+  const sched = (
+    globalThis as unknown as {
+      scheduler?: { postTask?: (cb: () => void, opts?: { priority?: string }) => void }
+    }
+  ).scheduler
+  if (typeof sched?.postTask === 'function') {
+    sched.postTask(fn, { priority: 'background' })
+  } else if (typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(fn, { timeout: 300 })
+  } else {
+    window.setTimeout(fn, 120)
+  }
+}
+
 if (window === window.top) {
   initDomBooster()
   const bootUi = () => {
     initAutoFilePaste()
     initCommandPalette(showToast)
-    initThreadTools(showToast)
-    initCodeRepair(showToast)
-    initCodeSave(showToast)
-    initOnboarding(showToast)
+    scheduleBackground(() => {
+      initThreadTools(showToast)
+      initCodeRepair(showToast)
+      initCodeSave(showToast)
+      initOnboarding(showToast)
+    })
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', bootUi, { once: true })
