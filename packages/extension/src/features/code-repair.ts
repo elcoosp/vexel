@@ -271,13 +271,20 @@ function mountFormatStatusPill(
     return
   }
 
-  const candidateFooter = preEl.parentElement?.nextElementSibling
   const footerEl =
-    candidateFooter instanceof HTMLElement &&
-    !candidateFooter.hasAttribute('data-vexel-ui') &&
-    candidateFooter.querySelector('button:not([data-vexel-ui])') !== null
-      ? candidateFooter
-      : null
+    Array.from(codeCard.querySelectorAll<HTMLElement>('div, footer, section')).find(
+      (el) =>
+        !el.hasAttribute('data-vexel-ui') &&
+        !el.contains(preEl) &&
+        !preEl.contains(el) &&
+        el.querySelector('button:not([data-vexel-ui])') !== null &&
+        Array.from(el.children).some(
+          (child) =>
+            child instanceof HTMLElement &&
+            !child.hasAttribute('data-vexel-ui') &&
+            child.querySelector('button') !== null
+        )
+    ) || null
   const copyWrapper = footerEl
     ? Array.from(footerEl.children).find(
         (child): child is HTMLElement =>
