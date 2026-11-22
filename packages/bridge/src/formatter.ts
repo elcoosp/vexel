@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import { execFile, spawn } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -78,11 +79,22 @@ const binaryPathCache = new Map<string, string | null>()
 function getSearchDirs(): string[] {
   const home = os.homedir()
   const cwd = process.cwd()
+  const moduleDir = path.dirname(fileURLToPath(import.meta.url))
+  const ancestorBins: string[] = []
+  for (const startDir of [cwd, moduleDir]) {
+    let cur = startDir
+    for (let i = 0; i < 6; i += 1) {
+      ancestorBins.push(path.join(cur, 'node_modules', '.bin'))
+      ancestorBins.push(path.join(cur, 'packages', 'extension', 'node_modules', '.bin'))
+      const parent = path.dirname(cur)
+      if (parent === cur) break
+      cur = parent
+    }
+  }
   const envPath = (process.env.PATH || '').split(path.delimiter).filter(Boolean)
   return Array.from(
     new Set([
-      path.join(cwd, 'node_modules', '.bin'),
-      path.join(cwd, 'packages', 'extension', 'node_modules', '.bin'),
+      ...ancestorBins,
       path.join(home, '.cargo', 'bin'),
       path.join(home, '.local', 'bin'),
       '/opt/homebrew/bin',

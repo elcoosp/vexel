@@ -214,10 +214,7 @@ function formatWithBridge(
       globalThis.clearTimeout(timer)
       resolve(val)
     }
-    const timer = globalThis.setTimeout(() => {
-      console.warn('[Vexel:format] timeout after 3500ms for lang=', lang)
-      done({ formatted: code, engine: 'fallback' })
-    }, 3500)
+    const timer = globalThis.setTimeout(() => done({ formatted: code, engine: 'fallback' }), 3500)
     try {
       const runtime = (
         globalThis as {
@@ -278,6 +275,8 @@ function mountFormatStatusPill(headerEl: HTMLElement, engine: string): void {
   Object.assign(host.style, {
     display: 'inline-flex',
     alignItems: 'center',
+    flexShrink: '0',
+    whiteSpace: 'nowrap',
     marginLeft: '8px',
     verticalAlign: 'middle',
   })
@@ -301,11 +300,14 @@ function mountFormatStatusPill(headerEl: HTMLElement, engine: string): void {
     fontWeight: '600',
     letterSpacing: '-0.01em',
     lineHeight: '1',
+    whiteSpace: 'nowrap',
+    flexShrink: '0',
     userSelect: 'none',
   })
 
   const labelSpan = document.createElement('span')
   labelSpan.setAttribute('data-vexel-pill-label', 'true')
+  labelSpan.style.whiteSpace = 'nowrap'
   labelSpan.textContent = labelText
   pill.append(createLucideIcon('sparkles', 11, 'currentColor'), labelSpan)
   shadow.appendChild(pill)
