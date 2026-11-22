@@ -233,30 +233,19 @@ export function resetBinaryPathCacheForTests(): void {
 
 function getSearchDirs(): string[] {
   const home = os.homedir()
-  const cwd = process.cwd()
-  const moduleDir = path.dirname(fileURLToPath(import.meta.url))
-  const ancestorBins: string[] = []
-  for (const startDir of [cwd, moduleDir]) {
-    let cur = startDir
-    for (let i = 0; i < 6; i += 1) {
-      ancestorBins.push(path.join(cur, 'node_modules', '.bin'))
-      ancestorBins.push(path.join(cur, 'packages', 'extension', 'node_modules', '.bin'))
-      const parent = path.dirname(cur)
-      if (parent === cur) break
-      cur = parent
-    }
-  }
-  const envPath = (process.env.PATH || '').split(path.delimiter).filter(Boolean)
-  return Array.from(
-    new Set([
-      ...ancestorBins,
-      path.join(home, '.cargo', 'bin'),
-      path.join(home, '.local', 'bin'),
-      '/opt/homebrew/bin',
-      '/usr/local/bin',
-      ...envPath,
-    ])
-  )
+  const here = path.dirname(fileURLToPath(import.meta.url))
+  const localNodeBin = path.resolve(here, '..', '..', 'extension', 'node_modules', '.bin')
+  const pathDirs = (process.env.PATH || '').split(path.delimiter).filter(Boolean)
+  const fallbackDirs = [
+    localNodeBin,
+    path.join(home, '.local', 'bin'),
+    path.join(home, '.cargo', 'bin'),
+    '/opt/homebrew/bin',
+    '/usr/local/bin',
+    '/usr/bin',
+    '/bin',
+  ]
+  return Array.from(new Set([...pathDirs, ...fallbackDirs]))
 }
 
 async function resolveBinary(binName: string): Promise<string | null> {

@@ -291,7 +291,12 @@ const server = http.createServer(async (req, res) => {
   const parsedUrl = new URL(req.url || '/', 'http://127.0.0.1')
   if (parsedUrl.pathname === '/skills') {
     try {
-      const topEntries = await fs.readdir(SKILLS_DIR, { withFileTypes: true })
+      let topEntries: Dirent[] = []
+      try {
+        topEntries = await fs.readdir(SKILLS_DIR, { withFileTypes: true })
+      } catch (err: unknown) {
+        if ((err as NodeJS.ErrnoException)?.code !== 'ENOENT') throw err
+      }
       const skillFolders = topEntries.filter((e) => e.isDirectory() && !e.name.startsWith('.'))
       const skills: LocalSkillRecord[] = []
       for (const folder of skillFolders) {
