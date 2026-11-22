@@ -780,7 +780,12 @@ export function scanAndRepairCodeBlocks(root: ParentNode, showToast: (msg: strin
 
   // Pass 2: clean any standalone poisoned markdown/FollowUp blocks not attached to a preceding code card
   for (const card of candidates) {
-    if (!card.isConnected || card.hasAttribute('data-vexel-repaired')) continue
+    if (
+      !card.isConnected ||
+      card.hasAttribute('data-vexel-repaired-final') ||
+      inFlightCards.has(card)
+    )
+      continue
     if (!isPoisonedMarkdownCodeBlock(card)) continue
     const outerHost =
       card.parentElement &&
@@ -805,7 +810,22 @@ export function initCodeRepair(showToast: (msg: string) => void): void {
       scanAndRepairCodeBlocks(document, showToast)
     }, 320)
   }
-  document.addEventListener('aimRenderComplete', scheduleScan, true)
+  document.addEventListener(
+    'aimRenderComplete',
+    () => {
+      scanAndRepairCodeBlocks(document, showToast)
+      scheduleScan()
+    },
+    true
+  )
+  document.addEventListener(
+    'aimBodyComplete',
+    () => {
+      scanAndRepairCodeBlocks(document, showToast)
+      scheduleScan()
+    },
+    true
+  )
   const observer = new MutationObserver((mutations) => {
     for (const m of mutations) {
       for (let i = 0; i < m.addedNodes.length; i += 1) {

@@ -460,4 +460,82 @@ describe('code-repair DOM integration', () => {
       2
     )
   })
+
+  it('repairs the exact real Google AI Mode TypeScript dump (LJ1nve_f6 + 34 n6owBd siblings + Gd7Hsc footer)', async () => {
+    ;(globalThis as Record<string, unknown>).chrome = {
+      runtime: {
+        sendMessage: (_msg: unknown, cb?: (res: unknown) => void) => {
+          cb?.({ ok: false })
+        },
+      },
+    }
+    const realHead = [
+      '// ============================================================================',
+      "// Moteur de Simulation d'Écosystème Distribué et Gestionnaire d'Événements",
+      '// ============================================================================',
+      '',
+      'export type IdentifiantUnique = string;',
+      'export class BusEvenements {',
+      '    private enCoursDeTraitement = false;',
+      ...Array.from({ length: 120 }, (_, i) => '    private field' + i + ' = ' + i + ';'),
+      '    private async traiterFile(): Promise<void> {',
+      '        if (this.enCoursDeTraitement) {',
+      '            return;',
+      '        }',
+      '        this.enCoursDeTraitement = true;',
+      '',
+      '        try {',
+      '            while (!this.fileAttente.estVide()) {',
+      '                const evenement = this.fileAttente.defiler();',
+      '                if (!evenement) {',
+      '                    continue;',
+      '                }',
+      '',
+    ].join('\n')
+
+    document.body.innerHTML = [
+      '<div class="CKgc1d" data-last-turn="true" data-scope-id="turn" jsname="CS7uPe" jsuid="LJ1nve_3p">',
+      '  <div data-subtree="aimc" data-sfc-cp="" jsuid="LJ1nve_4l">',
+      '    <div jsuid="LJ1nve_4g" class="Zkbeff" dir="ltr">',
+      '      <div class="pWvJNd">',
+      '        <div jsuid="LJ1nve_4z" dir="ltr" data-container-id="main-col" data-xid="VpUvz" class="mZJni">',
+      '          <div style="display: contents" data-container-id="24">',
+      '            <div class="yhAwj" data-sfc-cp="" jsuid="LJ1nve_6d"></div>',
+      '            <div jsuid="LJ1nve_f6" class="BpxUDf aiModeUiCodeBlock__Container" data-sfc-cp="" data-hveid="CAIIAAgJEAA">',
+      '              <div>',
+      '                <div class="rq1a2" data-animation-atomic="true">',
+      '                  <div class="a2TNg"><div class="GlO4G">typescript</div></div>',
+      '                  <div class="PGvq2d" dir="ltr"><pre><code jsuid="LJ1nve_fn">' +
+        realHead.replace(/</g, '&lt;').replace(/>/g, '&gt;') +
+        '</code></pre></div>',
+      '                </div>',
+      '                <div class="iMHp6c" data-animation-atomic="true"><div class="ZIumpf">Utilisez le code avec précaution.</div></div>',
+      '              </div>',
+      '            </div>',
+      '            <div class="n6owBd awi2gc" data-sfc-cp="" jsuid="LJ1nve_g8" data-hveid="CAIIAAgKEAA"><span style="display:none;" data-key="aimhl"></span><span data-subtree="aimfl">const gestionnaires = this.abonnes.get(evenement.type);</span><br>if (!gestionnaires || gestionnaires.size === 0) {<br>continue;<br>}<span class="DHPVt Wg1cdb notranslate"><span class="NMq1me"><span aria-hidden="true">&nbsp;</span><span><span><button tabindex="0" data-amic="true" aria-label="Résultats associés" class="vDOt8c"></button></span></span></span></span></div>',
+      '            <div class="n6owBd awi2gc" data-sfc-cp="" jsuid="LJ1nve_h1" data-hveid="CAIIAAgMEAA">} finally {<br>this.enCoursDeTraitement = false;<br>}<br>}<br>}</div>',
+      '            <div class="n6owBd awi2gc" data-sfc-cp="" jsuid="LJ1nve_ho" data-hveid="CAIIAAgNEAA">// ============================================================================<br>// Modélisation des Tâches et de l\'Exécution Distribuée<br>// ============================================================================</div>',
+      '            <div class="n6owBd awi2gc" data-sfc-cp="" jsuid="LJ1nve_hw" data-hveid="CAIIAAgOEAA">export enum StatutTache {<br>EN_ATTENTE = \'EN_ATTENTE\',<br>TERMINEE = \'TERMINEE\'<br>}</div>',
+      '            <div class="n6owBd awi2gc" data-sfc-cp="" jsuid="LJ1nve_12o" data-hveid="CAIIAAhOEAA">const rapportSante = orchestrateur.verifierSanteGrappe();<br>journal.info(\'Simulation\', \'Rapport de santé final de la grappe\', rapportSante);<br>}</div>',
+      '            <div class="yhAwj" data-sfc-cp="" jsuid="LJ1nve_12w"></div>',
+      '            <div data-vexel-repaired-followup="true" data-vexel-ui="true"></div>',
+      '            <div class="yhAwj" data-sfc-cp="" jsuid="LJ1nve_131"></div>',
+      '            <div jsuid="LJ1nve_132" data-xid="Gd7Hsc" data-sfc-cp="" data-hveid="CAIIAAhQEAA"><div class="DBd2Wb"><div class="v4bSkd">Les réponses de l\'IA peuvent contenir des erreurs.</div></div></div>',
+      '          </div>',
+      '        </div>',
+      '      </div>',
+      '    </div>',
+      '  </div>',
+      '</div>',
+    ].join('')
+
+    scanAndRepairCodeBlocks(document, () => {})
+    await new Promise((r) => setTimeout(r, 80))
+
+    const card = document.querySelector('[jsuid="LJ1nve_f6"]')!
+    expect(card.getAttribute('data-vexel-repaired')).toBe('1')
+    const record = getRepairedCodeForContainer(card)
+    expect(record?.code).toContain('Rapport de santé final de la grappe')
+    expect(document.querySelectorAll('.n6owBd.awi2gc').length).toBe(0)
+  })
 })
