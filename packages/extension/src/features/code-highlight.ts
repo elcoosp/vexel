@@ -506,3 +506,49 @@ export function renderHighlightedTail(tailEl: HTMLElement, code: string, lang: s
   }
   tailEl.replaceChildren(frag)
 }
+
+export function mirrorSemanticTokenStyles(doc: Document, target: ParentNode): void {
+  ensureSemanticTokenStyles(doc)
+  doc.head?.querySelectorAll('style').forEach((st) => {
+    if (st.textContent?.includes('data-vexel-tok')) {
+      target.appendChild(st.cloneNode(true))
+    }
+  })
+}
+
+export function createLightCodeCardElement(
+  doc: Document,
+  codeText: string,
+  lang: string
+): HTMLElement {
+  const wrapper = doc.createElement('div')
+  wrapper.className = 'code-box'
+
+  const bar = doc.createElement('div')
+  bar.className = 'code-hdr'
+  const langSpan = doc.createElement('span')
+  langSpan.textContent = lang || 'code'
+
+  const copyBtn = doc.createElement('button')
+  copyBtn.type = 'button'
+  copyBtn.className = 'copy-btn'
+  copyBtn.textContent = 'Copier'
+  copyBtn.addEventListener('click', () => {
+    navigator.clipboard?.writeText(codeText).catch(() => {})
+    copyBtn.textContent = 'Copié'
+    window.setTimeout(() => {
+      copyBtn.textContent = 'Copier'
+    }, 1400)
+  })
+  bar.append(langSpan, copyBtn)
+
+  const pre = doc.createElement('pre')
+  const codeEl = doc.createElement('code')
+  renderHighlightedTail(codeEl, codeText, lang || 'code')
+  if (codeEl.firstChild?.nodeType === Node.TEXT_NODE && codeEl.firstChild.textContent === '\n') {
+    codeEl.firstChild.remove()
+  }
+  pre.appendChild(codeEl)
+  wrapper.append(bar, pre)
+  return wrapper
+}

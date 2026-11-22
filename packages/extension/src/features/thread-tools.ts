@@ -166,6 +166,12 @@ function elementToMarkdown(root: HTMLElement, role: 'user' | 'assistant'): strin
     )
     .forEach((el) => el.remove())
 
+  // 0. Repaired follow-up Shadow DOM cards from code-repair
+  clone.querySelectorAll<HTMLElement>('[data-vexel-clean-markdown]').forEach((repairedHost) => {
+    const md = (repairedHost.dataset.vexelCleanMarkdown || '').trim()
+    repairedHost.replaceWith(document.createTextNode(md ? '\n\n' + md + '\n\n' : ''))
+  })
+
   // 1. Code blocks: anchor strictly on standard <pre><code>
   clone.querySelectorAll('pre').forEach((pre) => {
     const codeEl = pre.querySelector('code')

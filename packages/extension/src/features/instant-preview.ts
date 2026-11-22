@@ -1,5 +1,5 @@
 import { marked } from 'marked'
-import { ensureSemanticTokenStyles, renderHighlightedTail } from './code-highlight'
+import { createLightCodeCardElement, mirrorSemanticTokenStyles } from './code-highlight'
 import { extractLastExchangeMarkdown, type LastExchangeSnapshot } from './thread-tools'
 import { UI_COLORS, UI_FONT_MONO, UI_FONT_SANS, UI_RADII, UI_SHADOWS } from './ui-tokens'
 
@@ -7,7 +7,7 @@ interface CachedTurnSnapshot extends LastExchangeSnapshot {
   updatedAt: number
 }
 
-const CACHE_STORAGE_KEY = 'vexel:thread-cache:v6'
+const CACHE_STORAGE_KEY = 'vexel:thread-cache:v7'
 const MAX_CACHED_THREADS = 25
 const ALLOWED_TAGS = new Set([
   'P',
@@ -98,38 +98,7 @@ const renderMarkdown = (container: HTMLElement, md: string) => {
     const lang = existingCode?.dataset.lang || 'code'
     const codeText = (existingCode?.textContent || pre.textContent || '').replace(/\n$/, '')
     if (!codeText.trim()) return
-
-    const wrapper = document.createElement('div')
-    wrapper.className = 'code-box'
-
-    const bar = document.createElement('div')
-    bar.className = 'code-hdr'
-    const langSpan = document.createElement('span')
-    langSpan.textContent = lang
-
-    const copyBtn = document.createElement('button')
-    copyBtn.type = 'button'
-    copyBtn.className = 'copy-btn'
-    copyBtn.textContent = 'Copier'
-    copyBtn.addEventListener('click', () => {
-      navigator.clipboard?.writeText(codeText).catch(() => {})
-      copyBtn.textContent = 'Copié'
-      window.setTimeout(() => {
-        copyBtn.textContent = 'Copier'
-      }, 1400)
-    })
-    bar.append(langSpan, copyBtn)
-
-    const codeEl = document.createElement('code')
-    renderHighlightedTail(codeEl, codeText, lang)
-    if (codeEl.firstChild?.nodeType === Node.TEXT_NODE && codeEl.firstChild.textContent === '\n') {
-      codeEl.firstChild.remove()
-    }
-    pre.textContent = ''
-    pre.appendChild(codeEl)
-
-    pre.parentNode?.insertBefore(wrapper, pre)
-    wrapper.append(bar, pre)
+    pre.replaceWith(createLightCodeCardElement(document, codeText, lang))
   })
 }
 
@@ -169,8 +138,6 @@ export const initInstantThreadCache = (): void => {
       return
     if (isRealLastTurnStable()) return
 
-    ensureSemanticTokenStyles(document)
-
     const host = document.createElement('div')
     host.id = 'vexel-instant-preview-host'
     host.setAttribute('data-vexel-ui', 'true')
@@ -187,37 +154,94 @@ export const initInstantThreadCache = (): void => {
     })
 
     const sr = host.attachShadow({ mode: 'open' })
-
-    document.head?.querySelectorAll('style').forEach((st) => {
-      if (st.textContent?.includes('vexel-tok-')) {
-        sr.appendChild(st.cloneNode(true))
-      }
-    })
+    mirrorSemanticTokenStyles(document, sr)
 
     const style = document.createElement('style')
     style.textContent = [
-      `.card{background:${UI_COLORS.surfaceSolid};border:1px solid ${UI_COLORS.border};border-radius:${UI_RADII.card};box-shadow:${UI_SHADOWS.floating};font-family:${UI_FONT_SANS};color:${UI_COLORS.text};display:flex;flex-direction:column;max-height:calc(100vh - 220px);overflow:hidden}`,
-      `.hdr{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 14px;background:${UI_COLORS.surfaceHeader};border-bottom:1px solid ${UI_COLORS.borderSubtle};font-size:12px;color:${UI_COLORS.textSecondary};font-weight:500}`,
+      '.card{background:' +
+        UI_COLORS.surfaceSolid +
+        ';border:1px solid ' +
+        UI_COLORS.border +
+        ';border-radius:' +
+        UI_RADII.card +
+        ';box-shadow:' +
+        UI_SHADOWS.floating +
+        ';font-family:' +
+        UI_FONT_SANS +
+        ';color:' +
+        UI_COLORS.text +
+        ';display:flex;flex-direction:column;max-height:calc(100vh - 220px);overflow:hidden}',
+      '.hdr{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 14px;background:' +
+        UI_COLORS.surfaceHeader +
+        ';border-bottom:1px solid ' +
+        UI_COLORS.borderSubtle +
+        ';font-size:12px;color:' +
+        UI_COLORS.textSecondary +
+        ';font-weight:500}',
       '.hdr-left{display:flex;align-items:center;gap:8px;min-width:0}',
       '.hdr-actions{display:flex;align-items:center;gap:6px}',
       '.dot{width:7px;height:7px;border-radius:50%;background:#1a73e8;flex-shrink:0}',
-      `.pill-btn,.close{border:1px solid ${UI_COLORS.border};background:${UI_COLORS.surfaceSolid};color:${UI_COLORS.textSecondary};cursor:pointer;font-size:11px;line-height:1.2;padding:3px 9px;border-radius:${UI_RADII.pill}}`,
+      '.pill-btn,.close{border:1px solid ' +
+        UI_COLORS.border +
+        ';background:' +
+        UI_COLORS.surfaceSolid +
+        ';color:' +
+        UI_COLORS.textSecondary +
+        ';cursor:pointer;font-size:11px;line-height:1.2;padding:3px 9px;border-radius:' +
+        UI_RADII.pill +
+        '}',
       '.pill-btn.active{background:#e8f0fe;color:#1a73e8;border-color:#aecbfa}',
       '.close{border:none;background:transparent;font-size:16px;padding:2px 6px;border-radius:6px}',
-      `.close:hover,.pill-btn:hover{background:${UI_COLORS.surfaceHover}}`,
+      '.close:hover,.pill-btn:hover{background:' + UI_COLORS.surfaceHover + '}',
       '.body{padding:14px 18px;overflow-y:auto;overscroll-behavior:contain;font-size:13.5px;line-height:1.6;display:flex;flex-direction:column;gap:12px}',
-      `.prompt{align-self:flex-end;background:${UI_COLORS.surfaceHover};color:${UI_COLORS.text};padding:8px 13px;border-radius:14px;font-size:13px;max-width:85%}`,
-      `.answer{color:${UI_COLORS.text}}`,
+      '.prompt{align-self:flex-end;background:' +
+        UI_COLORS.surfaceHover +
+        ';color:' +
+        UI_COLORS.text +
+        ';padding:8px 13px;border-radius:14px;font-size:13px;max-width:85%}',
+      '.answer{color:' + UI_COLORS.text + '}',
       '.answer p{margin:0 0 8px}.answer p:last-child{margin-bottom:0}',
-      `.answer h1,.answer h2,.answer h3,.answer h4{font-size:14px;font-weight:600;margin:10px 0 6px;color:${UI_COLORS.text}}`,
+      '.answer h1,.answer h2,.answer h3,.answer h4{font-size:14px;font-weight:600;margin:10px 0 6px;color:' +
+        UI_COLORS.text +
+        '}',
       '.answer ul,.answer ol{margin:4px 0 8px;padding-left:20px}.answer li{margin-bottom:4px}',
-      `.answer code{background:${UI_COLORS.surfaceHover};color:${UI_COLORS.text};padding:1px 5px;border-radius:4px;font-family:${UI_FONT_MONO};font-size:12px}`,
+      '.answer code{background:' +
+        UI_COLORS.surfaceHover +
+        ';color:' +
+        UI_COLORS.text +
+        ';padding:1px 5px;border-radius:4px;font-family:' +
+        UI_FONT_MONO +
+        ';font-size:12px}',
       '.answer pre code{background:transparent;padding:0;color:inherit}',
-      `.code-box{background:${UI_COLORS.surfaceSubtle};color:${UI_COLORS.text};border:1px solid ${UI_COLORS.borderSubtle};border-radius:${UI_RADII.row};overflow:hidden;margin:8px 0}`,
-      `.code-hdr{display:flex;justify-content:space-between;align-items:center;padding:6px 12px;background:${UI_COLORS.surfaceHeader};border-bottom:1px solid ${UI_COLORS.borderSubtle};font-family:${UI_FONT_SANS};font-size:11.5px;font-weight:500;color:${UI_COLORS.textSecondary}}`,
-      `.copy-btn{border:1px solid ${UI_COLORS.border};background:${UI_COLORS.surfaceSolid};color:${UI_COLORS.textSecondary};border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer}`,
-      `.copy-btn:hover{background:${UI_COLORS.surfaceHover};color:${UI_COLORS.text}}`,
-      `pre{margin:0;padding:10px 12px;font-family:${UI_FONT_MONO};font-size:12px;line-height:1.5;overflow-x:auto;white-space:pre}`,
+      '.code-box{background:' +
+        UI_COLORS.surfaceSubtle +
+        ';color:' +
+        UI_COLORS.text +
+        ';border:1px solid ' +
+        UI_COLORS.borderSubtle +
+        ';border-radius:' +
+        UI_RADII.row +
+        ';overflow:hidden;margin:8px 0}',
+      '.code-hdr{display:flex;justify-content:space-between;align-items:center;padding:6px 12px;background:' +
+        UI_COLORS.surfaceHeader +
+        ';border-bottom:1px solid ' +
+        UI_COLORS.borderSubtle +
+        ';font-family:' +
+        UI_FONT_SANS +
+        ';font-size:11.5px;font-weight:500;color:' +
+        UI_COLORS.textSecondary +
+        '}',
+      '.copy-btn{border:1px solid ' +
+        UI_COLORS.border +
+        ';background:' +
+        UI_COLORS.surfaceSolid +
+        ';color:' +
+        UI_COLORS.textSecondary +
+        ';border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer}',
+      '.copy-btn:hover{background:' + UI_COLORS.surfaceHover + ';color:' + UI_COLORS.text + '}',
+      'pre{margin:0;padding:10px 12px;font-family:' +
+        UI_FONT_MONO +
+        ';font-size:12px;line-height:1.5;overflow-x:auto;white-space:pre}',
     ].join('')
 
     const card = document.createElement('div')
@@ -234,7 +258,6 @@ export const initInstantThreadCache = (): void => {
     hdrLeft.append(dot, label)
 
     const hdrActions = document.createElement('div')
-
     hdrActions.className = 'hdr-actions'
     const pinBtn = document.createElement('button')
     pinBtn.className = 'pill-btn'
@@ -245,13 +268,16 @@ export const initInstantThreadCache = (): void => {
       pinBtn.classList.toggle('active', previewPinned)
       pinBtn.textContent = previewPinned ? 'Épinglé' : 'Garder'
     })
+
     const closeBtn = document.createElement('button')
     closeBtn.className = 'close'
     closeBtn.type = 'button'
     closeBtn.textContent = '×'
     closeBtn.addEventListener('click', () => dismissPreview(true))
+
     hdrActions.append(pinBtn, closeBtn)
     hdr.append(hdrLeft, hdrActions)
+
     const body = document.createElement('div')
     body.className = 'body'
     body.addEventListener(
@@ -260,6 +286,7 @@ export const initInstantThreadCache = (): void => {
         userInteracted = true
         label.textContent = 'Dernier échange en cache (' + snap.turnCount + ' tours) • Lecture'
       },
+
       { passive: true }
     )
     if (snap.prompt) {
@@ -291,7 +318,7 @@ export const initInstantThreadCache = (): void => {
       chrome.storage?.local?.get(CACHE_STORAGE_KEY, (res) => {
         const map = (res?.[CACHE_STORAGE_KEY] || {}) as Record<string, CachedTurnSnapshot>
         map[cacheKey] = { ...extracted, updatedAt: Date.now() }
-        const entries = Object.entries(map).sort((a, b) => b[1].updatedAt - a[1].updatedAt)
+        const entries = Object.entries(map).sort(([, a], [, b]) => b.updatedAt - a.updatedAt)
         chrome.storage?.local?.set({
           [CACHE_STORAGE_KEY]: Object.fromEntries(entries.slice(0, MAX_CACHED_THREADS)),
         })

@@ -508,6 +508,7 @@ function renderCleanFollowUpCard(
     card.appendChild(chipsWrap)
   }
 
+  cleanHost.dataset.vexelCleanMarkdown = rawMarkdown
   shadow.appendChild(card)
   host.replaceWith(cleanHost)
 }
