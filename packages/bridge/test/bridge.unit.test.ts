@@ -136,5 +136,18 @@ describe('@vexel/bridge HTTP API (full edge-case matrix)', () => {
       'export const v = 2;\n'
     )
     expect((await fetch(base + '/unknown', { headers: h })).status).toBe(404)
+    const fmtRes = await fetch(base + '/format', {
+      method: 'POST',
+      headers: h,
+      body: JSON.stringify({
+        code: 'export   const   x:number=42\n',
+        lang: 'typescript',
+      }),
+    })
+    expect(fmtRes.status).toBe(200)
+    const fmtJson = (await fmtRes.json()) as { ok: boolean; engine: string; formatted: string }
+    expect(fmtJson.ok).toBe(true)
+    expect(fmtJson.engine).toBe('oxfmt')
+    expect(fmtJson.formatted).toBe('export const x: number = 42')
   })
 })

@@ -1,3 +1,4 @@
+import { formatCodeWithNativeTool } from './formatter.ts'
 import { execFile } from 'node:child_process'
 import type { Dirent } from 'node:fs'
 import fs from 'node:fs/promises'
@@ -638,64 +639,24 @@ const server = http.createServer(async (req, res) => {
   }
   if (parsedUrl.pathname === '/format' && req.method === 'POST') {
     try {
+      const t0 = Date.now()
       const body = await readJsonBody(req, 512 * 1024)
       const code = typeof body.code === 'string' ? body.code : ''
-      const lang = typeof body.lang === 'string' ? body.lang.toLowerCase().trim() : 'txt'
+      const lang = typeof body.lang === 'string' ? body.lang.trim() : 'txt'
+      const filename = typeof body.filename === 'string' ? body.filename.trim() : undefined
       if (!code.trim()) {
         res.writeHead(200)
         res.end(JSON.stringify({ ok: true, formatted: code, engine: 'empty' }))
         return
       }
-      const runStdinFormatter = (
-        bin: string,
-        args: string[],
-        engine: string
-      ): Promise<{ formatted: string; engine: string } | null> =>
-        new Promise((resolve) => {
-          const child = execFile(
-            bin,
-            args,
-            { timeout: 1500, maxBuffer: 1024 * 1024 },
-            (err, stdout) => {
-              if (err || !stdout || !stdout.trim()) resolve(null)
-              else resolve({ formatted: stdout.replace(/\n$/, ''), engine })
-            }
-          )
-          child.stdin?.write(code)
-          child.stdin?.end()
-        })
-
-      let result: { formatted: string; engine: string } | null = null
-      if (lang === 'py' || lang === 'python') {
-        result =
-          (await runStdinFormatter(
-            'ruff',
-            ['format', '--stdin-filename', 'snippet.py', '-'],
-            'ruff'
-          )) || (await runStdinFormatter('black', ['-q', '-'], 'black'))
-      } else if (
-        ['ts', 'tsx', 'js', 'jsx', 'json', 'css', 'html', 'md', 'yaml', 'yml'].includes(lang)
-      ) {
-        const ext = lang === 'yml' ? 'yaml' : lang
-        const localOxfmt = path.resolve(process.cwd(), 'node_modules/.bin/oxfmt')
-        result =
-          (await runStdinFormatter(localOxfmt, ['--stdin-filepath', 'snippet.' + ext], 'oxfmt')) ||
-          (await runStdinFormatter('oxfmt', ['--stdin-filepath', 'snippet.' + ext], 'oxfmt'))
-      } else if (lang === 'rs' || lang === 'rust') {
-        result = await runStdinFormatter('rustfmt', ['--emit', 'stdout'], 'rustfmt')
-      } else if (lang === 'go') {
-        result = await runStdinFormatter('gofmt', [], 'gofmt')
-      }
-
-      res.writeHead(200)
-      res.end(
-        JSON.stringify({
-          ok: true,
-          formatted: result ? result.formatted : code,
-          engine: result ? result.engine : 'fallback',
-        })
+      const result = await formatCodeWithNativeTool(code, lang, filename)
+      console.log(
+        `[Vexel Bridge] POST /format lang=${lang} -> engine=${result.engine} (${Date.now() - t0}ms, len=${result.formatted.length})`
       )
+      res.writeHead(200)
+      res.end(JSON.stringify(result))
     } catch (err: unknown) {
+      console.error('[Vexel Bridge] POST /format error:', err)
       res.writeHead(200)
       res.end(JSON.stringify({ ok: false, error: getErrorMessage(err) }))
     }

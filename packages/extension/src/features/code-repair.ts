@@ -214,7 +214,10 @@ function formatWithBridge(
       globalThis.clearTimeout(timer)
       resolve(val)
     }
-    const timer = globalThis.setTimeout(() => done({ formatted: code, engine: 'fallback' }), 1500)
+    const timer = globalThis.setTimeout(() => {
+      console.warn('[Vexel:format] timeout after 3500ms for lang=', lang)
+      done({ formatted: code, engine: 'fallback' })
+    }, 3500)
     try {
       const runtime = (
         globalThis as {
@@ -241,6 +244,12 @@ function formatWithBridge(
       runtime.sendMessage({ type: 'FORMAT_CODE', code, lang, filename: filenameHint }, (res) => {
         const err = runtime.lastError?.message
         const payload = res?.data ?? res
+        console.info('[Vexel:format] bridge response:', {
+          lang,
+          err: err || null,
+          ok: res?.ok,
+          engine: payload?.engine,
+        })
         if (!err && res?.ok && typeof payload?.formatted === 'string') {
           done({ formatted: payload.formatted, engine: String(payload.engine || 'bridge') })
         } else {
