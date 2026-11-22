@@ -871,4 +871,51 @@ git status -s
     expect(proseBlock.isConnected).toBe(true)
     expect(proseBlock.textContent).toContain('Exécute ./wr.sh avec ce script')
   })
+
+  it('continues repairing shell/CLI commands after a heredoc closes mid-stream until the FollowUp boundary', async () => {
+    document.body.innerHTML = `
+      <div class="mZJni" data-scope-id="turn" jsname="CS7uPe">
+        <div class="BpxUDf aiModeUiCodeBlock__Container" data-sfc-cp="" data-hveid="CAIIAQijCBAA">
+          <div>
+            <div class="rq1a2">
+              <div class="a2TNg"><div class="GlO4G">bash</div></div>
+              <div class="PGvq2d">
+                <pre><code>#!/usr/bin/env bash
+set -euo pipefail
+python3 - &lt;&lt; 'PY'
+print("hi")
+</code></pre>
+              </div>
+            </div>
+            <div class="iMHp6c">
+              <div class="ZIumpf">Utilisez le code avec précaution.</div>
+              <div class="YHsVn"><button aria-label="Copier le texte du code dans le presse-papiers.">Copier</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="n6owBd awi2gc" data-sfc-cp="" data-hveid="CAIIAQilCBAA">assert_eq!(crate::macos::take_test_notifications(), Vec::new());<br>p_main.write_text(maintxt, encoding="utf-8")<br>PY</div>
+        <div class="n6owBd awi2gc" data-sfc-cp="" data-hveid="CAIIAQjyCBAA">cargo fmt --all</div>
+        <div class="n6owBd awi2gc" data-sfc-cp="" data-hveid="CAIIAQj0CBAA">echo "=== 1. Verification ==="<br>! grep -rn "#\\[allow" crates/<br>cargo clippy --workspace --all-targets -- -D warnings<br>cargo test --workspace</div>
+        <div class="n6owBd awi2gc" data-sfc-cp="" data-hveid="CAIIAQj7CBAA">echo "=== 4. Etat Git ==="<br>git status -s</div>
+        <div class="fMjZBb">
+          <div class="BpxUDf aiModeUiCodeBlock__Container" data-sfc-cp="" data-hveid="CAIIAQj9CBAA">
+            <div class="rq1a2"><div class="PGvq2d"><pre><code>&lt;FollowUp&gt;
+Exécute \`./wr.sh\` avec ce script.
+&lt;</FollowUp></pre></div></div>
+          </div>
+        </div>
+      </div>
+    `
+
+    scanAndRepairCodeBlocks(document, () => {})
+    await new Promise((r) => setTimeout(r, 40))
+
+    const codeCard = document.querySelector('.aiModeUiCodeBlock__Container')!
+    const fullText = codeCard.querySelector('pre code')?.textContent || ''
+    expect(fullText).toContain('PY')
+    expect(fullText).toContain('cargo fmt --all')
+    expect(fullText).toContain('cargo clippy --workspace --all-targets -- -D warnings')
+    expect(fullText).toContain('git status -s')
+    expect(document.querySelector('[data-vexel-repaired-followup="true"]')).not.toBeNull()
+  })
 })

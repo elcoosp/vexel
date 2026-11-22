@@ -153,9 +153,10 @@ function looksLikeCodeFragment(text: string): boolean {
     }
     codeLines += 1
     if (
-      /^(?:if|else|for|while|switch|case|return|const|let|var|function|async|await|class|interface|type|enum|export|import|try|catch|finally|throw|new|readonly|public|private|protected|static|abstract|override|declare|namespace|module|this\.|self\.|def|fn|pub|struct|impl|match|func|package)\b/.test(
+      /^(?:if|elif|else|fi|then|for|while|do|done|case|esac|switch|return|const|let|var|function|async|await|class|interface|type|enum|export|import|from|try|catch|finally|throw|new|readonly|public|private|protected|static|abstract|override|declare|namespace|module|this\.|self\.|def|fn|pub|struct|impl|match|func|package|set|unset|source|sudo|cd|mkdir|cp|mv|rm|chmod|chown|touch|ln|echo|printf|cat|grep|rg|sed|awk|find|xargs|curl|wget|git|cargo|rustc|rustup|pnpm|npm|yarn|npx|node|deno|bun|python3?|pip|uv|go|make|cmake|docker|kubectl|codesign|launchctl)\b/.test(
         line
       ) ||
+      /^!\s*[a-zA-Z0-9_./-]+/.test(line) ||
       /[{};=]$/.test(line) ||
       /^\}[;,]?$/.test(line) ||
       /^[a-zA-Z_$][a-zA-Z0-9_$.]*\s*\(/.test(line) ||
