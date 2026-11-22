@@ -274,7 +274,7 @@ function looksLikeCodeFragment(text: string): boolean {
     }
     codeLines += 1
     if (
-      /^(?:if|elif|else|fi|then|for|while|do|done|case|esac|switch|return|const|let|var|function|async|await|class|interface|type|enum|export|import|from|try|catch|finally|throw|new|readonly|public|private|protected|static|abstract|override|declare|namespace|module|this\.|self\.|def|assert|print|raise|yield|del|pass|break|continue|global|nonlocal|fn|pub|struct|impl|match|func|package|WITH|SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|BEGIN|COMMIT|ROLLBACK|DECLARE|RETURN|RETURNS|FROM|WHERE|JOIN|LEFT|RIGHT|INNER|OUTER|GROUP|ORDER|HAVING|LIMIT|VALUES|RETURNING|set|unset|source|sudo|cd|mkdir|cp|mv|rm|chmod|chown|touch|ln|echo|printf|cat|grep|rg|sed|awk|find|xargs|curl|wget|git|cargo|rustc|rustup|pnpm|npm|yarn|npx|node|deno|bun|python3?|pip|uv|go|make|cmake|docker|kubectl|codesign|launchctl)\b/.test(
+      /^(?:if|elif|else|fi|then|for|while|do|done|case|esac|switch|return|const|let|var|function|async|await|class|interface|type|enum|export|import|from|try|catch|finally|throw|new|readonly|public|private|protected|static|abstract|override|declare|namespace|module|this\.|self\.|def|assert|print|raise|yield|del|pass|break|continue|global|nonlocal|fn|pub|struct|impl|match|func|package|WITH|SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|BEGIN|COMMIT|ROLLBACK|DECLARE|RETURN|RETURNS|FROM|WHERE|JOIN|LEFT|RIGHT|INNER|OUTER|GROUP|ORDER|HAVING|LIMIT|VALUES|RETURNING|PARTITION|ROWS|RANGE|UNION|EXCEPT|INTERSECT|CASE|WHEN|THEN|END|set|unset|source|sudo|cd|mkdir|cp|mv|rm|chmod|chown|touch|ln|echo|printf|cat|grep|rg|sed|awk|find|xargs|curl|wget|git|cargo|rustc|rustup|pnpm|npm|yarn|npx|node|deno|bun|python3?|pip|uv|go|make|cmake|docker|kubectl|codesign|launchctl)\b/.test(
         line
       ) ||
       /^(?:--|\/\*)/.test(line) ||
@@ -287,6 +287,7 @@ function looksLikeCodeFragment(text: string): boolean {
         line
       ) ||
       /[{};=]$/.test(line) ||
+      line.endsWith(';') ||
       /^\}[;,]?$/.test(line) ||
       /^[a-zA-Z_$][a-zA-Z0-9_$.]*\s*\(/.test(line) ||
       /^[a-zA-Z_$][a-zA-Z0-9_$?]*\s*:\s*\S+/.test(line) ||
@@ -939,6 +940,17 @@ async function repairBrokenSequenceFromCodeCard(
     }
 
     let absorbedChars = previousTail.length
+    console.warn(
+      '[Vexel CodeRepair] ' +
+        JSON.stringify({
+          ev: 'start',
+          lang,
+          headLen: headCode.length,
+          wizLen: wizFullCode.length,
+          expectedSpillChars,
+          candidateCount: candidateNodes.length,
+        })
+    )
     for (const node of candidateNodes) {
       const withinWizBudget = expectedSpillChars > 0 && absorbedChars < expectedSpillChars + 64
       if (node.nodeType === Node.TEXT_NODE) {
@@ -1008,6 +1020,19 @@ async function repairBrokenSequenceFromCodeCard(
             cleaned
           )
         const isProse = isNaturalLanguageProseBlock(cleaned)
+        console.warn(
+          '[Vexel CodeRepair] ' +
+            JSON.stringify({
+              ev: 'node',
+              lang,
+              jsuid: node.getAttribute('jsuid'),
+              isProse,
+              isNaturalIntroColon,
+              stillOpen,
+              withinWizBudget,
+              preview: cleaned.slice(0, 70),
+            })
+        )
         if (isProse || (!withinWizBudget && isNaturalIntroColon)) {
           reachedTerminalBoundary = true
           break
@@ -1023,6 +1048,16 @@ async function repairBrokenSequenceFromCodeCard(
           break
         }
         const looksLike = looksLikeCodeFragment(cleaned)
+        console.warn(
+          '[Vexel CodeRepair] ' +
+            JSON.stringify({
+              ev: 'looks',
+              lang,
+              jsuid: node.getAttribute('jsuid'),
+              looksLike,
+              preview: cleaned.slice(0, 70),
+            })
+        )
         if (withinWizBudget || stillOpen || looksLike) {
           spilledSiblings.push(node)
           spilledChunks.push(cleaned)
