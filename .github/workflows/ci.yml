@@ -26,12 +26,17 @@ jobs:
       - uses: mlugg/setup-zig@v2
         with:
           version: latest
-      - name: Install latest prebuilt native formatters (taplo, stylua, sleek, shfmt, ruff)
+      - name: Install latest prebuilt native formatters (taplo, shfmt, stylua, sleek)
         uses: taiki-e/install-action@v2
         with:
-          tool: taplo,stylua,sleek,shfmt,ruff,alejandra
-      - name: Install latest rustfmt, clang-format, rubocop & alejandra
+          tool: taplo,shfmt,stylua,sleek
+      - name: Install latest ruff, alejandra, rustfmt, clang-format & rubocop
         run: |
+          mkdir -p "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          pip install --user --upgrade ruff
+          curl -fsSL https://github.com -o "$HOME/.local/bin/alejandra"
+          chmod +x "$HOME/.local/bin/alejandra"
           sudo apt-get update -qq
           sudo apt-get install -y -qq clang-format ruby-full
           rustup component add rustfmt
