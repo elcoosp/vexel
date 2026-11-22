@@ -1,5 +1,7 @@
 import { marked } from 'marked'
+import { ensureSemanticTokenStyles, renderHighlightedTail } from './code-highlight'
 import { extractLastExchangeMarkdown, type LastExchangeSnapshot } from './thread-tools'
+import { UI_COLORS, UI_FONT_MONO, UI_FONT_SANS, UI_RADII, UI_SHADOWS } from './ui-tokens'
 
 interface CachedTurnSnapshot extends LastExchangeSnapshot {
   updatedAt: number
@@ -92,15 +94,19 @@ const renderMarkdown = (container: HTMLElement, md: string) => {
     if (clean) container.appendChild(clean)
   })
   container.querySelectorAll('pre').forEach((pre) => {
-    const codeEl = pre.querySelector('code')
-    const codeText = (codeEl?.textContent || pre.textContent || '').trim()
-    if (!codeText) return
+    const existingCode = pre.querySelector('code')
+    const lang = existingCode?.dataset.lang || 'code'
+    const codeText = (existingCode?.textContent || pre.textContent || '').replace(/\n$/, '')
+    if (!codeText.trim()) return
+
     const wrapper = document.createElement('div')
     wrapper.className = 'code-box'
+
     const bar = document.createElement('div')
     bar.className = 'code-hdr'
     const langSpan = document.createElement('span')
-    langSpan.textContent = codeEl?.dataset.lang || 'code'
+    langSpan.textContent = lang
+
     const copyBtn = document.createElement('button')
     copyBtn.type = 'button'
     copyBtn.className = 'copy-btn'
@@ -113,6 +119,15 @@ const renderMarkdown = (container: HTMLElement, md: string) => {
       }, 1400)
     })
     bar.append(langSpan, copyBtn)
+
+    const codeEl = document.createElement('code')
+    renderHighlightedTail(codeEl, codeText, lang)
+    if (codeEl.firstChild?.nodeType === Node.TEXT_NODE && codeEl.firstChild.textContent === '\n') {
+      codeEl.firstChild.remove()
+    }
+    pre.textContent = ''
+    pre.appendChild(codeEl)
+
     pre.parentNode?.insertBefore(wrapper, pre)
     wrapper.append(bar, pre)
   })
@@ -154,6 +169,8 @@ export const initInstantThreadCache = (): void => {
       return
     if (isRealLastTurnStable()) return
 
+    ensureSemanticTokenStyles(document)
+
     const host = document.createElement('div')
     host.id = 'vexel-instant-preview-host'
     host.setAttribute('data-vexel-ui', 'true')
@@ -164,35 +181,43 @@ export const initInstantThreadCache = (): void => {
       transform: 'translateX(-50%)',
       width: 'min(740px, calc(100vw - 48px))',
       maxHeight: 'calc(100vh - 220px)',
+      borderRadius: UI_RADII.card,
       zIndex: '2147483640',
       pointerEvents: 'auto',
     })
 
     const sr = host.attachShadow({ mode: 'open' })
+
+    document.head?.querySelectorAll('style').forEach((st) => {
+      if (st.textContent?.includes('vexel-tok-')) {
+        sr.appendChild(st.cloneNode(true))
+      }
+    })
+
     const style = document.createElement('style')
     style.textContent = [
-      '.card{background:#fff;border:1px solid #dadce0;border-radius:16px;box-shadow:0 8px 28px rgba(32,33,36,.14);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#202124;display:flex;flex-direction:column;max-height:calc(100vh - 220px);overflow:hidden}',
-      '.hdr{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 14px;background:#f8f9fa;border-bottom:1px solid #e8eaed;font-size:12px;color:#3c4043;font-weight:500}',
+      `.card{background:${UI_COLORS.surfaceSolid};border:1px solid ${UI_COLORS.border};border-radius:${UI_RADII.card};box-shadow:${UI_SHADOWS.floating};font-family:${UI_FONT_SANS};color:${UI_COLORS.text};display:flex;flex-direction:column;max-height:calc(100vh - 220px);overflow:hidden}`,
+      `.hdr{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 14px;background:${UI_COLORS.surfaceHeader};border-bottom:1px solid ${UI_COLORS.borderSubtle};font-size:12px;color:${UI_COLORS.textSecondary};font-weight:500}`,
       '.hdr-left{display:flex;align-items:center;gap:8px;min-width:0}',
       '.hdr-actions{display:flex;align-items:center;gap:6px}',
       '.dot{width:7px;height:7px;border-radius:50%;background:#1a73e8;flex-shrink:0}',
-      '.pill-btn,.close{border:1px solid #dadce0;background:#fff;color:#3c4043;cursor:pointer;font-size:11px;line-height:1.2;padding:3px 8px;border-radius:999px}',
+      `.pill-btn,.close{border:1px solid ${UI_COLORS.border};background:${UI_COLORS.surfaceSolid};color:${UI_COLORS.textSecondary};cursor:pointer;font-size:11px;line-height:1.2;padding:3px 9px;border-radius:${UI_RADII.pill}}`,
       '.pill-btn.active{background:#e8f0fe;color:#1a73e8;border-color:#aecbfa}',
       '.close{border:none;background:transparent;font-size:16px;padding:2px 6px;border-radius:6px}',
-      '.close:hover,.pill-btn:hover{background:#f1f3f4}',
+      `.close:hover,.pill-btn:hover{background:${UI_COLORS.surfaceHover}}`,
       '.body{padding:14px 18px;overflow-y:auto;overscroll-behavior:contain;font-size:13.5px;line-height:1.6;display:flex;flex-direction:column;gap:12px}',
-      '.prompt{align-self:flex-end;background:#f1f3f4;color:#202124;padding:8px 13px;border-radius:14px;font-size:13px;max-width:85%}',
-      '.answer{color:#202124}',
+      `.prompt{align-self:flex-end;background:${UI_COLORS.surfaceHover};color:${UI_COLORS.text};padding:8px 13px;border-radius:14px;font-size:13px;max-width:85%}`,
+      `.answer{color:${UI_COLORS.text}}`,
       '.answer p{margin:0 0 8px}.answer p:last-child{margin-bottom:0}',
-      '.answer h1,.answer h2,.answer h3,.answer h4{font-size:14px;font-weight:600;margin:10px 0 6px;color:#1f2328}',
+      `.answer h1,.answer h2,.answer h3,.answer h4{font-size:14px;font-weight:600;margin:10px 0 6px;color:${UI_COLORS.text}}`,
       '.answer ul,.answer ol{margin:4px 0 8px;padding-left:20px}.answer li{margin-bottom:4px}',
-      '.answer code{background:#f1f3f4;padding:1px 5px;border-radius:4px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}',
+      `.answer code{background:${UI_COLORS.surfaceHover};color:${UI_COLORS.text};padding:1px 5px;border-radius:4px;font-family:${UI_FONT_MONO};font-size:12px}`,
       '.answer pre code{background:transparent;padding:0;color:inherit}',
-      '.code-box{background:#1e1f22;color:#e8eaed;border-radius:10px;padding:10px 12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;overflow-x:auto;margin:8px 0}',
-      '.code-hdr{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#9aa0a6;margin-bottom:6px}',
-      '.copy-btn{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#e8eaed;border-radius:5px;padding:2px 8px;font-size:11px;cursor:pointer}',
-      '.copy-btn:hover{background:rgba(255,255,255,.16)}',
-      'pre{margin:0;white-space:pre}',
+      `.code-box{background:${UI_COLORS.surfaceSubtle};color:${UI_COLORS.text};border:1px solid ${UI_COLORS.borderSubtle};border-radius:${UI_RADII.row};overflow:hidden;margin:8px 0}`,
+      `.code-hdr{display:flex;justify-content:space-between;align-items:center;padding:6px 12px;background:${UI_COLORS.surfaceHeader};border-bottom:1px solid ${UI_COLORS.borderSubtle};font-family:${UI_FONT_SANS};font-size:11.5px;font-weight:500;color:${UI_COLORS.textSecondary}}`,
+      `.copy-btn{border:1px solid ${UI_COLORS.border};background:${UI_COLORS.surfaceSolid};color:${UI_COLORS.textSecondary};border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer}`,
+      `.copy-btn:hover{background:${UI_COLORS.surfaceHover};color:${UI_COLORS.text}}`,
+      `pre{margin:0;padding:10px 12px;font-family:${UI_FONT_MONO};font-size:12px;line-height:1.5;overflow-x:auto;white-space:pre}`,
     ].join('')
 
     const card = document.createElement('div')
@@ -209,6 +234,7 @@ export const initInstantThreadCache = (): void => {
     hdrLeft.append(dot, label)
 
     const hdrActions = document.createElement('div')
+
     hdrActions.className = 'hdr-actions'
     const pinBtn = document.createElement('button')
     pinBtn.className = 'pill-btn'
@@ -219,16 +245,13 @@ export const initInstantThreadCache = (): void => {
       pinBtn.classList.toggle('active', previewPinned)
       pinBtn.textContent = previewPinned ? 'Épinglé' : 'Garder'
     })
-
     const closeBtn = document.createElement('button')
     closeBtn.className = 'close'
     closeBtn.type = 'button'
     closeBtn.textContent = '×'
     closeBtn.addEventListener('click', () => dismissPreview(true))
-
     hdrActions.append(pinBtn, closeBtn)
     hdr.append(hdrLeft, hdrActions)
-
     const body = document.createElement('div')
     body.className = 'body'
     body.addEventListener(
@@ -239,7 +262,6 @@ export const initInstantThreadCache = (): void => {
       },
       { passive: true }
     )
-
     if (snap.prompt) {
       const pEl = document.createElement('div')
       pEl.className = 'prompt'
@@ -249,7 +271,6 @@ export const initInstantThreadCache = (): void => {
     if (snap.answerMarkdown) {
       const aEl = document.createElement('div')
       aEl.className = 'answer'
-
       renderMarkdown(aEl, snap.answerMarkdown)
       body.appendChild(aEl)
     }
