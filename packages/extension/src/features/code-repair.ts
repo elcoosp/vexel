@@ -135,8 +135,17 @@ function hasUnclosedCodeDelimiter(code: string): boolean {
       inLineComment = true
       continue
     }
-    if (ch === '"' || ch === "'") {
-      quote = ch
+    if (ch === '"') {
+      quote = '"'
+      continue
+    }
+    if (ch === "'") {
+      const nextNl = code.indexOf('\n', i + 1)
+      const restOfLine = code.slice(i + 1, nextNl === -1 ? code.length : nextNl)
+      if (/^[a-zA-Z_][a-zA-Z0-9_]*\b/.test(restOfLine) && !restOfLine.includes("'")) {
+        continue
+      }
+      quote = "'"
       continue
     }
 
@@ -697,9 +706,10 @@ async function repairBrokenSequenceFromCodeCard(
   }
 
   const { pre, codeEl, anchorBlock, turnRoot } = topo
-  const isTurnFinished =
-    turnRoot.getAttribute('data-complete') === 'true' ||
-    turnRoot.querySelector('[data-zzy="1"]') !== null
+  const hasFollowingZzy = Array.from(
+    (turnRoot.parentElement || turnRoot).querySelectorAll('[data-zzy="1"]')
+  ).some((zzy) => Boolean(anchorBlock.compareDocumentPosition(zzy) & 4))
+  const isTurnFinished = turnRoot.getAttribute('data-complete') === 'true' || hasFollowingZzy
 
   const rawCodeLen = (codeEl.textContent || '').length
   const nextSib = anchorBlock.nextElementSibling
@@ -899,8 +909,10 @@ async function repairBrokenSequenceFromCodeCard(
       codeCard,
       `${(codeEl.textContent || '').length}|${postNextSig}|${isTurnFinished ? '1' : '0'}`
     )
-    if (reachedTerminalBoundary || isTurnFinished) {
+    const stillUnclosed = hasUnclosedCodeDelimiter(formatted)
+    if (reachedTerminalBoundary || (isTurnFinished && !stillUnclosed)) {
       codeCard.setAttribute('data-vexel-repaired-final', '1')
+      pre.setAttribute('data-vexel-final-pre', '1')
     }
     const durationMs = Math.max(1, Math.round(performance.now() - repairStartMs))
     repairedCodeByContainer.set(codeCard as HTMLElement, {

@@ -976,4 +976,94 @@ Exécute \`./wr.sh\` avec ce script.
     expect(document.querySelectorAll('[role="heading"]').length).toBe(0)
     expect(document.querySelector('[data-vexel-repaired-followup="true"]')).not.toBeNull()
   })
+
+  it('absorbs multi-sibling bash heredoc with Rust code truncated after match block', async () => {
+    document.body.innerHTML = ''
+    const g = globalThis as { chrome?: { runtime?: { sendMessage?: unknown } } }
+    const prevChrome = g.chrome
+    g.chrome = {
+      runtime: {
+        sendMessage: (msg: { code?: string }, cb: (res: unknown) => void) => {
+          cb({ ok: true, formatted: msg.code || '', engine: 'mock-shfmt' })
+        },
+      },
+    }
+
+    try {
+      const root = document.createElement('div')
+      root.setAttribute('data-container-id', 'main-col')
+
+      const priorZzy = document.createElement('div')
+      priorZzy.setAttribute('data-zzy', '1')
+      root.appendChild(priorZzy)
+
+      const streamWrap = document.createElement('div')
+      streamWrap.setAttribute('data-container-id', '8')
+      root.appendChild(streamWrap)
+
+      const card = document.createElement('div')
+      card.className = 'BpxUDf aiModeUiCodeBlock__Container'
+      card.setAttribute('data-hveid', 'CARD_HEREDOC')
+      card.setAttribute('data-complete', 'true')
+      card.innerHTML =
+        '<div><div class="a2TNg"><div class="GlO4G">bash</div></div>' +
+        '<div class="PGvq2d"><pre><code></code></pre></div></div>' +
+        '<div class="iMHp6c"><div class="ZIumpf">Utilisez le code avec précaution.</div></div>'
+      const codeEl = card.querySelector('code')!
+      codeEl.textContent =
+        "#!/usr/bin/env bash\nset -euo pipefail\ncat << 'EOF' > crates/braid/src/macos.rs\n" +
+        'use std::path::Path;\n'.repeat(180) +
+        'fn list_vscode_family_windows() {\n    let out = Vec::new();\n    out'
+      streamWrap.appendChild(card)
+
+      const sib1 = document.createElement('div')
+      sib1.className = 'n6owBd awi2gc'
+      sib1.textContent =
+        '}\npub fn list_editor_windows(repos_root: &Path, favorite: &str) -> Vec {\n' +
+        '  let spec = resolve_editor_spec(favorite);\n' +
+        '  match spec.id {\n' +
+        '    "cursor" => return list_vscode_family_windows(repos_root, "Cursor"),\n' +
+        '    _ => {}\n' +
+        '  }'
+      streamWrap.appendChild(sib1)
+      document.body.appendChild(root)
+
+      // Wave 1: partial stream ends right after match spec.id { ... } while EOF is still unclosed
+      scanAndRepairCodeBlocks(document, () => {})
+      await new Promise((r) => setTimeout(r, 40))
+
+      expect(card.getAttribute('data-vexel-repaired')).toBe('1')
+      expect(card.getAttribute('data-vexel-repaired-final')).toBeNull()
+
+      // Wave 2: remaining Rust functions + EOF + trailing zzy arrive
+      const sib2 = document.createElement('div')
+      sib2.className = 'n6owBd awi2gc'
+      sib2.innerHTML =
+        'let mut win_titles = list_window_titles_for_pids(&amp;pids);<br>' +
+        'for &amp;pid in &amp;pids {<br>win_titles.push(pid.to_string());<br>}<br>win_titles<br>}'
+      const sib3 = document.createElement('div')
+      sib3.className = 'n6owBd awi2gc'
+      sib3.innerHTML =
+        'pub fn focus_editor_app(favorite: &amp;str) {<br>let spec = resolve_editor_spec(favorite);<br>}'
+      const sib4 = document.createElement('div')
+      sib4.className = 'n6owBd awi2gc'
+      sib4.textContent = 'EOF'
+      const endZzy = document.createElement('div')
+      endZzy.setAttribute('data-zzy', '1')
+      streamWrap.append(sib2, sib3, sib4, endZzy)
+
+      scanAndRepairCodeBlocks(document, () => {})
+      await new Promise((r) => setTimeout(r, 40))
+
+      expect(card.getAttribute('data-vexel-repaired-final')).toBe('1')
+      expect(card.querySelector('pre')?.getAttribute('data-vexel-final-pre')).toBe('1')
+      expect(codeEl.textContent).toContain(
+        'let mut win_titles = list_window_titles_for_pids(&pids);'
+      )
+      expect(codeEl.textContent).toContain('pub fn focus_editor_app(favorite: &str)')
+      expect(codeEl.textContent).toContain('EOF')
+    } finally {
+      g.chrome = prevChrome
+    }
+  })
 })
