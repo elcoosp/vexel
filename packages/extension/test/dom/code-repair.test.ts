@@ -267,4 +267,51 @@ describe('code-repair DOM integration', () => {
     expect(record?.code).toContain('git commit -m')
     expect(document.querySelectorAll('.n6owBd').length).toBe(0)
   })
+
+  it('never stops early when spilled code contains markdown list items (ul/li) or a secondary split code card before closing braces', async () => {
+    ;(globalThis as Record<string, unknown>).chrome = {
+      runtime: {
+        sendMessage: (_msg: unknown, cb?: (res: unknown) => void) => {
+          cb?.({ ok: false })
+        },
+      },
+    }
+    const longHead = [
+      'export async function runBigPipeline(items: string[]) {',
+      '  const results: string[] = []',
+      '  for (const item of items) {',
+      '    if (item.length > 0) {',
+      '      results.push(item.trim())',
+      ...Array.from({ length: 240 }, (_, i) => '      const step' + i + ' = ' + i),
+    ].join('\n')
+
+    document.body.innerHTML = [
+      '<div data-scope-id="turn">',
+      '  <div data-subtree="aimc">',
+      '    <div data-container-id="main-col">',
+      '      <div data-hveid="CODE_SPLIT_20K" class="BpxUDf aiModeUiCodeBlock__Container" data-sfc-cp="">',
+      '        <div class="a2TNg"><div class="GlO4G">typescript</div></div>',
+      '        <pre><code>' + longHead + '</code></pre>',
+      '      </div>',
+      '      <ul class="XSq4R"><li data-sfc-cp=""> - first spilled bullet line inside open function</li></ul>',
+      '      <div class="n6owBd awi2gc" data-sfc-cp="">    }<br>  }<br>  return results<br>}</div>',
+      '      <div data-hveid="CODE_SPLIT_TAIL" class="BpxUDf aiModeUiCodeBlock__Container" data-sfc-cp="">',
+      '        <div class="a2TNg"><div class="GlO4G">typescript</div></div>',
+      '        <pre><code>export const PIPELINE_DONE = true</code></pre>',
+      '      </div>',
+      '      <div data-xid="Gd7Hsc" data-sfc-cp="">Les réponses de l\'IA peuvent contenir des erreurs.</div>',
+      '    </div>',
+      '  </div>',
+      '</div>',
+    ].join('')
+
+    scanAndRepairCodeBlocks(document, () => {})
+    await new Promise((r) => setTimeout(r, 80))
+
+    const card = document.querySelector('[data-hveid="CODE_SPLIT_20K"]')!
+    const record = getRepairedCodeForContainer(card)
+    expect(record?.code).toContain('return results')
+    expect(record?.code).toContain('PIPELINE_DONE')
+    expect(document.querySelector('[data-hveid="CODE_SPLIT_TAIL"]')).toBeNull()
+  })
 })

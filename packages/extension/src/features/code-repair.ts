@@ -637,6 +637,18 @@ async function repairBrokenSequenceFromCodeCard(
       if (isPoisonedMarkdownCodeBlock(node)) {
         poisonedHost = node
         poisonedRawMarkdown = extractRawMarkdownFromPoisonedCard(node)
+        break
+      }
+      const assembledSoFar = [headCode, previousTail, ...spilledChunks].filter(Boolean).join('\n')
+      const secPre = node.querySelector('pre code')
+      const secText = (secPre?.textContent || '').replace(/\n$/, '')
+      if (
+        (spilledChunks.length > 0 || hasUnclosedCodeDelimiter(assembledSoFar)) &&
+        secText.trim().length > 0
+      ) {
+        spilledSiblings.push(node)
+        spilledChunks.push(secText)
+        continue
       }
       break
     }
