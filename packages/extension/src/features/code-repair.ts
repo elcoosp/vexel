@@ -781,24 +781,29 @@ function extractWizFullCodeFromCard(
   const roots: Element[] = [codeCard]
   if (anchorBlock !== codeCard) roots.push(anchorBlock)
   if (anchorBlock.parentElement) roots.push(anchorBlock.parentElement)
-  for (const root of roots) {
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT)
-    let current = walker.nextNode()
-    while (current) {
-      const val = current.nodeValue || ''
+  const visit = (node: Node): { lang: string; fullCode: string } | null => {
+    if (node.nodeType === 8) {
+      const val = node.nodeValue || ''
       if (val.startsWith('TgQPHd|||[[')) {
         try {
           const parsed = JSON.parse(val.slice('TgQPHd|||'.length))
           const first = Array.isArray(parsed) ? parsed.find(Array.isArray) : null
           const lang = typeof first?.[0] === 'string' ? first[0].toLowerCase() : ''
           const fullCode = typeof first?.[1] === 'string' ? first[1] : ''
-          if (fullCode.length > 0) {
-            return { lang, fullCode }
-          }
+          if (fullCode.length > 0) return { lang, fullCode }
         } catch {}
       }
-      current = walker.nextNode()
+      return null
     }
+    for (let child = node.firstChild; child; child = child.nextSibling) {
+      const found = visit(child)
+      if (found) return found
+    }
+    return null
+  }
+  for (const root of roots) {
+    const found = visit(root)
+    if (found) return found
   }
   return null
 }
@@ -932,7 +937,7 @@ async function repairBrokenSequenceFromCodeCard(
         if (!rawTextNode) continue
         const assembledSoFar = [headCode, previousTail, ...spilledChunks].filter(Boolean).join('\n')
         const stillOpen = hasUnclosedCodeDelimiter(assembledSoFar)
-        if (!withinWizBudget && isNaturalLanguageProseBlock(rawTextNode)) {
+        if (isNaturalLanguageProseBlock(rawTextNode)) {
           break
         }
         if (withinWizBudget || stillOpen || looksLikeCodeFragment(rawTextNode)) {
@@ -993,7 +998,7 @@ async function repairBrokenSequenceFromCodeCard(
           /^[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ][a-zàâäéèêëîïôöùûüç]+(?:\s+[a-zàâäéèêëîïôöùûüçA-Z0-9_-]+){2,}:$/.test(
             cleaned
           )
-        if (!withinWizBudget && (isNaturalLanguageProseBlock(cleaned) || isNaturalIntroColon)) {
+        if (isNaturalLanguageProseBlock(cleaned) || (!withinWizBudget && isNaturalIntroColon)) {
           reachedTerminalBoundary = true
           break
         }
