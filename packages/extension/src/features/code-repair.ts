@@ -232,6 +232,7 @@ function hasUnclosedCodeDelimiter(code: string): boolean {
     .filter((l) => l.trim().length > 0)
   const lastCodeLine = nonEmptyLines[nonEmptyLines.length - 1] || ''
   if (
+    /[,]\s*$/.test(lastCodeLine) ||
     /^\s*(?:async\s+def|def|class|if|elif|else|for|while|try|except|finally|with|match|case)\b.*:\s*$/.test(
       lastCodeLine
     )
