@@ -5,6 +5,7 @@ function injectInstantVirtualizationCSS(): void {
   const style = document.createElement('style')
   style.id = 'vexel-fast-load-css'
   style.textContent = `
+    html.vexel-booting [data-scope-id="turn"]:not(:last-of-type),
     html.vexel-resizing [data-scope-id="turn"]:not(:nth-last-of-type(-n+2)) {
       content-visibility: hidden !important;
       contain-intrinsic-size: auto 480px;
@@ -41,7 +42,16 @@ export function scrollToLastUserPrompt(smooth = false): boolean {
 }
 
 export function initDomBooster(): void {
+  document.documentElement.classList.add('vexel-booting')
   injectInstantVirtualizationCSS()
+
+  const clearBooting = () => {
+    document.documentElement.classList.remove('vexel-booting')
+  }
+  window.setTimeout(clearBooting, 1200)
+  for (const evt of ['wheel', 'touchstart', 'scroll'] as const) {
+    window.addEventListener(evt, clearBooting, { passive: true, once: true, capture: true })
+  }
 
   let resizeClearTimer = 0
   window.addEventListener(
