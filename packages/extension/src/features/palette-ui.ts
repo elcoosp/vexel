@@ -19,6 +19,7 @@ export interface SkillItem {
   sourceRepo?: string
   installs?: string | number
   isBuiltin?: boolean
+  dir?: string
 }
 
 export interface RemoteSkill {

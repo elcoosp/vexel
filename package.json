@@ -7,7 +7,7 @@
     "build": "pnpm -r build",
     "dev:bridge": "pnpm --filter @vexel/bridge dev",
     "dev:ext": "pnpm --filter @vexel/extension dev",
-    "lint": "oxlint --deny-warnings",
+    "lint": "oxlint --deny-warnings -D typescript/no-explicit-any",
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",

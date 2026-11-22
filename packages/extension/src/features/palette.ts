@@ -940,7 +940,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
               const removingName = s.name
               statusText.textContent = t`Removing ${removingName}...`
               chrome.runtime.sendMessage(
-                { type: 'REMOVE_LOCAL_SKILL', id: s.id, dir: (s as any).dir || '' },
+                { type: 'REMOVE_LOCAL_SKILL', id: s.id, dir: s.dir || '' },
                 (res) => {
                   removingSkills.delete(s.id)
                   if (!res?.ok || res?.data?.ok === false) {
