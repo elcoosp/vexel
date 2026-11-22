@@ -166,6 +166,13 @@ function looksLikeCodeFragment(text: string): boolean {
     .map((l) => l.trim())
     .filter(Boolean)
   if (lines.length === 0) return false
+  if (
+    /^(?:pub(?:\s*\([^)]*\))?\s+)?(?:async\s+)?(?:unsafe\s+)?(?:extern\s+(?:"[^"]*"\s+)?)?(?:fn|struct|enum|trait|impl|mod|type|const|static|macro_rules!|function|class|interface|export|import|def|async\s+def|func|package)\b/.test(
+      lines[0]
+    )
+  ) {
+    return true
+  }
   let hits = 0
   let codeLines = 0
   let commentLines = 0

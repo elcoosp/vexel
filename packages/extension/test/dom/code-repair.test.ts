@@ -1066,4 +1066,101 @@ Exécute \`./wr.sh\` avec ce script.
       g.chrome = prevChrome
     }
   })
+
+  it('continues absorbing top-level fn main() with multiline string literals after impl block closes braces', async () => {
+    document.body.innerHTML = ''
+    const g = globalThis as { chrome?: { runtime?: { sendMessage?: unknown } } }
+    const prevChrome = g.chrome
+    g.chrome = {
+      runtime: {
+        sendMessage: (msg: { code?: string }, cb: (res: unknown) => void) => {
+          cb({ ok: true, formatted: msg.code || '', engine: 'mock-rustfmt' })
+        },
+      },
+    }
+
+    try {
+      const turn = document.createElement('div')
+      turn.setAttribute('data-scope-id', 'turn')
+      turn.setAttribute('data-complete', 'true')
+
+      const container = document.createElement('div')
+      container.setAttribute('data-container-id', '5')
+      container.style.display = 'contents'
+
+      const card = document.createElement('div')
+      card.className = 'BpxUDf aiModeUiCodeBlock__Container'
+      card.setAttribute('data-hveid', 'CAIIAAgFEAA')
+      card.innerHTML =
+        '<div><div class="a2TNg"><div class="GlO4G">rust</div></div>' +
+        '<div class="PGvq2d"><pre><code></code></pre></div></div>' +
+        '<div class="iMHp6c"><div class="ZIumpf">Utilisez le code avec précaution.</div></div>'
+      const codeEl = card.querySelector('code')!
+      codeEl.textContent =
+        'use std::collections::HashMap;\n' +
+        'pub struct LogIndex { pub count: usize }\n' +
+        'impl LogIndex {\n' +
+        '    pub fn render(&self) -> String {\n' +
+        '        let mut report = String::new();\n' +
+        '        for i in 0..self.count {\n' +
+        '            if i > 0 {\n' +
+        '                report.push_str("ok");\n'
+
+      // Closes the impl block completely (braceBalance reaches 0)
+      const sibImplClose = document.createElement('div')
+      sibImplClose.className = 'n6owBd awi2gc'
+      sibImplClose.setAttribute('data-sfc-cp', '')
+      sibImplClose.innerHTML = '            }<br>        }<br>        report<br>    }<br>}'
+
+      // Top-level fn main() with a long multiline string payload that previously diluted hit ratio < 0.45
+      const sibMain = document.createElement('div')
+      sibMain.className = 'n6owBd awi2gc'
+      sibMain.setAttribute('data-sfc-cp', '')
+      sibMain.innerHTML =
+        'fn main() {<br>' +
+        '    let raw_logs = "<br>' +
+        '2026-11-22T18:45:01Z [INFO] api-gateway (trace=req-991) : Requête entrante reçue | method=POST path=/v1/orders<br>' +
+        '2026-11-22T18:45:02Z [WARN] auth-service (trace=req-991) : Latence élevée sur le cache Redis | latency_ms=142<br>' +
+        '2026-11-22T18:45:03Z [ERROR] payment-worker (trace=req-992) : Timeout lors de la validation bancaire | code=504<br>' +
+        '2026-11-22T18:45:04Z [INFO] api-gateway (trace=req-991) : Réponse envoyée | status=201<br>' +
+        '2026-11-22T18:45:05Z [DEBUG] metrics-agent (trace=sys-001) : Collecte mémoire terminée | rss_mb=64<br>' +
+        '2026-11-22T18:45:06Z [ERROR] inventory-db (trace=req-993) : Échec de verrouillage optimiste | table=stock<br>' +
+        '";'
+
+      const sibTail1 = document.createElement('div')
+      sibTail1.className = 'n6owBd awi2gc'
+      sibTail1.setAttribute('data-sfc-cp', '')
+      sibTail1.innerHTML =
+        '    let index = LogIndex { count: raw_logs.lines().count() };<br>' +
+        '    println!("{}", index.render());<br>' +
+        '}'
+
+      const poisonedWrap = document.createElement('div')
+      poisonedWrap.className = 'fMjZBb'
+      poisonedWrap.innerHTML =
+        '<div class="BpxUDf aiModeUiCodeBlock__Container" data-hveid="CAIIAAgSEAA">' +
+        '<div class="PGvq2d"><pre><code>### Ce que ce code illustre :\n* Zéro-copie\n\n&lt;FollowUp&gt;\n* Ajouter de la concurrence ?\n&lt;</FollowUp></pre></div></div>'
+
+      const footer = document.createElement('div')
+      footer.setAttribute('data-xid', 'Gd7Hsc')
+      footer.textContent = "Les réponses de l'IA peuvent contenir des erreurs. En savoir plus"
+
+      container.append(card, sibImplClose, sibMain, sibTail1, poisonedWrap, footer)
+      turn.appendChild(container)
+      document.body.appendChild(turn)
+
+      scanAndRepairCodeBlocks(document, () => {})
+      await new Promise((r) => setTimeout(r, 40))
+
+      expect(card.getAttribute('data-vexel-repaired-final')).toBe('1')
+      expect(sibImplClose.isConnected).toBe(false)
+      expect(sibMain.isConnected).toBe(false)
+      expect(sibTail1.isConnected).toBe(false)
+      expect(codeEl.textContent).toContain('fn main() {')
+      expect(codeEl.textContent).toContain('println!("{}", index.render());')
+      expect(document.querySelector('[data-vexel-repaired-followup="true"]')).not.toBeNull()
+    } finally {
+      g.chrome = prevChrome
+    }
+  })
 })
