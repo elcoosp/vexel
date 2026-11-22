@@ -787,6 +787,28 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
       browseDir(currentDir, q)
     }
   }
+  function createSlashBadge(accent = false): HTMLElement {
+    const badge = document.createElement('span')
+    badge.textContent = '/'
+    badge.setAttribute('aria-hidden', 'true')
+    Object.assign(badge.style, {
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: '18px',
+      height: '18px',
+      borderRadius: '5px',
+      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+      fontSize: '11px',
+      fontWeight: '600',
+      lineHeight: '1',
+      flexShrink: '0',
+      color: accent ? '#1a73e8' : '#5f6368',
+      background: accent ? 'rgba(26, 115, 232, 0.1)' : 'rgba(60, 64, 67, 0.07)',
+    })
+    return badge
+  }
+
   function createRow(
     index: number,
     iconEl: Element,
@@ -894,7 +916,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
             s.description && !/^[>|]-?$/.test(s.description.trim()) ? s.description : ''
           const row = createRow(
             rowIdx++,
-            createLucideIcon('sparkles', 13, '#1a73e8'),
+            createSlashBadge(true),
             s.name,
             metaParts.join(' • '),
             false,
@@ -1021,7 +1043,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
               : undefined
           const row = createRow(
             rowIdx++,
-            createLucideIcon('sparkles', 13, '#5f6368'),
+            createSlashBadge(false),
             r.name,
             metaLabel,
             false,
@@ -1074,9 +1096,7 @@ export function initCommandPalette(showToast: (msg: string) => void): void {
         const badge = isGitDiff ? 'Git' : ''
         const row = createRow(
           rowIndex,
-          isGitDiff
-            ? createLucideIcon('sparkles', 14, '#1a73e8')
-            : createFileOrFolderIcon(entry.name, entry.isDir, 14),
+          isGitDiff ? createSlashBadge(true) : createFileOrFolderIcon(entry.name, entry.isDir, 14),
           entry.name,
           badge,
           entry.isDir || isGitDiff,
