@@ -620,8 +620,13 @@ async function repairBrokenSequenceFromCodeCard(
           return
         }
         if (rootNode instanceof HTMLElement) {
-          if (
+          const isResponseChunkBlock =
             rootNode.hasAttribute('data-sfc-cp') ||
+            rootNode.classList.contains('n6owBd') ||
+            rootNode.classList.contains('Y3BBE') ||
+            rootNode.parentElement === anchorBlock.parentElement
+          if (
+            isResponseChunkBlock ||
             (rootNode.querySelector('pre code') !== null &&
               (rootNode.matches('[data-hveid]') || isPoisonedMarkdownCodeBlock(rootNode)))
           ) {
@@ -678,7 +683,12 @@ async function repairBrokenSequenceFromCodeCard(
         break
       }
 
-      if (node.hasAttribute('data-sfc-cp')) {
+      if (
+        node.hasAttribute('data-sfc-cp') ||
+        node.classList.contains('n6owBd') ||
+        node.classList.contains('Y3BBE') ||
+        node.parentElement === anchorBlock.parentElement
+      ) {
         if (isGoogleLegalFooterNode(node)) {
           reachedTerminalBoundary = true
           break
@@ -712,7 +722,9 @@ async function repairBrokenSequenceFromCodeCard(
         }
       }
     }
-    if (spilledChunks.length === 0 && !poisonedHost) return
+    if (spilledChunks.length === 0 && !poisonedHost) {
+      return
+    }
     codeCard.setAttribute('data-vexel-repaired', '1')
     const headerEl = (pre.parentElement?.previousElementSibling as HTMLElement | null) || null
     const lang = detectSemanticLang(codeEl, headerEl)

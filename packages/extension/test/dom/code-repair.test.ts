@@ -538,4 +538,53 @@ describe('code-repair DOM integration', () => {
     expect(record?.code).toContain('Rapport de santé final de la grappe')
     expect(document.querySelectorAll('.n6owBd.awi2gc').length).toBe(0)
   })
+
+  it('absorbs spilled n6owBd siblings even when Google omits data-sfc-cp on streaming paragraphs (Da7Cvc_3z -> Da7Cvc_4a)', async () => {
+    ;(globalThis as Record<string, unknown>).chrome = {
+      runtime: {
+        sendMessage: (_msg: unknown, cb?: (res: unknown) => void) => {
+          cb?.({ ok: false })
+        },
+      },
+    }
+    const longUnclosedHead = [
+      'export class BusEvenements {',
+      ...Array.from({ length: 180 }, (_, i) => '  private item' + i + ' = ' + i + ';'),
+      '  private async traiterFile(): Promise<void> {',
+      '    if (!this.enCoursDeTraitement) {',
+      '      continue;',
+      '    }',
+    ].join('\n')
+
+    document.body.innerHTML = [
+      '<div class="CKgc1d" data-last-turn="true" data-scope-id="turn" jsuid="Da7Cvc_2l">',
+      '  <div data-subtree="aimc">',
+      '    <div class="mZJni" data-container-id="main-col">',
+      '      <div style="display: contents" data-container-id="24">',
+      '        <div jsuid="Da7Cvc_3z" class="BpxUDf aiModeUiCodeBlock__Container" data-hveid="CAIIAAgJEAA">',
+      '          <div>',
+      '            <div class="rq1a2"><div><div>typescript</div></div><pre><code>' +
+        longUnclosedHead.replace(/</g, '&lt;').replace(/>/g, '&gt;') +
+        '</code></pre></div>',
+      '            <div class="iMHp6c"><div>Utilisez le code avec précaution.</div></div>',
+      '          </div>',
+      '        </div>',
+      '        <div class="n6owBd awi2gc" jsuid="Da7Cvc_4a">const gestionnaires = this.abonnes.get(evenement.type);<br>if (!gestionnaires) {<br>continue;<br>}</div>',
+      '        <div class="n6owBd awi2gc" jsuid="Da7Cvc_4b">    }<br>  }<br>}</div>',
+      '        <div jsuid="Da7Cvc_end" data-xid="Gd7Hsc">Les réponses de l\'IA peuvent contenir des erreurs.</div>',
+      '      </div>',
+      '    </div>',
+      '  </div>',
+      '</div>',
+    ].join('')
+
+    scanAndRepairCodeBlocks(document, () => {})
+    await new Promise((r) => setTimeout(r, 80))
+
+    const card = document.querySelector('[jsuid="Da7Cvc_3z"]')!
+    expect(card.getAttribute('data-vexel-repaired')).toBe('1')
+    const record = getRepairedCodeForContainer(card)
+    expect(record?.code).toContain('const gestionnaires = this.abonnes.get(evenement.type);')
+    expect(document.querySelectorAll('.n6owBd.awi2gc').length).toBe(0)
+  })
 })
