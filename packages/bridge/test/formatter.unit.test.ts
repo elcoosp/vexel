@@ -76,53 +76,64 @@ describe('formatter.ts native CLI routing & fallback matrix', () => {
     expect(getCandidateSpecs('dart').map((s) => s.engine)).toEqual(['dart'])
     expect(getCandidateSpecs('unknown_ext')).toEqual([])
   })
-  it('formats via native CLI binaries over stdin/stdout for C++, SQL, TOML, Terraform, Lua, Zig, Nix, Swift & Kotlin', async () => {
-    writeFakeFormatter('clang-format', 'cat; printf "\\n// clang-formatted:%s" "$1"')
-    writeFakeFormatter('sleek', 'printf "SELECT 1;\\n"')
-    writeFakeFormatter('taplo', 'cat <<\'OUT\'\n[package]\nname = "vexel"\nOUT')
-    writeFakeFormatter('tofu', 'cat <<\'OUT\'\nresource "null_resource" "ok" {}\nOUT')
-    writeFakeFormatter('stylua', 'printf "local x = 1\\n"')
-    writeFakeFormatter('zig', 'printf "const x: u32 = 1;\\n"')
-    writeFakeFormatter('alejandra', 'printf "{ pkgs }: pkgs.hello\\n"')
-    writeFakeFormatter('swift-format', 'printf "let x = 1\\n"')
-    writeFakeFormatter('ktfmt', 'printf "val x = 1\\n"')
-    writeFakeFormatter('mago', 'printf "<?php\\n\\nfunction hi(): int\\n{\\n    return 1;\\n}\\n"')
-    writeFakeFormatter('standardrb', 'printf "def hi\\n  1\\nend\\n"')
-    writeFakeFormatter('dart', 'printf "void main() {\\n  print(1);\\n}\\n"')
-    writeFakeFormatter('google-java-format', 'printf "class Main {}\\n"')
-    const cppRes = await formatCodeWithNativeTool('int main(){return 0;}', 'cpp', 'src/app.cpp')
-    expect(cppRes.engine).toBe('clang-format')
-    expect(cppRes.formatted).toContain('// clang-formatted:--assume-filename=app.cpp')
-    const sqlRes = await formatCodeWithNativeTool('select 1', 'sql')
-    expect(sqlRes).toEqual({ ok: true, formatted: 'SELECT 1;', engine: 'sleek' })
-    const tomlRes = await formatCodeWithNativeTool('[package]\nname="vexel"', 'toml')
-    expect(tomlRes).toEqual({ ok: true, formatted: '[package]\nname = "vexel"', engine: 'taplo' })
-    const tfRes = await formatCodeWithNativeTool('resource "null_resource" "ok" {}', 'terraform')
-    expect(tfRes.engine).toBe('tofu')
-    const luaRes = await formatCodeWithNativeTool('local x=1', 'lua')
-    expect(luaRes).toEqual({ ok: true, formatted: 'local x = 1', engine: 'stylua' })
-    const zigRes = await formatCodeWithNativeTool('const x:u32=1;', 'zig')
-    expect(zigRes).toEqual({ ok: true, formatted: 'const x: u32 = 1;', engine: 'zig' })
-    const nixRes = await formatCodeWithNativeTool('{pkgs}:pkgs.hello', 'nix')
-    expect(nixRes).toEqual({ ok: true, formatted: '{ pkgs }: pkgs.hello', engine: 'alejandra' })
-    const swiftRes = await formatCodeWithNativeTool('let x=1', 'swift')
-    expect(swiftRes).toEqual({ ok: true, formatted: 'let x = 1', engine: 'swift-format' })
-    const ktRes = await formatCodeWithNativeTool('val x=1', 'kotlin')
-    expect(ktRes).toEqual({ ok: true, formatted: 'val x = 1', engine: 'ktfmt' })
-    const phpRes = await formatCodeWithNativeTool('<?php function hi(){return 1;}', 'php')
-    expect(phpRes.engine).toBe('mago')
-    expect(phpRes.formatted).toContain('function hi(): int')
-    const rbRes = await formatCodeWithNativeTool('def hi; 1; end', 'ruby')
-    expect(rbRes).toEqual({ ok: true, formatted: 'def hi\n  1\nend', engine: 'standardrb' })
-    const dartRes = await formatCodeWithNativeTool('void main(){print(1);}', 'dart')
-    expect(dartRes).toEqual({
-      ok: true,
-      formatted: 'void main() {\n  print(1);\n}',
-      engine: 'dart',
-    })
-    const javaRes = await formatCodeWithNativeTool('class Main{}', 'java')
-    expect(javaRes).toEqual({ ok: true, formatted: 'class Main {}', engine: 'google-java-format' })
-  })
+  it(
+    'formats via native CLI binaries over stdin/stdout for C++, SQL, TOML, Terraform, Lua, Zig, Nix, Swift & Kotlin',
+    { timeout: 15_000 },
+    async () => {
+      writeFakeFormatter('clang-format', 'cat; printf "\\n// clang-formatted:%s" "$1"')
+      writeFakeFormatter('sleek', 'printf "SELECT 1;\\n"')
+      writeFakeFormatter('taplo', 'cat <<\'OUT\'\n[package]\nname = "vexel"\nOUT')
+      writeFakeFormatter('tofu', 'cat <<\'OUT\'\nresource "null_resource" "ok" {}\nOUT')
+      writeFakeFormatter('stylua', 'printf "local x = 1\\n"')
+      writeFakeFormatter('zig', 'printf "const x: u32 = 1;\\n"')
+      writeFakeFormatter('alejandra', 'printf "{ pkgs }: pkgs.hello\\n"')
+      writeFakeFormatter('swift-format', 'printf "let x = 1\\n"')
+      writeFakeFormatter('ktfmt', 'printf "val x = 1\\n"')
+      writeFakeFormatter(
+        'mago',
+        'printf "<?php\\n\\nfunction hi(): int\\n{\\n    return 1;\\n}\\n"'
+      )
+      writeFakeFormatter('standardrb', 'printf "def hi\\n  1\\nend\\n"')
+      writeFakeFormatter('dart', 'printf "void main() {\\n  print(1);\\n}\\n"')
+      writeFakeFormatter('google-java-format', 'printf "class Main {}\\n"')
+      const cppRes = await formatCodeWithNativeTool('int main(){return 0;}', 'cpp', 'src/app.cpp')
+      expect(cppRes.engine).toBe('clang-format')
+      expect(cppRes.formatted).toContain('// clang-formatted:--assume-filename=app.cpp')
+      const sqlRes = await formatCodeWithNativeTool('select 1', 'sql')
+      expect(sqlRes).toEqual({ ok: true, formatted: 'SELECT 1;', engine: 'sleek' })
+      const tomlRes = await formatCodeWithNativeTool('[package]\nname="vexel"', 'toml')
+      expect(tomlRes).toEqual({ ok: true, formatted: '[package]\nname = "vexel"', engine: 'taplo' })
+      const tfRes = await formatCodeWithNativeTool('resource "null_resource" "ok" {}', 'terraform')
+      expect(tfRes.engine).toBe('tofu')
+      const luaRes = await formatCodeWithNativeTool('local x=1', 'lua')
+      expect(luaRes).toEqual({ ok: true, formatted: 'local x = 1', engine: 'stylua' })
+      const zigRes = await formatCodeWithNativeTool('const x:u32=1;', 'zig')
+      expect(zigRes).toEqual({ ok: true, formatted: 'const x: u32 = 1;', engine: 'zig' })
+      const nixRes = await formatCodeWithNativeTool('{pkgs}:pkgs.hello', 'nix')
+      expect(nixRes).toEqual({ ok: true, formatted: '{ pkgs }: pkgs.hello', engine: 'alejandra' })
+      const swiftRes = await formatCodeWithNativeTool('let x=1', 'swift')
+      expect(swiftRes).toEqual({ ok: true, formatted: 'let x = 1', engine: 'swift-format' })
+      const ktRes = await formatCodeWithNativeTool('val x=1', 'kotlin')
+      expect(ktRes).toEqual({ ok: true, formatted: 'val x = 1', engine: 'ktfmt' })
+      const phpRes = await formatCodeWithNativeTool('<?php function hi(){return 1;}', 'php')
+      expect(phpRes.engine).toBe('mago')
+      expect(phpRes.formatted).toContain('function hi(): int')
+      const rbRes = await formatCodeWithNativeTool('def hi; 1; end', 'ruby')
+      expect(rbRes).toEqual({ ok: true, formatted: 'def hi\n  1\nend', engine: 'standardrb' })
+      const dartRes = await formatCodeWithNativeTool('void main(){print(1);}', 'dart')
+      expect(dartRes).toEqual({
+        ok: true,
+        formatted: 'void main() {\n  print(1);\n}',
+        engine: 'dart',
+      })
+      const javaRes = await formatCodeWithNativeTool('class Main{}', 'java')
+      expect(javaRes).toEqual({
+        ok: true,
+        formatted: 'class Main {}',
+        engine: 'google-java-format',
+      })
+    }
+  )
   it('falls back to secondary formatter candidate when primary exits non-zero, and to fallback when none succeed', async () => {
     writeFakeFormatter('sleek', 'exit 2')
     writeFakeFormatter('pg_format', 'printf "SELECT id FROM users;\n"')

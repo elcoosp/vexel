@@ -940,17 +940,7 @@ async function repairBrokenSequenceFromCodeCard(
     }
 
     let absorbedChars = previousTail.length
-    console.warn(
-      '[Vexel CodeRepair] ' +
-        JSON.stringify({
-          ev: 'start',
-          lang,
-          headLen: headCode.length,
-          wizLen: wizFullCode.length,
-          expectedSpillChars,
-          candidateCount: candidateNodes.length,
-        })
-    )
+
     for (const node of candidateNodes) {
       const withinWizBudget = expectedSpillChars > 0 && absorbedChars < expectedSpillChars + 64
       if (node.nodeType === Node.TEXT_NODE) {
@@ -1020,19 +1010,7 @@ async function repairBrokenSequenceFromCodeCard(
             cleaned
           )
         const isProse = isNaturalLanguageProseBlock(cleaned)
-        console.warn(
-          '[Vexel CodeRepair] ' +
-            JSON.stringify({
-              ev: 'node',
-              lang,
-              jsuid: node.getAttribute('jsuid'),
-              isProse,
-              isNaturalIntroColon,
-              stillOpen,
-              withinWizBudget,
-              preview: cleaned.slice(0, 70),
-            })
-        )
+
         if (isProse || (!withinWizBudget && isNaturalIntroColon)) {
           reachedTerminalBoundary = true
           break
@@ -1048,16 +1026,7 @@ async function repairBrokenSequenceFromCodeCard(
           break
         }
         const looksLike = looksLikeCodeFragment(cleaned)
-        console.warn(
-          '[Vexel CodeRepair] ' +
-            JSON.stringify({
-              ev: 'looks',
-              lang,
-              jsuid: node.getAttribute('jsuid'),
-              looksLike,
-              preview: cleaned.slice(0, 70),
-            })
-        )
+
         if (withinWizBudget || stillOpen || looksLike) {
           spilledSiblings.push(node)
           spilledChunks.push(cleaned)

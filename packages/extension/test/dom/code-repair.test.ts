@@ -1353,4 +1353,79 @@ Exécute \`./wr.sh\` avec ce script.
     expect(code.textContent?.trim().endsWith('COMMIT;')).toBe(true)
     expect(code.textContent).not.toContain('FollowUp')
   })
+  it('absorbs 26-line SQL CTE window query (Requête 6 FIRST_VALUE / LAST_VALUE) and COMMIT;', async () => {
+    const nl = String.fromCharCode(10)
+    const turn = document.createElement('div')
+    turn.setAttribute('data-scope-id', 'turn')
+    turn.setAttribute('data-complete', 'true')
+    const card = document.createElement('div')
+    card.className = 'BpxUDf aiModeUiCodeBlock__Container'
+    card.setAttribute('data-hveid', 'CAIIAAgnEAA')
+    const header = document.createElement('div')
+    header.className = 'GlO4G'
+    header.textContent = 'sql'
+    const pre = document.createElement('pre')
+    const code = document.createElement('code')
+    code.textContent = [
+      'BEGIN;',
+      'INSERT INTO invoice_lines VALUES',
+      "(11, 3, 'SKU-NET-PRIV', 'Tunnel IPsec', 2.00, 1150.00, 0.00, 8.10),",
+    ].join(nl)
+    const closeInsert = document.createElement('div')
+    closeInsert.className = 'n6owBd awi2gc'
+    closeInsert.setAttribute('data-sfc-cp', '')
+    closeInsert.textContent = "(12, 1, 'SKU-CORE-STR', 'Licence', 1.00, 2800.00, 0.00, 20.00);"
+    pre.appendChild(code)
+    card.append(header, pre)
+
+    const req6 = document.createElement('div')
+    req6.className = 'n6owBd awi2gc'
+    req6.setAttribute('data-sfc-cp', '')
+    req6.innerHTML = [
+      '-- Requête 6 : Suivi chronologique par client avec première et dernière facture (FIRST_VALUE / LAST_VALUE)',
+      'WITH customer_timeline AS (',
+      'SELECT',
+      'c.company_name,',
+      'i.invoice_number,',
+      'i.issue_date,',
+      'i.status,',
+      'fn_compute_invoice_ttc_eur(i.invoice_id) AS total_eur',
+      'FROM customers c',
+      'JOIN invoices i ON i.customer_id = c.customer_id',
+      "WHERE i.status <> 'CANCELLED'",
+      ')',
+      'SELECT',
+      'company_name,',
+      'invoice_number,',
+      'issue_date,',
+      'status,',
+      'total_eur,',
+      'FIRST_VALUE(invoice_number) OVER (',
+      'PARTITION BY company_name ORDER BY issue_date ASC',
+      ') AS premiere_facture,',
+      'LAST_VALUE(total_eur) OVER (',
+      'PARTITION BY company_name ORDER BY issue_date ASC',
+      'ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING',
+      ') AS montant_derniere_facture_eur',
+      'FROM customer_timeline',
+      'ORDER BY company_name, issue_date;',
+    ].join('<br>')
+
+    const commitDiv = document.createElement('div')
+    commitDiv.className = 'n6owBd awi2gc'
+    commitDiv.setAttribute('data-sfc-cp', '')
+    commitDiv.textContent = 'COMMIT;'
+
+    turn.append(card, closeInsert, req6, commitDiv)
+    document.body.appendChild(turn)
+
+    scanAndRepairCodeBlocks(document, () => {})
+    await new Promise((r) => setTimeout(r, 50))
+
+    expect(req6.isConnected).toBe(false)
+    expect(commitDiv.isConnected).toBe(false)
+    expect(code.textContent).toContain('FIRST_VALUE(invoice_number)')
+    expect(code.textContent).toContain('ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING')
+    expect(code.textContent?.trim().endsWith('COMMIT;')).toBe(true)
+  })
 })
