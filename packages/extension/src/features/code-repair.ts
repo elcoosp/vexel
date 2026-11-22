@@ -331,6 +331,8 @@ function isGoogleLegalFooterNode(el: HTMLElement): boolean {
 }
 
 function isNaturalLanguageProseBlock(text: string): boolean {
+  const trimmedHead = text.trim()
+  if (/^(?:--\s|\/\/\s|\/\*|#\s)/.test(trimmedHead)) return false
   const trimmed = text.trim()
   if (!trimmed) return false
   const openFollowUp = String.fromCharCode(60) + 'FollowUp>'
