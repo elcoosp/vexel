@@ -76,6 +76,13 @@ function hasUnclosedCodeDelimiter(code: string): boolean {
     if (ch === '{' || ch === '[') braceBalance += 1
     else if (ch === '}' || ch === ']') braceBalance -= 1
   }
+  let unescapedBackticks = 0
+  for (let i = 0; i < code.length; i += 1) {
+    if (code[i] === '`' && (i === 0 || code[i - 1] !== '\\')) {
+      unescapedBackticks += 1
+    }
+  }
+  if (unescapedBackticks % 2 === 1) return true
   return braceBalance >= 2
 }
 
@@ -639,10 +646,11 @@ async function repairBrokenSequenceFromCodeCard(
       const cleaned = extractCleanSiblingCode(node)
       if (!cleaned) continue
       const assembledSoFar = [headCode, previousTail, ...spilledChunks].filter(Boolean).join('\n')
-      if (!hasUnclosedCodeDelimiter(assembledSoFar) && isNaturalLanguageProseBlock(cleaned)) {
+      const stillOpen = hasUnclosedCodeDelimiter(assembledSoFar)
+      if (!stillOpen && isNaturalLanguageProseBlock(cleaned)) {
         break
       }
-      if (hasUnclosedCodeDelimiter(assembledSoFar) || looksLikeCodeFragment(cleaned)) {
+      if (stillOpen || looksLikeCodeFragment(cleaned)) {
         spilledSiblings.push(node)
         spilledChunks.push(cleaned)
       } else {

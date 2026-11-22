@@ -211,4 +211,60 @@ describe('code-repair DOM integration', () => {
       'Exécute ce mini Script 514'
     )
   })
+
+  it('absorbs multi-div spilled JS/bash heredoc fragments with escaped template backticks', async () => {
+    ;(globalThis as Record<string, unknown>).chrome = {
+      runtime: {
+        sendMessage: (_msg: unknown, cb?: (res: unknown) => void) => {
+          cb?.({ ok: false })
+        },
+      },
+    }
+    const BT = String.fromCodePoint(96)
+    const headLines = [
+      "cd ~/Documents/Repos/vexel && cat << 'EOF' > /tmp/add-instant-thread-cache.mjs",
+      "import fs from 'node:fs';",
+      "const p = 'packages/extension/src/features/dom-booster.ts';",
+      "let s = fs.readFileSync(p, 'utf8');",
+      "if (!s.includes('vexel-instant-preview-host')) {",
+      '  const cacheModule = ' + BT,
+      '  const getConversationCacheKey = (): string | null => {',
+      "    const elids = url.searchParams.get('elids')",
+      '    if (elids) return \\' + BT + 'elids:${elids}\\' + BT,
+      '    return null',
+      '  }',
+      '  const waitRealTurns = () => {',
+      '    const obs = new MutationObserver(() => {',
+    ].join('\\n')
+
+    document.body.innerHTML = [
+      '<div data-scope-id="turn">',
+      '  <div data-subtree="aimc">',
+      '    <div data-container-id="main-col">',
+      '      <div data-hveid="CODE_HEREDOC" class="BpxUDf aiModeUiCodeBlock__Container" data-sfc-cp="">',
+      '        <div class="a2TNg"><div class="GlO4G">bash</div></div>',
+      '        <pre><code>' +
+        headLines.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') +
+        '</code></pre>',
+      '      </div>',
+      '      <div class="n6owBd awi2gc" data-sfc-cp="">const turns = document.querySelectorAll(\'[data-scope-id="turn"]\')<br>if (turns.length &gt;= 2) {<br>obs.disconnect()<br>}</div>',
+      '      <div class="n6owBd awi2gc" data-sfc-cp="">const lastBrace = s.lastIndexOf(\'}\');<br>s = s.slice(0, lastBrace) + cacheModule + \'}\\n\';<br>fs.writeFileSync(p, s);<br>}<br>' +
+        BT +
+        ';<br>EOF<br>node /tmp/add-instant-thread-cache.mjs &amp;&amp; rm /tmp/add-instant-thread-cache.mjs &amp;&amp; git commit -m "feat(perf): add stale-while-revalidate instant last-turn cache for fast thread reopen" &amp;&amp; git push</div>',
+      '      <div data-vexel-repaired-followup="true" data-vexel-ui="true"></div>',
+      '      <div data-xid="Gd7Hsc" data-sfc-cp="">Les réponses de l\'IA peuvent contenir des erreurs.</div>',
+      '    </div>',
+      '  </div>',
+      '</div>',
+    ].join('')
+
+    scanAndRepairCodeBlocks(document, () => {})
+    await new Promise((r) => setTimeout(r, 80))
+
+    const card = document.querySelector('[data-hveid="CODE_HEREDOC"]')!
+    const record = getRepairedCodeForContainer(card)
+    expect(record?.code).toContain('EOF')
+    expect(record?.code).toContain('git commit -m')
+    expect(document.querySelectorAll('.n6owBd').length).toBe(0)
+  })
 })
