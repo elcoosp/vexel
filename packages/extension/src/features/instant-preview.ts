@@ -1,14 +1,11 @@
 import { marked } from 'marked'
+import { extractLastExchangeMarkdown, type LastExchangeSnapshot } from './thread-tools'
 
-interface CachedTurnSnapshot {
-  prompt: string
-  answerMarkdown: string
-  turnCount: number
+interface CachedTurnSnapshot extends LastExchangeSnapshot {
   updatedAt: number
 }
 
-const CACHE_STORAGE_KEY = 'vexel:thread-cache:v2'
-const LEGACY_CACHE_KEY = 'vexel:thread-cache:v1'
+const CACHE_STORAGE_KEY = 'vexel:thread-cache:v3'
 const MAX_CACHED_THREADS = 25
 const ALLOWED_TAGS = new Set([
   'P',
@@ -46,8 +43,9 @@ const getConversationCacheKey = (): string | null => {
     const mstk = url.searchParams.get('mstk')
     if (mstk) return 'mstk:' + mstk
     const udm = url.searchParams.get('udm')
+    const atvm = url.searchParams.get('atvm')
     const q = (url.searchParams.get('q') || '').trim().slice(0, 120)
-    if ((udm === '50' || url.searchParams.get('atvm') === '1') && q) return 'q:' + q
+    if ((udm === '50' || atvm === '1') && q) return 'q:' + q
     return null
   } catch {
     return null
@@ -120,63 +118,6 @@ const renderMarkdown = (container: HTMLElement, md: string) => {
   })
 }
 
-const htmlNodeToMarkdown = (node: Node): string => {
-  if (node.nodeType === Node.TEXT_NODE) return node.textContent || ''
-  if (node.nodeType !== Node.ELEMENT_NODE) return ''
-  const el = node as HTMLElement
-  if (
-    el.closest(
-      '[data-vexel-ui], [aria-hidden="true"], [hidden], [role="dialog"], [role="menu"], form, button, svg, nav'
-    ) ||
-    el.style.display === 'none' ||
-    el.style.visibility === 'hidden'
-  )
-    return ''
-  const tag = el.tagName
-  const fence = String.fromCharCode(96, 96, 96)
-  const tick = String.fromCharCode(96)
-  if (tag === 'PRE') {
-    const codeEl = el.querySelector('code')
-    const lang =
-      Array.from(codeEl?.classList || [])
-        .find((c) => c.startsWith('language-'))
-        ?.replace('language-', '') || ''
-    const body = (codeEl?.textContent || el.textContent || '').replace(/\n$/, '')
-    return '\n' + fence + lang + '\n' + body + '\n' + fence + '\n'
-  }
-  if (tag === 'CODE') return tick + (el.textContent || '') + tick
-  const inner = Array.from(el.childNodes).map(htmlNodeToMarkdown).join('')
-  if (tag === 'STRONG' || tag === 'B') return '**' + inner + '**'
-  if (tag === 'EM' || tag === 'I') return '*' + inner + '*'
-  if (tag === 'H1') return '\n# ' + inner.trim() + '\n'
-  if (tag === 'H2') return '\n## ' + inner.trim() + '\n'
-  if (tag === 'H3' || tag === 'H4') return '\n### ' + inner.trim() + '\n'
-  if (tag === 'LI') return '- ' + inner.trim() + '\n'
-  if (tag === 'UL' || tag === 'OL') return '\n' + inner
-  if (tag === 'P' || tag === 'DIV' || tag === 'SECTION') return inner.trim() + '\n\n'
-  if (tag === 'BR') return '\n'
-  return inner
-}
-
-const stripGoogleFeedbackNoise = (md: string): string => {
-  const stopMarkers = [
-    '\nInapproprié\n',
-    '\nNe fonctionne pas\n',
-    '\nUne copie de cette discussion',
-    '\nGoogle peut utiliser les données',
-    '\nTout afficherAfficher moins',
-    '\nInappropriate\n',
-    '\nNot working\n',
-    '\nA copy of this conversation',
-  ]
-  let out = md
-  for (const marker of stopMarkers) {
-    const idx = out.indexOf(marker)
-    if (idx !== -1) out = out.slice(0, idx)
-  }
-  return out.replace(/\n{3,}/g, '\n\n').trim()
-}
-
 export const initInstantThreadCache = (): void => {
   const cacheKey = getConversationCacheKey()
   if (!cacheKey) return
@@ -202,7 +143,7 @@ export const initInstantThreadCache = (): void => {
     const turns = document.querySelectorAll<HTMLElement>('[data-scope-id="turn"]')
     if (turns.length < 2) return false
     const last = turns[turns.length - 1]
-    const answerEl = last.querySelector<HTMLElement>('[data-subtree="aimc"], .pWvJNd')
+    const answerEl = last.querySelector<HTMLElement>('[data-subtree="aimc"]')
     if ((answerEl?.textContent || '').trim().length < 80) return false
     const rect = last.getBoundingClientRect()
     return rect.height > 100 && rect.width > 240
@@ -265,9 +206,9 @@ export const initInstantThreadCache = (): void => {
     const dot = document.createElement('span')
     dot.className = 'dot'
     const label = document.createElement('span')
-
     label.textContent = 'Dernier échange en cache (' + snap.turnCount + ' tours)'
     hdrLeft.append(dot, label)
+
     const hdrActions = document.createElement('div')
     hdrActions.className = 'hdr-actions'
     const pinBtn = document.createElement('button')
@@ -279,13 +220,16 @@ export const initInstantThreadCache = (): void => {
       pinBtn.classList.toggle('active', previewPinned)
       pinBtn.textContent = previewPinned ? 'Épinglé' : 'Garder'
     })
+
     const closeBtn = document.createElement('button')
     closeBtn.className = 'close'
     closeBtn.type = 'button'
     closeBtn.textContent = '×'
     closeBtn.addEventListener('click', () => dismissPreview(true))
+
     hdrActions.append(pinBtn, closeBtn)
     hdr.append(hdrLeft, hdrActions)
+
     const body = document.createElement('div')
     body.className = 'body'
     body.addEventListener(
@@ -296,6 +240,7 @@ export const initInstantThreadCache = (): void => {
       },
       { passive: true }
     )
+
     if (snap.prompt) {
       const pEl = document.createElement('div')
       pEl.className = 'prompt'
@@ -305,7 +250,8 @@ export const initInstantThreadCache = (): void => {
     if (snap.answerMarkdown) {
       const aEl = document.createElement('div')
       aEl.className = 'answer'
-      renderMarkdown(aEl, stripGoogleFeedbackNoise(snap.answerMarkdown))
+
+      renderMarkdown(aEl, snap.answerMarkdown)
       body.appendChild(aEl)
     }
     card.append(hdr, body)
@@ -318,26 +264,13 @@ export const initInstantThreadCache = (): void => {
     if (document.body) attach()
     else document.addEventListener('DOMContentLoaded', attach, { once: true })
   }
-
   const saveSnapshot = () => {
-    const turns = Array.from(document.querySelectorAll<HTMLElement>('[data-scope-id="turn"]'))
-    if (turns.length === 0) return
-    const lastTurn = turns[turns.length - 1]
-    const promptEl = lastTurn.querySelector<HTMLElement>('.V3FYCf, [jsname="eFVkfb"]')
-    const answerEl = lastTurn.querySelector<HTMLElement>('[data-subtree="aimc"], .pWvJNd')
-    const prompt = (promptEl?.textContent || '').trim().slice(0, 1200)
-    const answerMarkdown = answerEl
-      ? htmlNodeToMarkdown(answerEl)
-          .replace(/\n{3,}/g, '\n\n')
-          .trim()
-          .slice(0, 14000)
-      : ''
-    if (!prompt && !answerMarkdown) return
-
+    const extracted = extractLastExchangeMarkdown()
+    if (!extracted) return
     try {
       chrome.storage?.local?.get(CACHE_STORAGE_KEY, (res) => {
         const map = (res?.[CACHE_STORAGE_KEY] || {}) as Record<string, CachedTurnSnapshot>
-        map[cacheKey] = { prompt, answerMarkdown, turnCount: turns.length, updatedAt: Date.now() }
+        map[cacheKey] = { ...extracted, updatedAt: Date.now() }
         const entries = Object.entries(map).sort((a, b) => b[1].updatedAt - a[1].updatedAt)
         chrome.storage?.local?.set({
           [CACHE_STORAGE_KEY]: Object.fromEntries(entries.slice(0, MAX_CACHED_THREADS)),
@@ -345,35 +278,14 @@ export const initInstantThreadCache = (): void => {
       })
     } catch {}
   }
-
   try {
-    chrome.storage?.local?.get([CACHE_STORAGE_KEY, LEGACY_CACHE_KEY], (res) => {
-      const v2 = (res?.[CACHE_STORAGE_KEY] as Record<string, CachedTurnSnapshot> | undefined)?.[
+    chrome.storage?.local?.get(CACHE_STORAGE_KEY, (res) => {
+      const snap = (res?.[CACHE_STORAGE_KEY] as Record<string, CachedTurnSnapshot> | undefined)?.[
         cacheKey
       ]
-      if (v2 && (v2.prompt || v2.answerMarkdown)) {
-        mountPreview(v2)
-        return
-      }
-      const v1 = (
-        res?.[LEGACY_CACHE_KEY] as
-          | Record<
-              string,
-              { prompt?: string; answer?: string; turnCount?: number; updatedAt?: number }
-            >
-          | undefined
-      )?.[cacheKey]
-      if (v1 && (v1.prompt || v1.answer)) {
-        mountPreview({
-          prompt: v1.prompt || '',
-          answerMarkdown: v1.answer || '',
-          turnCount: v1.turnCount || 1,
-          updatedAt: v1.updatedAt || Date.now(),
-        })
-      }
+      if (snap && (snap.prompt || snap.answerMarkdown)) mountPreview(snap)
     })
   } catch {}
-
   const waitRealTurns = () => {
     if (!document.body) return
     let settleTimer = 0
@@ -392,7 +304,6 @@ export const initInstantThreadCache = (): void => {
   }
   if (document.body) waitRealTurns()
   else document.addEventListener('DOMContentLoaded', waitRealTurns, { once: true })
-
   document.addEventListener(
     'aimRenderComplete',
     () => {

@@ -356,6 +356,35 @@ const TOC_CSS = [
   '}',
 ].join('\n')
 
+export interface LastExchangeSnapshot {
+  prompt: string
+  answerMarkdown: string
+  turnCount: number
+}
+
+export function extractLastExchangeMarkdown(): LastExchangeSnapshot | null {
+  const turns = extractTurns()
+  if (turns.length === 0) return null
+  const lastAssistantIdx = turns.map((t) => t.role).lastIndexOf('assistant')
+  if (lastAssistantIdx === -1) return null
+  const answerMarkdown = elementToMarkdown(turns[lastAssistantIdx].element, 'assistant')
+    .trim()
+    .slice(0, 14000)
+  if (!answerMarkdown) return null
+  let prompt = ''
+  for (let i = lastAssistantIdx - 1; i >= 0; i -= 1) {
+    if (turns[i].role === 'user') {
+      prompt = elementToMarkdown(turns[i].element, 'user').trim().slice(0, 1200)
+      break
+    }
+  }
+  return {
+    prompt,
+    answerMarkdown,
+    turnCount: turns.length,
+  }
+}
+
 export function initThreadTools(_showToast?: (msg: string) => void): void {
   if (document.getElementById('vexel-toc-host')) return
   const host = document.createElement('div')
