@@ -1283,4 +1283,74 @@ Exécute \`./wr.sh\` avec ce script.
     expect(code.textContent).toContain('2026-11-22T08:01:10Z TRACE [metrics-agent] CPU 34%')
     expect(code.textContent?.trim().endsWith('}')).toBe(true)
   })
+  it('repairs full PostgreSQL script with 40 INSERT tuples and 6 CTE/window queries up to COMMIT; without absorbing FollowUp', async () => {
+    const nl = String.fromCharCode(10)
+    const turn = document.createElement('div')
+    turn.setAttribute('data-scope-id', 'turn')
+    turn.setAttribute('data-complete', 'true')
+    const card = document.createElement('div')
+    card.className = 'BpxUDf aiModeUiCodeBlock__Container'
+    card.setAttribute('data-hveid', 'CAIIAAgnEAA')
+    const header = document.createElement('div')
+    header.className = 'GlO4G'
+    header.textContent = 'sql'
+    const pre = document.createElement('pre')
+    const code = document.createElement('code')
+    const headSql = [
+      'BEGIN;',
+      'INSERT INTO invoice_lines VALUES',
+      "(11, 3, 'SKU-NET-PRIV', 'Tunnel IPsec', 2.00, 1150.00, 0.00, 8.10),",
+    ].join(nl)
+    code.textContent = headSql
+    pre.appendChild(code)
+    card.append(header, pre)
+    card.appendChild(document.createComment('TgQPHd|||' + JSON.stringify([['sql', headSql]])))
+
+    const sib1 = document.createElement('div')
+    sib1.className = 'n6owBd awi2gc'
+    sib1.setAttribute('data-sfc-cp', '')
+    sib1.innerHTML =
+      "(12, 1, 'SKU-CORE-STR', 'Licence', 1.00, 2800.00, 0.00, 20.00),<br>(12, 5, 'SKU-ONB-SET', 'Frais', 1.00, 600.00, 0.00, 20.00);"
+
+    const sib2 = document.createElement('div')
+    sib2.className = 'n6owBd awi2gc'
+    sib2.setAttribute('data-sfc-cp', '')
+    sib2.innerHTML =
+      "-- Exécution de la procédure de mise à jour des retards au 15 juin 2026<br>SELECT * FROM fn_mark_overdue_invoices(DATE '2026-06-15');"
+
+    const sib3 = document.createElement('div')
+    sib3.className = 'n6owBd awi2gc'
+    sib3.setAttribute('data-sfc-cp', '')
+    sib3.innerHTML =
+      '– Requête 6 : Suivi chronologique par client avec première et dernière facture (FIRST_VALUE / LAST_VALUE)<br>WITH customer_timeline AS (<br>SELECT company_name FROM customers<br>)<br>SELECT * FROM customer_timeline;'
+
+    const sib4 = document.createElement('div')
+    sib4.className = 'n6owBd awi2gc'
+    sib4.setAttribute('data-sfc-cp', '')
+    sib4.textContent = 'COMMIT;'
+
+    const followUpCard = document.createElement('div')
+    followUpCard.className = 'fMjZBb'
+    followUpCard.innerHTML =
+      '<div class="BpxUDf aiModeUiCodeBlock__Container"><pre><code>' +
+      String.fromCharCode(60) +
+      'FollowUp>Veux-tu le 5. Script TypeScript ?' +
+      String.fromCharCode(60) +
+      '</FollowUp></code></pre></div>'
+
+    turn.append(card, sib1, sib2, sib3, sib4, followUpCard)
+    document.body.appendChild(turn)
+
+    scanAndRepairCodeBlocks(document, () => {})
+    await new Promise((r) => setTimeout(r, 50))
+
+    expect(sib1.isConnected).toBe(false)
+    expect(sib2.isConnected).toBe(false)
+    expect(sib3.isConnected).toBe(false)
+    expect(sib4.isConnected).toBe(false)
+    expect(code.textContent).toContain('-- Requête 6 : Suivi chronologique')
+    expect(code.textContent).toContain('WITH customer_timeline AS (')
+    expect(code.textContent?.trim().endsWith('COMMIT;')).toBe(true)
+    expect(code.textContent).not.toContain('FollowUp')
+  })
 })

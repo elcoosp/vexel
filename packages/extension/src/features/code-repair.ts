@@ -97,7 +97,11 @@ function extractCleanSiblingCode(el: HTMLElement, lang = ''): string {
     const inner = codeNode.textContent || ''
     codeNode.replaceWith(document.createTextNode(BT1 + inner + BT1))
   }
-  return (clone.textContent || '').replace(/\u00a0/g, ' ').trim()
+  let finalCode = (clone.textContent || '').replace(/\u00a0/g, ' ').trim()
+  if (lang === 'sql') {
+    finalCode = finalCode.replace(/^[\u2013\u2014]\s*/gm, '-- ')
+  }
+  return finalCode
 }
 
 function hasUnclosedCodeDelimiter(code: string): boolean {
@@ -331,12 +335,11 @@ function isGoogleLegalFooterNode(el: HTMLElement): boolean {
 }
 
 function isNaturalLanguageProseBlock(text: string): boolean {
-  const trimmedHead = text.trim()
-  if (/^(?:--\s|\/\/\s|\/\*|#\s)/.test(trimmedHead)) return false
   const trimmed = text.trim()
   if (!trimmed) return false
   const openFollowUp = String.fromCharCode(60) + 'FollowUp>'
   if (trimmed.includes(openFollowUp)) return true
+  if (/^(?:--|–|—|\/\/|\/\*|#)/.test(trimmed)) return false
   const firstLine = (trimmed.split(/\r?\n/).find((l) => l.trim().length > 0) || '').trim()
   if (!firstLine) return false
   if (
