@@ -587,4 +587,49 @@ describe('code-repair DOM integration', () => {
     expect(record?.code).toContain('const gestionnaires = this.abonnes.get(evenement.type);')
     expect(document.querySelectorAll('.n6owBd.awi2gc').length).toBe(0)
   })
+
+  it('never absorbs trailing Google internal <style> or <script> hydration nodes after code closes', async () => {
+    ;(globalThis as Record<string, unknown>).chrome = {
+      runtime: {
+        sendMessage: (_msg: unknown, cb?: (res: unknown) => void) => {
+          cb?.({ ok: false })
+        },
+      },
+    }
+    const unclosedHead = [
+      'export async function executerSimulation(): Promise<void> {',
+      ...Array.from({ length: 160 }, (_, i) => '  const step' + i + ' = ' + i + ';'),
+      '  if (true) {',
+    ].join('\n')
+
+    document.body.innerHTML = [
+      '<div class="CKgc1d" data-last-turn="true" data-scope-id="turn">',
+      '  <div class="mZJni" data-container-id="main-col">',
+      '    <div style="display: contents" data-container-id="24">',
+      '      <div class="BpxUDf aiModeUiCodeBlock__Container" data-hveid="CAIIAAgJEAA">',
+      '        <div>',
+      '          <div class="rq1a2"><div><div>typescript</div></div><pre><code>' +
+        unclosedHead.replace(/</g, '&lt;').replace(/>/g, '&gt;') +
+        '</code></pre></div>',
+      '          <div class="iMHp6c"><div>Utilisez le code avec précaution.</div></div>',
+      '        </div>',
+      '      </div>',
+      "      <div class=\"n6owBd awi2gc\">  }<br>  journal.info('Simulation', 'Rapport final');<br>}</div>",
+      '      <style>.DdVMXd{clear:both;position:relative}.puIGge{position:sticky;top:100vh}</style>',
+      '      <script>(function(){var pd=-1;var pi=0;})();</script>',
+      '      <div data-xid="Gd7Hsc">Les réponses de l\'IA peuvent contenir des erreurs.</div>',
+      '    </div>',
+      '  </div>',
+      '</div>',
+    ].join('')
+
+    scanAndRepairCodeBlocks(document, () => {})
+    await new Promise((r) => setTimeout(r, 80))
+
+    const card = document.querySelector('.aiModeUiCodeBlock__Container')!
+    const record = getRepairedCodeForContainer(card)
+    expect(record?.code).toContain("journal.info('Simulation', 'Rapport final');")
+    expect(record?.code).not.toContain('.DdVMXd')
+    expect(record?.code).not.toContain('var pd=-1')
+  })
 })

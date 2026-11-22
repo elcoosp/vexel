@@ -43,7 +43,18 @@ function detectSemanticLang(codeEl: HTMLElement, headerEl: HTMLElement | null): 
   return /^[a-z0-9_+-]{1,16}$/i.test(token) ? token : ''
 }
 
+const NON_CODE_ELEMENT_TAGS = new Set([
+  'STYLE',
+  'SCRIPT',
+  'NOSCRIPT',
+  'TEMPLATE',
+  'LINK',
+  'META',
+  'SVG',
+])
+
 function extractCleanSiblingCode(el: HTMLElement): string {
+  if (NON_CODE_ELEMENT_TAGS.has(el.tagName.toUpperCase())) return ''
   const clone = el.cloneNode(true) as HTMLElement
   clone
     .querySelectorAll(
@@ -609,6 +620,7 @@ async function repairBrokenSequenceFromCodeCard(
         return
       }
       if (!(node instanceof HTMLElement)) return
+      if (NON_CODE_ELEMENT_TAGS.has(node.tagName.toUpperCase())) return
       if (node.hasAttribute('data-vexel-ui') || isGoogleLegalFooterNode(node)) return
       const isResponseChunkBlock =
         node.hasAttribute('data-sfc-cp') ||
