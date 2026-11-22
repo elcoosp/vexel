@@ -41,7 +41,6 @@ describe('formatter.ts native CLI routing & fallback matrix', () => {
     expect(resolveTargetExtension('terraform')).toBe('tf')
     expect(resolveTargetExtension('kotlin')).toBe('kt')
     expect(resolveTargetExtension('ruby')).toBe('rb')
-    expect(resolveTargetExtension('elixir')).toBe('ex')
     expect(resolveTargetExtension('php')).toBe('php')
     expect(resolveTargetExtension('dart')).toBe('dart')
     expect(resolveTargetExtension('unknown', 'src/main.zig')).toBe('zig')
@@ -69,12 +68,12 @@ describe('formatter.ts native CLI routing & fallback matrix', () => {
     expect(getCandidateSpecs('kt').map((s) => s.engine)).toEqual(['ktfmt'])
     expect(getCandidateSpecs('php').map((s) => s.engine)).toEqual([
       'mago',
+      'mago',
       'pretty-php',
       'php-cs-fixer',
     ])
-    expect(getCandidateSpecs('rb').map((s) => s.engine)).toEqual(['stree', 'rubocop'])
+    expect(getCandidateSpecs('rb').map((s) => s.engine)).toEqual(['standardrb', 'rubocop'])
     expect(getCandidateSpecs('dart').map((s) => s.engine)).toEqual(['dart'])
-    expect(getCandidateSpecs('ex').map((s) => s.engine)).toEqual(['mix'])
     expect(getCandidateSpecs('unknown_ext')).toEqual([])
   })
   it('formats via native CLI binaries over stdin/stdout for C++, SQL, TOML, Terraform, Lua, Zig, Nix, Swift & Kotlin', async () => {
@@ -88,9 +87,8 @@ describe('formatter.ts native CLI routing & fallback matrix', () => {
     writeFakeFormatter('swift-format', 'printf "let x = 1\\n"')
     writeFakeFormatter('ktfmt', 'printf "val x = 1\\n"')
     writeFakeFormatter('mago', 'printf "<?php\\n\\nfunction hi(): int\\n{\\n    return 1;\\n}\\n"')
-    writeFakeFormatter('stree', 'printf "def hi\\n  1\\nend\\n"')
+    writeFakeFormatter('standardrb', 'printf "def hi\\n  1\\nend\\n"')
     writeFakeFormatter('dart', 'printf "void main() {\\n  print(1);\\n}\\n"')
-    writeFakeFormatter('mix', 'printf "defmodule M do\\n  def f, do: 1\\nend\\n"')
     writeFakeFormatter('google-java-format', 'printf "class Main {}\\n"')
     const cppRes = await formatCodeWithNativeTool('int main(){return 0;}', 'cpp', 'src/app.cpp')
     expect(cppRes.engine).toBe('clang-format')
@@ -115,18 +113,12 @@ describe('formatter.ts native CLI routing & fallback matrix', () => {
     expect(phpRes.engine).toBe('mago')
     expect(phpRes.formatted).toContain('function hi(): int')
     const rbRes = await formatCodeWithNativeTool('def hi; 1; end', 'ruby')
-    expect(rbRes).toEqual({ ok: true, formatted: 'def hi\n  1\nend', engine: 'stree' })
+    expect(rbRes).toEqual({ ok: true, formatted: 'def hi\n  1\nend', engine: 'standardrb' })
     const dartRes = await formatCodeWithNativeTool('void main(){print(1);}', 'dart')
     expect(dartRes).toEqual({
       ok: true,
       formatted: 'void main() {\n  print(1);\n}',
       engine: 'dart',
-    })
-    const exRes = await formatCodeWithNativeTool('defmodule M do def f, do: 1 end', 'elixir')
-    expect(exRes).toEqual({
-      ok: true,
-      formatted: 'defmodule M do\n  def f, do: 1\nend',
-      engine: 'mix',
     })
     const javaRes = await formatCodeWithNativeTool('class Main{}', 'java')
     expect(javaRes).toEqual({ ok: true, formatted: 'class Main {}', engine: 'google-java-format' })

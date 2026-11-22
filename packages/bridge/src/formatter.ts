@@ -126,9 +126,6 @@ export const LANG_TO_EXT: Record<string, string> = {
   rb: 'rb',
   ruby: 'rb',
   dart: 'dart',
-  ex: 'ex',
-  exs: 'exs',
-  elixir: 'ex',
 }
 
 const FORMATTER_SPECS_BY_EXT: Record<string, FormatterSpec[]> = {
@@ -194,6 +191,7 @@ const FORMATTER_SPECS_BY_EXT: Record<string, FormatterSpec[]> = {
   kt: [{ engine: 'ktfmt', binName: 'ktfmt', args: () => ['-'] }],
   kts: [{ engine: 'ktfmt', binName: 'ktfmt', args: () => ['-'] }],
   php: [
+    { engine: 'mago', binName: 'mago', args: () => ['fmt', '--stdin-input'] },
     { engine: 'mago', binName: 'mago', args: () => ['format', '--stdin-input'] },
     { engine: 'pretty-php', binName: 'pretty-php', args: () => [] },
     {
@@ -203,18 +201,20 @@ const FORMATTER_SPECS_BY_EXT: Record<string, FormatterSpec[]> = {
     },
   ],
   rb: [
-    { engine: 'stree', binName: 'stree', args: () => ['format'] },
+    {
+      engine: 'standardrb',
+      binName: 'standardrb',
+      args: (filename) => ['--stdin', filename, '--fix', '--format', 'quiet', '--stderr'],
+    },
     {
       engine: 'rubocop',
       binName: 'rubocop',
-      args: () => ['--stdin', 'snippet.rb', '-a', '--format', 'quiet', '--stderr'],
+      args: (filename) => ['--stdin', filename, '-a', '--format', 'quiet', '--stderr'],
     },
   ],
   dart: [
     { engine: 'dart', binName: 'dart', args: () => ['format', '--output=show', '--summary=none'] },
   ],
-  ex: [{ engine: 'mix', binName: 'mix', args: () => ['format', '-'] }],
-  exs: [{ engine: 'mix', binName: 'mix', args: () => ['format', '-'] }],
   java: [
     { engine: 'google-java-format', binName: 'google-java-format', args: () => ['-'] },
     {
