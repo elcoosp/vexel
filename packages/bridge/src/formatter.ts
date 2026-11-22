@@ -234,9 +234,11 @@ export function resetBinaryPathCacheForTests(): void {
 function getSearchDirs(): string[] {
   const home = os.homedir()
   const here = path.dirname(fileURLToPath(import.meta.url))
+  const rootNodeBin = path.resolve(here, '..', '..', '..', 'node_modules', '.bin')
   const localNodeBin = path.resolve(here, '..', '..', 'extension', 'node_modules', '.bin')
   const pathDirs = (process.env.PATH || '').split(path.delimiter).filter(Boolean)
   const fallbackDirs = [
+    rootNodeBin,
     localNodeBin,
     path.join(home, '.local', 'bin'),
     path.join(home, '.cargo', 'bin'),
