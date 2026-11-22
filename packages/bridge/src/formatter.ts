@@ -205,7 +205,6 @@ function runProcessWithStdin(
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
     })
-
     const timer = setTimeout(() => {
       try {
         child.kill('SIGKILL')

@@ -62,8 +62,9 @@ function extractCleanSiblingCode(el: HTMLElement): string {
     )
     .forEach((node) => node.remove())
   clone.querySelectorAll('br').forEach((br) => br.replaceWith(document.createTextNode('\n')))
-  for (const br of Array.from(clone.querySelectorAll('br'))) {
-    br.replaceWith('\n')
+  for (const codeNode of Array.from(clone.querySelectorAll('code'))) {
+    const inner = codeNode.textContent || ''
+    codeNode.replaceWith(document.createTextNode(BT1 + inner + BT1))
   }
   return (clone.textContent || '').replace(/\u00a0/g, ' ').trim()
 }

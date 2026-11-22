@@ -639,7 +639,6 @@ const server = http.createServer(async (req, res) => {
   }
   if (parsedUrl.pathname === '/format' && req.method === 'POST') {
     try {
-      const t0 = Date.now()
       const body = await readJsonBody(req, 512 * 1024)
       const code = typeof body.code === 'string' ? body.code : ''
       const lang = typeof body.lang === 'string' ? body.lang.trim() : 'txt'
@@ -650,13 +649,9 @@ const server = http.createServer(async (req, res) => {
         return
       }
       const result = await formatCodeWithNativeTool(code, lang, filename)
-      console.log(
-        `[Vexel Bridge] POST /format lang=${lang} -> engine=${result.engine} (${Date.now() - t0}ms, len=${result.formatted.length})`
-      )
       res.writeHead(200)
       res.end(JSON.stringify(result))
     } catch (err: unknown) {
-      console.error('[Vexel Bridge] POST /format error:', err)
       res.writeHead(200)
       res.end(JSON.stringify({ ok: false, error: getErrorMessage(err) }))
     }

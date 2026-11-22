@@ -632,4 +632,45 @@ describe('code-repair DOM integration', () => {
     expect(record?.code).not.toContain('.DdVMXd')
     expect(record?.code).not.toContain('var pd=-1')
   })
+
+  it('restores inline <code> backticks for template literals in spilled n6owBd chunks', async () => {
+    ;(globalThis as Record<string, unknown>).chrome = {
+      runtime: {
+        sendMessage: (msg: { code?: string }, cb?: (res: unknown) => void) => {
+          cb?.({ ok: true, formatted: msg.code, engine: 'oxfmt' })
+        },
+      },
+    }
+    const unclosedHead = [
+      'export function logEvent(evenement: { type: string }) {',
+      ...Array.from({ length: 160 }, (_, i) => '  const n' + i + ' = ' + i + ';'),
+      '  try {',
+    ].join('\n')
+
+    document.body.innerHTML = [
+      '<div class="CKgc1d" data-last-turn="true" data-scope-id="turn">',
+      '  <div class="mZJni" data-container-id="main-col">',
+      '    <div style="display: contents" data-container-id="24">',
+      '      <div class="BpxUDf aiModeUiCodeBlock__Container" data-hveid="CAIIAAgJEAA">',
+      '        <div>',
+      '          <div class="rq1a2"><div><div>typescript</div></div><pre><code>' +
+        unclosedHead +
+        '</code></pre></div>',
+      '          <div class="iMHp6c"><div>Utilisez le code avec précaution.</div></div>',
+      '        </div>',
+      '      </div>',
+      '      <div class="n6owBd awi2gc">  } catch (erreur) {<br>    console.error(\'Bus\', <code>Erreur sur ${evenement.type}</code>);<br>  }<br>}</div>',
+      '    </div>',
+      '  </div>',
+      '</div>',
+    ].join('')
+
+    scanAndRepairCodeBlocks(document, () => {})
+    await new Promise((r) => setTimeout(r, 80))
+
+    const card = document.querySelector('.aiModeUiCodeBlock__Container')!
+    const record = getRepairedCodeForContainer(card)
+    expect(record?.code).toContain("console.error('Bus', `Erreur sur ${evenement.type}`);")
+    expect(record?.engine).toBe('oxfmt')
+  })
 })
