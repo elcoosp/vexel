@@ -398,4 +398,66 @@ describe('code-repair DOM integration', () => {
     expect(record?.code).toContain('Section configuration réseau')
     expect(record?.code).toContain('timeoutMs: number;')
   })
+
+  it('continues absorbing newly streamed spilled siblings across multiple streaming waves until legal footer', async () => {
+    ;(globalThis as Record<string, unknown>).chrome = {
+      runtime: {
+        sendMessage: (_msg: unknown, cb?: (res: unknown) => void) => {
+          cb?.({ ok: false })
+        },
+      },
+    }
+    const wave1Head = [
+      'export class BusEvenements {',
+      '  private enCoursDeTraitement = false;',
+      ...Array.from({ length: 140 }, (_, i) => '  private prop' + i + ' = ' + i + ';'),
+      '  private async traiterFile(): Promise<void> {',
+      '    if (!this.enCoursDeTraitement) {',
+      '      continue;',
+      '    }',
+    ].join('\n')
+
+    document.body.innerHTML = [
+      '<div class="CKgc1d" data-last-turn="true" data-scope-id="turn">',
+      '  <div data-subtree="aimc">',
+      '    <div data-container-id="main-col">',
+      '      <div data-hveid="CAIIAAgIEAA" data-sfc-cp="">',
+      '        <div><div>typescript</div></div>',
+      '        <pre><code>' +
+        wave1Head.replace(/</g, '&lt;').replace(/>/g, '&gt;') +
+        '</code></pre>',
+      '      </div>',
+      '      <div data-sfc-cp="" data-hveid="CAIIAAgJEAA">const gestionnaires = this.abonnes.get(evenement.type);<br>if (!gestionnaires) {<br>continue;<br>}</div>',
+      '    </div>',
+      '  </div>',
+      '</div>',
+    ].join('')
+
+    // Wave 1 scan during streaming
+    scanAndRepairCodeBlocks(document, () => {})
+    await new Promise((r) => setTimeout(r, 80))
+
+    // Wave 2: Google streams the remaining 25 blocks + legal footer
+    const container = document.querySelector('[data-container-id="main-col"]')!
+    container.insertAdjacentHTML(
+      'beforeend',
+      [
+        '<div data-sfc-cp="" data-hveid="CAIIAAgKEAA">    }<br>  }<br>}</div>',
+        '<div data-sfc-cp="" data-hveid="CAIIAAhFEAA">export async function executerSimulation(): Promise<void> {<br>  const rapportSante = orchestrateur.verifierSanteGrappe();<br>  journal.info(\'Simulation\', \'Rapport de santé final de la grappe\', rapportSante);<br>}</div>',
+        '<div data-xid="Gd7Hsc" data-sfc-cp="">Les réponses de l\'IA peuvent contenir des erreurs.</div>',
+      ].join('')
+    )
+
+    // Wave 2 scan (triggered by MutationObserver / aimRenderComplete)
+    scanAndRepairCodeBlocks(document, () => {})
+    await new Promise((r) => setTimeout(r, 80))
+
+    const card = document.querySelector('[data-hveid="CAIIAAgIEAA"]')!
+    const record = getRepairedCodeForContainer(card)
+    expect(record?.code).toContain('const gestionnaires = this.abonnes.get(evenement.type);')
+    expect(record?.code).toContain('Rapport de santé final de la grappe')
+    expect(document.querySelectorAll('[data-container-id="main-col"] > [data-sfc-cp]').length).toBe(
+      2
+    )
+  })
 })

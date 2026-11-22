@@ -15,6 +15,7 @@ export interface RepairedCodeRecord {
 }
 
 const repairedCodeByContainer = new WeakMap<HTMLElement, RepairedCodeRecord>()
+const inFlightCards = new WeakSet<Element>()
 
 export function getRepairedCodeForContainer(
   container: HTMLElement
@@ -561,180 +562,196 @@ async function repairBrokenSequenceFromCodeCard(
   codeCard: Element,
   showToast: (msg: string) => void
 ): Promise<void> {
+  if (inFlightCards.has(codeCard)) return
   const pre = codeCard.querySelector('pre')
   const codeEl = pre?.querySelector('code')
   if (!pre || !codeEl) return
+  inFlightCards.add(codeCard)
+  try {
+    const existingTailEl = codeEl.querySelector<HTMLElement>('[data-vexel-repaired-tail="true"]')
+    const previousTail = existingTailEl ? (existingTailEl.textContent || '').replace(/^\n/, '') : ''
+    const codeClone = codeEl.cloneNode(true) as HTMLElement
+    codeClone.querySelector('[data-vexel-repaired-tail="true"]')?.remove()
+    const headCode = (codeClone.textContent || '').replace(/\n$/, '')
+    if (headCode.length < TRUNCATION_MIN_CHARS && !hasUnclosedCodeDelimiter(headCode)) return
 
-  const existingTailEl = codeEl.querySelector<HTMLElement>('[data-vexel-repaired-tail="true"]')
-  const previousTail = existingTailEl ? (existingTailEl.textContent || '').replace(/^\n/, '') : ''
-  const codeClone = codeEl.cloneNode(true) as HTMLElement
-  codeClone.querySelector('[data-vexel-repaired-tail="true"]')?.remove()
-  const headCode = (codeClone.textContent || '').replace(/\n$/, '')
-  if (headCode.length < TRUNCATION_MIN_CHARS && !hasUnclosedCodeDelimiter(headCode)) return
-
-  let anchorBlock: Element = codeCard
-  while (
-    !anchorBlock.nextElementSibling &&
-    anchorBlock.parentElement &&
-    !anchorBlock.parentElement.matches(
-      '[data-scope-id="turn"], [jsname="CS7uPe"], [data-subtree="aimc"], main, body'
-    ) &&
-    anchorBlock.parentElement.querySelectorAll('pre code').length === 1
-  ) {
-    anchorBlock = anchorBlock.parentElement
-  }
-
-  const turnRoot =
-    anchorBlock.closest('[data-scope-id="turn"], [jsname="CS7uPe"]') ||
-    anchorBlock.parentElement ||
-    document.body
-
-  const spilledSiblings: ChildNode[] = []
-  const spilledChunks: string[] = []
-  let poisonedHost: HTMLElement | null = null
-  let poisonedRawMarkdown = ''
-
-  const candidateNodes: ChildNode[] = []
-  let seenAnchor = false
-  const collectFollowing = (rootNode: Node): void => {
-    if (rootNode === anchorBlock) {
-      seenAnchor = true
-      return
+    let anchorBlock: Element = codeCard
+    while (
+      !anchorBlock.nextElementSibling &&
+      anchorBlock.parentElement &&
+      !anchorBlock.parentElement.matches(
+        '[data-scope-id="turn"], [jsname="CS7uPe"], [data-subtree="aimc"], main, body'
+      ) &&
+      anchorBlock.parentElement.querySelectorAll('pre code').length === 1
+    ) {
+      anchorBlock = anchorBlock.parentElement
     }
-    if (
-      rootNode instanceof HTMLElement &&
-      (rootNode.hasAttribute('data-vexel-ui') || isGoogleLegalFooterNode(rootNode))
-    )
-      return
-    if (seenAnchor) {
-      if (rootNode instanceof Text) {
-        const parentEl = rootNode.parentElement
-        if (parentEl && !parentEl.closest('[data-sfc-cp], [data-vexel-ui], pre, code')) {
-          const txt = (rootNode.textContent || '').replace(/\u00a0/g, ' ').trim()
-          if (txt) candidateNodes.push(rootNode)
-        }
+
+    const turnRoot =
+      anchorBlock.closest('[data-scope-id="turn"], [jsname="CS7uPe"]') ||
+      anchorBlock.parentElement ||
+      document.body
+
+    const spilledSiblings: ChildNode[] = []
+    const spilledChunks: string[] = []
+    let reachedTerminalBoundary = false
+    let poisonedHost: HTMLElement | null = null
+    let poisonedRawMarkdown = ''
+
+    const candidateNodes: ChildNode[] = []
+    let seenAnchor = false
+    const collectFollowing = (rootNode: Node): void => {
+      if (rootNode === anchorBlock) {
+        seenAnchor = true
         return
       }
-      if (rootNode instanceof HTMLElement) {
-        if (
-          rootNode.hasAttribute('data-sfc-cp') ||
-          (rootNode.querySelector('pre code') !== null &&
-            (rootNode.matches('[data-hveid]') || isPoisonedMarkdownCodeBlock(rootNode)))
-        ) {
-          candidateNodes.push(rootNode)
+      if (
+        rootNode instanceof HTMLElement &&
+        (rootNode.hasAttribute('data-vexel-ui') || isGoogleLegalFooterNode(rootNode))
+      )
+        return
+      if (seenAnchor) {
+        if (rootNode instanceof Text) {
+          const parentEl = rootNode.parentElement
+          if (parentEl && !parentEl.closest('[data-sfc-cp], [data-vexel-ui], pre, code')) {
+            const txt = (rootNode.textContent || '').replace(/\u00a0/g, ' ').trim()
+            if (txt) candidateNodes.push(rootNode)
+          }
           return
+        }
+        if (rootNode instanceof HTMLElement) {
+          if (
+            rootNode.hasAttribute('data-sfc-cp') ||
+            (rootNode.querySelector('pre code') !== null &&
+              (rootNode.matches('[data-hveid]') || isPoisonedMarkdownCodeBlock(rootNode)))
+          ) {
+            candidateNodes.push(rootNode)
+            return
+          }
+        }
+      }
+      for (let child = rootNode.firstChild; child; child = child.nextSibling) {
+        collectFollowing(child)
+      }
+    }
+    collectFollowing(turnRoot)
+
+    for (const node of candidateNodes) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const rawTextNode = (node.textContent || '').replace(/\u00a0/g, ' ').trim()
+        if (!rawTextNode) continue
+        const assembledSoFar = [headCode, previousTail, ...spilledChunks].filter(Boolean).join('\n')
+        const stillOpen = hasUnclosedCodeDelimiter(assembledSoFar)
+        if (!stillOpen && isNaturalLanguageProseBlock(rawTextNode)) {
+          break
+        }
+        if (stillOpen || looksLikeCodeFragment(rawTextNode)) {
+          spilledSiblings.push(node)
+          spilledChunks.push(rawTextNode)
+        } else {
+          break
+        }
+        continue
+      }
+
+      if (!(node instanceof HTMLElement)) continue
+      if (node.closest('[data-vexel-ui]')) continue
+
+      if (!node.contains(anchorBlock) && node.querySelectorAll('pre code').length === 1) {
+        if (isPoisonedMarkdownCodeBlock(node)) {
+          poisonedHost = node
+          poisonedRawMarkdown = extractRawMarkdownFromPoisonedCard(node)
+          reachedTerminalBoundary = true
+          break
+        }
+        const assembledSoFar = [headCode, previousTail, ...spilledChunks].filter(Boolean).join('\n')
+        const secPre = node.querySelector('pre code')
+        const secText = (secPre?.textContent || '').replace(/\n$/, '')
+        if (
+          (spilledChunks.length > 0 || hasUnclosedCodeDelimiter(assembledSoFar)) &&
+          secText.trim().length > 0
+        ) {
+          spilledSiblings.push(node)
+          spilledChunks.push(secText)
+          continue
+        }
+        break
+      }
+
+      if (node.hasAttribute('data-sfc-cp')) {
+        if (isGoogleLegalFooterNode(node)) {
+          reachedTerminalBoundary = true
+          break
+        }
+        const cleaned = extractCleanSiblingCode(node)
+        if (!cleaned) continue
+        const assembledSoFar = [headCode, previousTail, ...spilledChunks].filter(Boolean).join('\n')
+        const stillOpen = hasUnclosedCodeDelimiter(assembledSoFar)
+        const isNaturalIntroColon =
+          /^[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ][a-zàâäéèêëîïôöùûüç]+(?:\s+[a-zàâäéèêëîïôöùûüçA-Z0-9_-]+){2,}:$/.test(
+            cleaned
+          )
+        if ((!stillOpen && isNaturalLanguageProseBlock(cleaned)) || isNaturalIntroColon) {
+          reachedTerminalBoundary = true
+          break
+        }
+        if (
+          !stillOpen &&
+          spilledChunks.length === 0 &&
+          /^[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ][a-zàâäéèêëîïôöùûüç]+(?:s+[a-zàâäéèêëîïôöùûüçA-Z0-9_-]+){2,}:$/.test(
+            cleaned
+          )
+        ) {
+          break
+        }
+        if (stillOpen || looksLikeCodeFragment(cleaned)) {
+          spilledSiblings.push(node)
+          spilledChunks.push(cleaned)
+        } else {
+          break
         }
       }
     }
-    for (let child = rootNode.firstChild; child; child = child.nextSibling) {
-      collectFollowing(child)
-    }
-  }
-  collectFollowing(turnRoot)
-
-  for (const node of candidateNodes) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      const rawTextNode = (node.textContent || '').replace(/\u00a0/g, ' ').trim()
-      if (!rawTextNode) continue
-      const assembledSoFar = [headCode, previousTail, ...spilledChunks].filter(Boolean).join('\n')
-      const stillOpen = hasUnclosedCodeDelimiter(assembledSoFar)
-      if (!stillOpen && isNaturalLanguageProseBlock(rawTextNode)) {
-        break
-      }
-      if (stillOpen || looksLikeCodeFragment(rawTextNode)) {
-        spilledSiblings.push(node)
-        spilledChunks.push(rawTextNode)
-      } else {
-        break
-      }
-      continue
-    }
-
-    if (!(node instanceof HTMLElement)) continue
-    if (node.closest('[data-vexel-ui]')) continue
-
-    if (!node.contains(anchorBlock) && node.querySelectorAll('pre code').length === 1) {
-      if (isPoisonedMarkdownCodeBlock(node)) {
-        poisonedHost = node
-        poisonedRawMarkdown = extractRawMarkdownFromPoisonedCard(node)
-        break
-      }
-      const assembledSoFar = [headCode, previousTail, ...spilledChunks].filter(Boolean).join('\n')
-      const secPre = node.querySelector('pre code')
-      const secText = (secPre?.textContent || '').replace(/\n$/, '')
-      if (
-        (spilledChunks.length > 0 || hasUnclosedCodeDelimiter(assembledSoFar)) &&
-        secText.trim().length > 0
-      ) {
-        spilledSiblings.push(node)
-        spilledChunks.push(secText)
-        continue
-      }
-      break
-    }
-
-    if (node.hasAttribute('data-sfc-cp')) {
-      if (isGoogleLegalFooterNode(node)) break
-      const cleaned = extractCleanSiblingCode(node)
-      if (!cleaned) continue
-      const assembledSoFar = [headCode, previousTail, ...spilledChunks].filter(Boolean).join('\n')
-      const stillOpen = hasUnclosedCodeDelimiter(assembledSoFar)
-      const isNaturalIntroColon =
-        /^[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ][a-zàâäéèêëîïôöùûüç]+(?:\s+[a-zàâäéèêëîïôöùûüçA-Z0-9_-]+){2,}:$/.test(
-          cleaned
-        )
-      if ((!stillOpen && isNaturalLanguageProseBlock(cleaned)) || isNaturalIntroColon) {
-        break
-      }
-      if (
-        !stillOpen &&
-        spilledChunks.length === 0 &&
-        /^[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ][a-zàâäéèêëîïôöùûüç]+(?:s+[a-zàâäéèêëîïôöùûüçA-Z0-9_-]+){2,}:$/.test(
-          cleaned
-        )
-      ) {
-        break
-      }
-      if (stillOpen || looksLikeCodeFragment(cleaned)) {
-        spilledSiblings.push(node)
-        spilledChunks.push(cleaned)
-      } else {
-        break
+    if (spilledChunks.length === 0 && !poisonedHost) return
+    codeCard.setAttribute('data-vexel-repaired', '1')
+    const headerEl = (pre.parentElement?.previousElementSibling as HTMLElement | null) || null
+    const lang = detectSemanticLang(codeEl, headerEl)
+    const firstLine = (headCode.split('\n').find(() => true) || '').trim()
+    const strippedComment = firstLine.replace(/^(?:\/\/|#|\/\*|<!--)\s*(?:file:\s*)?/i, '')
+    const candidateToken = strippedComment.split(/\s+/).find(Boolean) || ''
+    const filenameHint = /^[a-zA-Z0-9_./-]+\.[a-zA-Z0-9]+$/.test(candidateToken)
+      ? candidateToken
+      : undefined
+    const combinedTailRaw = [previousTail, ...spilledChunks].filter(Boolean).join('\n')
+    const reindented =
+      combinedTailRaw.length > 0
+        ? reconstructIndentation(headCode, combinedTailRaw, lang)
+        : headCode
+    const { formatted, engine } = await formatWithBridge(reindented, lang, filenameHint)
+    if (spilledSiblings.length > 0) {
+      for (const sib of spilledSiblings) sib.remove()
+      const headLinesCount = headCode.split('\n').length
+      const formattedLines = formatted.split('\n')
+      const formattedTail = formattedLines.slice(headLinesCount).join('\n')
+      if (formattedTail.trim()) {
+        const tailSpan = existingTailEl || document.createElement('span')
+        tailSpan.setAttribute('data-vexel-repaired-tail', 'true')
+        tailSpan.style.whiteSpace = 'pre'
+        renderHighlightedTail(tailSpan, formattedTail, lang)
+        if (!existingTailEl) codeEl.appendChild(tailSpan)
       }
     }
-  }
-  if (spilledChunks.length === 0 && !poisonedHost) return
-  codeCard.setAttribute('data-vexel-repaired', '1')
-  const headerEl = (pre.parentElement?.previousElementSibling as HTMLElement | null) || null
-  const lang = detectSemanticLang(codeEl, headerEl)
-  const firstLine = (headCode.split('\n').find(() => true) || '').trim()
-  const strippedComment = firstLine.replace(/^(?:\/\/|#|\/\*|<!--)\s*(?:file:\s*)?/i, '')
-  const candidateToken = strippedComment.split(/\s+/).find(Boolean) || ''
-  const filenameHint = /^[a-zA-Z0-9_./-]+\.[a-zA-Z0-9]+$/.test(candidateToken)
-    ? candidateToken
-    : undefined
-  const combinedTailRaw = [previousTail, ...spilledChunks].filter(Boolean).join('\n')
-  const reindented =
-    combinedTailRaw.length > 0 ? reconstructIndentation(headCode, combinedTailRaw, lang) : headCode
-  const { formatted, engine } = await formatWithBridge(reindented, lang, filenameHint)
-  if (spilledSiblings.length > 0) {
-    for (const sib of spilledSiblings) sib.remove()
-    const headLinesCount = headCode.split('\n').length
-    const formattedLines = formatted.split('\n')
-    const formattedTail = formattedLines.slice(headLinesCount).join('\n')
-    if (formattedTail.trim()) {
-      const tailSpan = existingTailEl || document.createElement('span')
-      tailSpan.setAttribute('data-vexel-repaired-tail', 'true')
-      tailSpan.style.whiteSpace = 'pre'
-      renderHighlightedTail(tailSpan, formattedTail, lang)
-      if (!existingTailEl) codeEl.appendChild(tailSpan)
+    if (reachedTerminalBoundary || turnRoot.querySelector('[data-zzy="1"]') !== null) {
+      codeCard.setAttribute('data-vexel-repaired-final', '1')
     }
-  }
-  repairedCodeByContainer.set(codeCard as HTMLElement, { code: formatted, engine, lang })
-  bindNativeCopyOverride(codeCard, showToast)
-  if (headerEl) mountFormatStatusPill(headerEl, engine)
-  if (poisonedHost && poisonedHost.parentNode && poisonedRawMarkdown.trim()) {
-    renderCleanFollowUpCard(poisonedHost, poisonedRawMarkdown, showToast)
+    repairedCodeByContainer.set(codeCard as HTMLElement, { code: formatted, engine, lang })
+    bindNativeCopyOverride(codeCard, showToast)
+    if (headerEl) mountFormatStatusPill(headerEl, engine)
+    if (poisonedHost && poisonedHost.parentNode && poisonedRawMarkdown.trim()) {
+      renderCleanFollowUpCard(poisonedHost, poisonedRawMarkdown, showToast)
+    }
+  } finally {
+    inFlightCards.delete(codeCard)
   }
 }
 export function scanAndRepairCodeBlocks(root: ParentNode, showToast: (msg: string) => void): void {
@@ -750,7 +767,12 @@ export function scanAndRepairCodeBlocks(root: ParentNode, showToast: (msg: strin
 
   // Pass 1: repair truncated / broken code cards (which may absorb & clean trailing poisoned FollowUp blocks)
   for (const card of candidates) {
-    if (!card.isConnected || card.hasAttribute('data-vexel-repaired')) continue
+    if (
+      !card.isConnected ||
+      card.hasAttribute('data-vexel-repaired-final') ||
+      inFlightCards.has(card)
+    )
+      continue
     if (isPoisonedMarkdownCodeBlock(card)) continue
     if (!card.querySelector('pre code')) continue
     void repairBrokenSequenceFromCodeCard(card, showToast)
