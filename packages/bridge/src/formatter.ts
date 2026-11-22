@@ -183,16 +183,23 @@ const FORMATTER_SPECS_BY_EXT: Record<string, FormatterSpec[]> = {
   ],
   lua: [{ engine: 'stylua', binName: 'stylua', args: () => ['-'] }],
   zig: [{ engine: 'zig', binName: 'zig', args: () => ['fmt', '--stdin'] }],
-  swift: [{ engine: 'swift-format', binName: 'swift-format', args: () => ['format'] }],
+  swift: [
+    { engine: 'swift-format', binName: 'swift-format', args: () => ['format'] },
+    {
+      engine: 'swiftformat',
+      binName: 'swiftformat',
+      args: (filename) => ['stdin', '--stdinpath', filename],
+    },
+  ],
   kt: [{ engine: 'ktfmt', binName: 'ktfmt', args: () => ['-'] }],
   kts: [{ engine: 'ktfmt', binName: 'ktfmt', args: () => ['-'] }],
   php: [
-    { engine: 'mago', binName: 'mago', args: () => ['fmt', '--stdin-input'] },
+    { engine: 'mago', binName: 'mago', args: () => ['format', '--stdin-input'] },
     { engine: 'pretty-php', binName: 'pretty-php', args: () => [] },
     {
       engine: 'php-cs-fixer',
       binName: 'php-cs-fixer',
-      args: () => ['fix', '--using-cache=no', '--quiet', '-'],
+      args: () => ['fix', '--using-cache=no', '-'],
     },
   ],
   rb: [
@@ -200,7 +207,7 @@ const FORMATTER_SPECS_BY_EXT: Record<string, FormatterSpec[]> = {
     {
       engine: 'rubocop',
       binName: 'rubocop',
-      args: () => ['--stdin', 'snippet.rb', '-a', '--stderr'],
+      args: () => ['--stdin', 'snippet.rb', '-a', '--format', 'quiet', '--stderr'],
     },
   ],
   dart: [

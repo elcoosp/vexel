@@ -65,7 +65,7 @@ describe('formatter.ts native CLI routing & fallback matrix', () => {
     expect(getCandidateSpecs('nix').map((s) => s.engine)).toEqual(['alejandra', 'nixfmt'])
     expect(getCandidateSpecs('lua').map((s) => s.engine)).toEqual(['stylua'])
     expect(getCandidateSpecs('zig').map((s) => s.engine)).toEqual(['zig'])
-    expect(getCandidateSpecs('swift').map((s) => s.engine)).toEqual(['swift-format'])
+    expect(getCandidateSpecs('swift').map((s) => s.engine)).toEqual(['swift-format', 'swiftformat'])
     expect(getCandidateSpecs('kt').map((s) => s.engine)).toEqual(['ktfmt'])
     expect(getCandidateSpecs('php').map((s) => s.engine)).toEqual([
       'mago',
