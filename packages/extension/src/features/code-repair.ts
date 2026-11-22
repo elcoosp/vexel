@@ -17,7 +17,20 @@ export interface RepairedCodeRecord {
 
 const repairedCodeByContainer = new WeakMap<HTMLElement, RepairedCodeRecord>()
 const inFlightCards = new WeakSet<Element>()
+interface CardTopology {
+  pre: HTMLPreElement
+  codeEl: HTMLElement
+  anchorBlock: Element
+  turnRoot: Element
+}
 const scannedCardSignatures = new WeakMap<Element, string>()
+const cardTopologyCache = new WeakMap<Element, CardTopology>()
+
+function markCardFinal(codeCard: Element, pre?: Element | null): void {
+  markCardFinal(codeCard, pre)
+  const preEl = pre || codeCard.querySelector('pre')
+  if (preEl) preEl.setAttribute('data-vexel-final-pre', '1')
+}
 
 export function getRepairedCodeForContainer(
   container: HTMLElement
@@ -655,36 +668,41 @@ async function repairBrokenSequenceFromCodeCard(
   showToast: (msg: string) => void
 ): Promise<void> {
   if (inFlightCards.has(codeCard)) return
-  const pre = codeCard.querySelector('pre')
-  const codeEl = pre?.querySelector('code')
-  if (!pre || !codeEl) return
-
-  let anchorBlock: Element = codeCard
-  while (
-    !anchorBlock.nextElementSibling &&
-    anchorBlock.parentElement &&
-    !anchorBlock.parentElement.matches(
-      '[data-scope-id="turn"], [jsname="CS7uPe"], [data-subtree="aimc"], main, body'
-    ) &&
-    anchorBlock.parentElement.querySelectorAll('pre code').length === 1
-  ) {
-    anchorBlock = anchorBlock.parentElement
+  let topo = cardTopologyCache.get(codeCard)
+  if (!topo || !topo.pre.isConnected || !topo.codeEl.isConnected) {
+    const pre = codeCard.querySelector('pre')
+    const codeEl = pre?.querySelector('code')
+    if (!pre || !codeEl) return
+    let anchorBlock: Element = codeCard
+    while (
+      !anchorBlock.nextElementSibling &&
+      anchorBlock.parentElement &&
+      !anchorBlock.parentElement.matches(
+        '[data-scope-id="turn"], [jsname="CS7uPe"], [data-subtree="aimc"], main, body'
+      ) &&
+      anchorBlock.parentElement.querySelectorAll('pre code').length === 1
+    ) {
+      anchorBlock = anchorBlock.parentElement
+    }
+    const turnRoot =
+      anchorBlock.closest('[data-scope-id="turn"], [jsname="CS7uPe"]') ||
+      anchorBlock.parentElement ||
+      document.body
+    topo = { pre, codeEl, anchorBlock, turnRoot }
+    cardTopologyCache.set(codeCard, topo)
   }
 
-  const turnRoot =
-    anchorBlock.closest('[data-scope-id="turn"], [jsname="CS7uPe"]') ||
-    anchorBlock.parentElement ||
-    document.body
+  const { pre, codeEl, anchorBlock, turnRoot } = topo
   const isTurnFinished =
-    turnRoot.querySelector('[data-zzy="1"]') !== null ||
-    turnRoot.getAttribute('data-complete') === 'true'
+    turnRoot.getAttribute('data-complete') === 'true' ||
+    turnRoot.querySelector('[data-zzy="1"]') !== null
 
   const rawCodeLen = (codeEl.textContent || '').length
   const nextSib = anchorBlock.nextElementSibling
   const nextSibSig = nextSib
-    ? `${nextSib.tagName}:${nextSib.className}:${(nextSib.textContent || '').length}`
+    ? nextSib.tagName + ':' + nextSib.className + ':' + (nextSib.textContent || '').length
     : 'none'
-  const cardSig = `${rawCodeLen}|${nextSibSig}|${isTurnFinished ? '1' : '0'}`
+  const cardSig = rawCodeLen + '|' + nextSibSig + '|' + (isTurnFinished ? '1' : '0')
   if (scannedCardSignatures.get(codeCard) === cardSig) return
   scannedCardSignatures.set(codeCard, cardSig)
 
@@ -702,7 +720,7 @@ async function repairBrokenSequenceFromCodeCard(
       headCode = (codeEl.textContent || '').replace(/\n$/, '')
     }
     if (headCode.length < TRUNCATION_MIN_CHARS && !hasUnclosedCodeDelimiter(headCode)) {
-      if (isTurnFinished) codeCard.setAttribute('data-vexel-repaired-final', '1')
+      if (isTurnFinished) markCardFinal(codeCard, pre)
       return
     }
 
@@ -833,7 +851,7 @@ async function repairBrokenSequenceFromCodeCard(
       }
     }
     if (spilledChunks.length === 0 && !poisonedHost) {
-      if (isTurnFinished) codeCard.setAttribute('data-vexel-repaired-final', '1')
+      if (isTurnFinished) markCardFinal(codeCard, pre)
       return
     }
     codeCard.setAttribute('data-vexel-repaired', '1')
@@ -894,7 +912,9 @@ async function repairBrokenSequenceFromCodeCard(
 }
 export function scanAndRepairCodeBlocks(root: ParentNode, showToast: (msg: string) => void): void {
   const cardSet = new Set<Element>()
-  for (const codeNode of Array.from(root.querySelectorAll('pre code'))) {
+  for (const codeNode of Array.from(
+    root.querySelectorAll('pre:not([data-vexel-final-pre]) code')
+  )) {
     const cardContainer =
       codeNode.closest('[data-hveid], [data-sfc-cp]') ||
       codeNode.closest('pre')?.parentElement?.parentElement ||
@@ -941,16 +961,33 @@ export function scanAndRepairCodeBlocks(root: ParentNode, showToast: (msg: strin
 
 export function initCodeRepair(showToast: (msg: string) => void): void {
   let scanTimer: number | undefined
-  const scheduleScan = () => {
+  let fullScanNeeded = false
+  const dirtyRoots = new Set<Element>()
+
+  const scheduleScan = (root?: Element) => {
+    if (root) dirtyRoots.add(root)
+    else fullScanNeeded = true
     if (scanTimer) window.clearTimeout(scanTimer)
     scanTimer = window.setTimeout(() => {
       scanTimer = undefined
-      scanAndRepairCodeBlocks(document, showToast)
+      if (fullScanNeeded || dirtyRoots.size === 0) {
+        fullScanNeeded = false
+        dirtyRoots.clear()
+        scanAndRepairCodeBlocks(document, showToast)
+        return
+      }
+      const roots = [...dirtyRoots]
+      dirtyRoots.clear()
+      for (const r of roots) {
+        if (r.isConnected) scanAndRepairCodeBlocks(r, showToast)
+      }
     }, 320)
   }
   document.addEventListener(
     'aimRenderComplete',
     () => {
+      fullScanNeeded = false
+      dirtyRoots.clear()
       scanAndRepairCodeBlocks(document, showToast)
       scheduleScan()
     },
@@ -959,6 +996,8 @@ export function initCodeRepair(showToast: (msg: string) => void): void {
   document.addEventListener(
     'aimBodyComplete',
     () => {
+      fullScanNeeded = false
+      dirtyRoots.clear()
       scanAndRepairCodeBlocks(document, showToast)
       scheduleScan()
     },
@@ -975,8 +1014,9 @@ export function initCodeRepair(showToast: (msg: string) => void): void {
           el.matches('pre, code, [data-sfc-cp], [data-zzy], .n6owBd, .Y3BBE') ||
           el.querySelector('pre, code, [data-sfc-cp], [data-zzy]') !== null
         ) {
-          scheduleScan()
-          return
+          const turnContainer = el.closest('[data-scope-id="turn"], [jsname="CS7uPe"]') || undefined
+          scheduleScan(turnContainer)
+          break
         }
       }
     }

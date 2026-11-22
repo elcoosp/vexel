@@ -426,7 +426,19 @@ export function renderHighlightedTail(tailEl: HTMLElement, code: string, lang: s
   const isPython = l === 'py' || l === 'python' || l === 'sh' || l === 'bash' || l === 'yaml'
   const BT1 = String.fromCodePoint(96)
   const frag = doc.createDocumentFragment()
-  frag.appendChild(doc.createTextNode('\n'))
+  let plainBuf = '\n'
+  const emitToken = (tok: string | null, text: string) => {
+    if (!text) return
+    if (!tok) {
+      plainBuf += text
+      return
+    }
+    if (plainBuf) {
+      frag.appendChild(doc.createTextNode(plainBuf))
+      plainBuf = ''
+    }
+    appendToken(doc, frag, tok, text)
+  }
   const lines = code.split('\n')
   for (let lineIdx = 0; lineIdx < lines.length; lineIdx += 1) {
     const line = lines[lineIdx] || ''
@@ -436,7 +448,7 @@ export function renderHighlightedTail(tailEl: HTMLElement, code: string, lang: s
       const next = line[i + 1]
       // Line comment
       if ((isPython && ch === '#') || (!isPython && ch === '/' && next === '/')) {
-        appendToken(doc, frag, 'comment', line.slice(i))
+        emitToken('comment', line.slice(i))
         i = line.length
         continue
       }
@@ -457,15 +469,15 @@ export function renderHighlightedTail(tailEl: HTMLElement, code: string, lang: s
           j += 1
           if (c === quote) break
         }
-        appendToken(doc, frag, 'string', line.slice(i, j))
+        emitToken('string', line.slice(i, j))
         i = j
         continue
       }
       // Decorator (@staticmethod, @dataclass)
-      if (ch === '@' && /[A-Za-z_]/.test(next)) {
+      if (ch === '@' && next && /[A-Za-z_]/.test(next)) {
         let j = i + 1
         while (j < line.length && /[A-Za-z0-9_.]/.test(line[j])) j += 1
-        appendToken(doc, frag, 'decorator', line.slice(i, j))
+        emitToken('decorator', line.slice(i, j))
         i = j
         continue
       }
@@ -477,7 +489,7 @@ export function renderHighlightedTail(tailEl: HTMLElement, code: string, lang: s
           if ((cur === '+' || cur === '-') && !/[eE]/.test(line[j - 1])) break
           j += 1
         }
-        appendToken(doc, frag, 'number', line.slice(i, j))
+        emitToken('number', line.slice(i, j))
         i = j
         continue
       }
@@ -488,22 +500,23 @@ export function renderHighlightedTail(tailEl: HTMLElement, code: string, lang: s
         const word = line.slice(i, j)
         const after = line.slice(j).trimStart()
         if (keywords.has(word)) {
-          appendToken(doc, frag, 'keyword', word)
+          emitToken('keyword', word)
         } else if (after.startsWith('(')) {
-          appendToken(doc, frag, 'function', word)
+          emitToken('function', word)
         } else if (/^[A-Z][A-Za-z0-9_]*$/.test(word) && word.length > 1) {
-          appendToken(doc, frag, 'type', word)
+          emitToken('type', word)
         } else {
-          appendToken(doc, frag, null, word)
+          emitToken(null, word)
         }
         i = j
         continue
       }
-      appendToken(doc, frag, null, ch)
+      plainBuf += ch
       i += 1
     }
-    if (lineIdx < lines.length - 1) frag.appendChild(doc.createTextNode('\n'))
+    if (lineIdx < lines.length - 1) plainBuf += '\n'
   }
+  if (plainBuf) frag.appendChild(doc.createTextNode(plainBuf))
   tailEl.replaceChildren(frag)
 }
 
