@@ -599,47 +599,42 @@ async function repairBrokenSequenceFromCodeCard(
     let poisonedRawMarkdown = ''
 
     const candidateNodes: ChildNode[] = []
-    let seenAnchor = false
-    const collectFollowing = (rootNode: Node): void => {
-      if (rootNode === anchorBlock) {
-        seenAnchor = true
+    const collectSubtreeNode = (node: ChildNode): void => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const parentEl = node.parentElement
+        if (parentEl && !parentEl.closest('[data-sfc-cp], [data-vexel-ui], pre, code')) {
+          const txt = (node.textContent || '').replace(/\u00a0/g, ' ').trim()
+          if (txt) candidateNodes.push(node)
+        }
         return
       }
+      if (!(node instanceof HTMLElement)) return
+      if (node.hasAttribute('data-vexel-ui') || isGoogleLegalFooterNode(node)) return
+      const isResponseChunkBlock =
+        node.hasAttribute('data-sfc-cp') ||
+        node.classList.contains('n6owBd') ||
+        node.classList.contains('Y3BBE') ||
+        node.parentElement === anchorBlock.parentElement
       if (
-        rootNode instanceof HTMLElement &&
-        (rootNode.hasAttribute('data-vexel-ui') || isGoogleLegalFooterNode(rootNode))
-      )
+        isResponseChunkBlock ||
+        (node.querySelector('pre code') !== null &&
+          (node.matches('[data-hveid]') || isPoisonedMarkdownCodeBlock(node)))
+      ) {
+        candidateNodes.push(node)
         return
-      if (seenAnchor) {
-        if (rootNode instanceof Text) {
-          const parentEl = rootNode.parentElement
-          if (parentEl && !parentEl.closest('[data-sfc-cp], [data-vexel-ui], pre, code')) {
-            const txt = (rootNode.textContent || '').replace(/\u00a0/g, ' ').trim()
-            if (txt) candidateNodes.push(rootNode)
-          }
-          return
-        }
-        if (rootNode instanceof HTMLElement) {
-          const isResponseChunkBlock =
-            rootNode.hasAttribute('data-sfc-cp') ||
-            rootNode.classList.contains('n6owBd') ||
-            rootNode.classList.contains('Y3BBE') ||
-            rootNode.parentElement === anchorBlock.parentElement
-          if (
-            isResponseChunkBlock ||
-            (rootNode.querySelector('pre code') !== null &&
-              (rootNode.matches('[data-hveid]') || isPoisonedMarkdownCodeBlock(rootNode)))
-          ) {
-            candidateNodes.push(rootNode)
-            return
-          }
-        }
       }
-      for (let child = rootNode.firstChild; child; child = child.nextSibling) {
-        collectFollowing(child)
+      for (let child = node.firstChild; child; child = child.nextSibling) {
+        collectSubtreeNode(child)
       }
     }
-    collectFollowing(turnRoot)
+
+    let walkEl: Element | null = anchorBlock
+    while (walkEl && walkEl !== turnRoot) {
+      for (let sib = walkEl.nextSibling; sib; sib = sib.nextSibling) {
+        collectSubtreeNode(sib)
+      }
+      walkEl = walkEl.parentElement
+    }
 
     for (const node of candidateNodes) {
       if (node.nodeType === Node.TEXT_NODE) {
@@ -722,9 +717,7 @@ async function repairBrokenSequenceFromCodeCard(
         }
       }
     }
-    if (spilledChunks.length === 0 && !poisonedHost) {
-      return
-    }
+    if (spilledChunks.length === 0 && !poisonedHost) return
     codeCard.setAttribute('data-vexel-repaired', '1')
     const headerEl = (pre.parentElement?.previousElementSibling as HTMLElement | null) || null
     const lang = detectSemanticLang(codeEl, headerEl)
@@ -762,6 +755,7 @@ async function repairBrokenSequenceFromCodeCard(
     if (poisonedHost && poisonedHost.parentNode && poisonedRawMarkdown.trim()) {
       renderCleanFollowUpCard(poisonedHost, poisonedRawMarkdown, showToast)
     }
+  } catch {
   } finally {
     inFlightCards.delete(codeCard)
   }
