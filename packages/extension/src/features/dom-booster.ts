@@ -5,7 +5,11 @@ function injectInstantVirtualizationCSS(): void {
   const style = document.createElement('style')
   style.id = 'vexel-fast-load-css'
   style.textContent = `
-    [data-scope-id="turn"]:not(:nth-last-of-type(-n+3)) {
+    html.vexel-resizing [data-scope-id="turn"]:not(:nth-last-of-type(-n+2)) {
+      content-visibility: hidden !important;
+      contain: strict !important;
+    }
+    [data-scope-id="turn"]:not(:nth-last-of-type(-n+2)) {
       content-visibility: auto;
       contain-intrinsic-size: auto ${DEFAULT_ESTIMATED_HEIGHT}px;
       contain: layout style paint;
@@ -37,6 +41,22 @@ export function scrollToLastUserPrompt(smooth = false): boolean {
 
 export function initDomBooster(): void {
   injectInstantVirtualizationCSS()
+
+  let resizeClearTimer = 0
+  window.addEventListener(
+    'resize',
+    () => {
+      if (!document.documentElement.classList.contains('vexel-resizing')) {
+        document.documentElement.classList.add('vexel-resizing')
+      }
+      if (resizeClearTimer) window.clearTimeout(resizeClearTimer)
+      resizeClearTimer = window.setTimeout(() => {
+        resizeClearTimer = 0
+        document.documentElement.classList.remove('vexel-resizing')
+      }, 140)
+    },
+    { passive: true }
+  )
 
   // Native Blink event: batch height reads then style writes in one rAF to prevent resize layout thrashing
   const pendingTurns = new Set<HTMLElement>()

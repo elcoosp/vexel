@@ -573,7 +573,7 @@ export function initThreadTools(_showToast?: (msg: string) => void): void {
   window.addEventListener(
     'resize',
     () => {
-      if (railResizeRaf) return
+      if (!rail.classList.contains('visible') || railResizeRaf) return
       railResizeRaf = window.requestAnimationFrame(() => {
         railResizeRaf = 0
         const isOverflow = railScroll.scrollHeight > railScroll.clientHeight
