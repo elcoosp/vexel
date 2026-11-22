@@ -26,25 +26,19 @@ jobs:
       - uses: mlugg/setup-zig@v2
         with:
           version: latest
-      - name: Install latest native formatters (rustfmt, ruff, shfmt, clang-format, sleek, taplo, stylua, alejandra, rubocop)
+      - name: Install latest prebuilt native formatters (taplo, stylua, sleek, shfmt, ruff)
+        uses: taiki-e/install-action@v2
+        with:
+          tool: taplo,stylua,sleek,shfmt,ruff
+      - name: Install latest rustfmt, clang-format, rubocop & alejandra
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq clang-format ruby-full
           rustup component add rustfmt
-          python3 -m pip install --upgrade --break-system-packages ruff
-          go install mvdan.cc/sh/v3/cmd/shfmt@latest
           gem install --no-document rubocop
-          mkdir -p "$HOME/.local/bin"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          echo "$HOME/go/bin" >> "$GITHUB_PATH"
-          SLEEK_URL=$(curl -fsSL https://github.com | grep -oE 'https://[^"]+x86_64-unknown-linux-gnu\.tar\.gz' | head -n1)
-          curl -fsSL "$SLEEK_URL" | tar -xz -C "$HOME/.local/bin"
-          TAPLO_URL=$(curl -fsSL https://github.com | grep -oE 'https://[^"]+taplo-linux-x86_64\.gz' | head -n1)
-          curl -fsSL "$TAPLO_URL" | gunzip > "$HOME/.local/bin/taplo" && chmod +x "$HOME/.local/bin/taplo"
-          STYLUA_URL=$(curl -fsSL https://github.com | grep -oE 'https://[^"]+stylua-linux-x86_64\.zip' | head -n1)
-          curl -fsSL "$STYLUA_URL" -o /tmp/stylua.zip && unzip -oq /tmp/stylua.zip -d "$HOME/.local/bin" && chmod +x "$HOME/.local/bin/stylua"
-          ALEJANDRA_URL=$(curl -fsSL https://github.com | grep -oE 'https://[^"]+alejandra-x86_64-unknown-linux-gnu' | head -n1)
-          curl -fsSL "$ALEJANDRA_URL" -o "$HOME/.local/bin/alejandra" && chmod +x "$HOME/.local/bin/alejandra"
+          echo "$(ruby -e 'puts Gem.user_dir')/bin" >> "$GITHUB_PATH"
+          cargo install alejandra --locked
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
       - run: pnpm install --frozen-lockfile
       - run: pnpm fmt --check
       - run: pnpm typecheck
