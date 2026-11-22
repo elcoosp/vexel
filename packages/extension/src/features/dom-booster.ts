@@ -7,6 +7,7 @@ function injectInstantVirtualizationCSS(): void {
   style.textContent = `
     html.vexel-resizing [data-scope-id="turn"]:not(:nth-last-of-type(-n+2)) {
       content-visibility: hidden !important;
+      contain-intrinsic-size: auto 480px;
       contain: strict !important;
     }
     [data-scope-id="turn"]:not(:nth-last-of-type(-n+2)) {
