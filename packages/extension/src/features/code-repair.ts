@@ -101,6 +101,9 @@ function extractCleanSiblingCode(el: HTMLElement, lang = ''): string {
   if (lang === 'sql') {
     finalCode = finalCode.replace(/^[\u2013\u2014]\s*/gm, '-- ')
   }
+  if (lang === 'sql') {
+    finalCode = finalCode.replace(/^[\u2013\u2014]\s*/gm, '-- ')
+  }
   return finalCode
 }
 
@@ -935,6 +938,13 @@ async function repairBrokenSequenceFromCodeCard(
     }
 
     let absorbedChars = previousTail.length
+    console.warn('[Vexel CodeRepair] start', {
+      lang,
+      headLen: headCode.length,
+      wizLen: wizFullCode.length,
+      expectedSpillChars,
+      candidateCount: candidateNodes.length,
+    })
     for (const node of candidateNodes) {
       const withinWizBudget = expectedSpillChars > 0 && absorbedChars < expectedSpillChars + 64
       if (node.nodeType === Node.TEXT_NODE) {
@@ -1003,7 +1013,16 @@ async function repairBrokenSequenceFromCodeCard(
           /^[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ][a-zàâäéèêëîïôöùûüç]+(?:\s+[a-zàâäéèêëîïôöùûüçA-Z0-9_-]+){2,}:$/.test(
             cleaned
           )
-        if (isNaturalLanguageProseBlock(cleaned) || (!withinWizBudget && isNaturalIntroColon)) {
+        const isProse = isNaturalLanguageProseBlock(cleaned)
+        if (isProse || (!withinWizBudget && isNaturalIntroColon)) {
+          console.warn('[Vexel CodeRepair] BREAK prose/introColon', {
+            lang,
+            jsuid: node.getAttribute('jsuid'),
+            isProse,
+            isNaturalIntroColon,
+            withinWizBudget,
+            preview: cleaned.slice(0, 90),
+          })
           reachedTerminalBoundary = true
           break
         }
@@ -1017,11 +1036,20 @@ async function repairBrokenSequenceFromCodeCard(
         ) {
           break
         }
-        if (withinWizBudget || stillOpen || looksLikeCodeFragment(cleaned)) {
+        const looksLike = looksLikeCodeFragment(cleaned)
+        if (withinWizBudget || stillOpen || looksLike) {
           spilledSiblings.push(node)
           spilledChunks.push(cleaned)
           absorbedChars += cleaned.length + 1
         } else {
+          console.warn('[Vexel CodeRepair] BREAK not-code', {
+            lang,
+            jsuid: node.getAttribute('jsuid'),
+            withinWizBudget,
+            stillOpen,
+            looksLike,
+            preview: cleaned.slice(0, 90),
+          })
           break
         }
       }
