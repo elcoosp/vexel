@@ -5,7 +5,7 @@ interface CachedTurnSnapshot extends LastExchangeSnapshot {
   updatedAt: number
 }
 
-const CACHE_STORAGE_KEY = 'vexel:thread-cache:v4'
+const CACHE_STORAGE_KEY = 'vexel:thread-cache:v6'
 const MAX_CACHED_THREADS = 25
 const ALLOWED_TAGS = new Set([
   'P',
@@ -165,7 +165,6 @@ export const initInstantThreadCache = (): void => {
       width: 'min(740px, calc(100vw - 48px))',
       maxHeight: 'calc(100vh - 220px)',
       zIndex: '2147483640',
-      contain: 'content',
       pointerEvents: 'auto',
     })
 

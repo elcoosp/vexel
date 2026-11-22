@@ -142,6 +142,9 @@ function elementToMarkdown(root: HTMLElement, role: 'user' | 'assistant'): strin
     .querySelectorAll(
       [
         '[data-ignore-copy]',
+        '[data-xid="Gd7Hsc"]',
+        '[style*="display: none"]',
+        '[style*="display:none"]',
         '[data-container-id="rhs-col"]',
         '[data-vexel-ui]',
         '[aria-live]',
