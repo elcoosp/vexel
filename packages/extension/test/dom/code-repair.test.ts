@@ -828,4 +828,47 @@ describe('code-repair DOM integration', () => {
     expect(card.querySelectorAll('[data-vexel-repaired-tail="true"]').length).toBe(1)
     expect(getRepairedCodeForContainer(card)?.code).toContain('const step = 1;')
   })
+
+  it('does NOT falsely repair a complete bash block containing #[allow] in strings or absorb sibling .AHmQrc prose', async () => {
+    document.body.innerHTML = `
+      <div class="CKgc1d" data-last-turn="true" data-scope-id="turn" jsname="CS7uPe">
+        <div class="BpxUDf aiModeUiCodeBlock__Container" data-sfc-cp="" data-hveid="CAIIAQjxBhAA">
+          <div>
+            <div class="rq1a2">
+              <div class="a2TNg"><div class="GlO4G">bash</div></div>
+              <div class="PGvq2d">
+                <pre><code>#!/usr/bin/env bash
+set -euo pipefail
+python3 - &lt;&lt; 'PY'
+print("hello")
+PY
+echo "=== 1. Verification zero #[allow] &amp; Rust Clippy pedantic ==="
+! grep -rn "#\\[allow" crates/
+git status -s
+</code></pre>
+              </div>
+            </div>
+            <div class="iMHp6c">
+              <div class="ZIumpf">Utilisez le code avec précaution.</div>
+              <div class="YHsVn"><button aria-label="Copier le texte du code dans le presse-papiers.">Copier</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="AHmQrc" data-sfc-cp="" data-hveid="CAIIAQjzBhAA">
+          <div class="n6owBd awi2gc">Exécute <code>./wr.sh</code> avec ce script : il corrige ces 18 lignes exactes (<code>macos.rs</code> + ligne 191 de <code>main.rs</code>), exécute toute la suite de tests Rust + Extension et redéploie/signe le binaire macOS conformément à <code>AGENTS.md</code>.</div>
+        </div>
+      </div>
+    `
+
+    scanAndRepairCodeBlocks(document, () => {})
+    await new Promise((r) => setTimeout(r, 30))
+
+    const codeCard = document.querySelector('.aiModeUiCodeBlock__Container')!
+    const proseBlock = document.querySelector('.AHmQrc')!
+    expect(codeCard.hasAttribute('data-vexel-repaired')).toBe(false)
+    expect(codeCard.querySelector('[data-vexel-format-badge="true"]')).toBeNull()
+    expect(codeCard.querySelector('[data-vexel-repaired-tail="true"]')).toBeNull()
+    expect(proseBlock.isConnected).toBe(true)
+    expect(proseBlock.textContent).toContain('Exécute ./wr.sh avec ce script')
+  })
 })

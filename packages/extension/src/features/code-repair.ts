@@ -84,18 +84,55 @@ function hasUnclosedCodeDelimiter(code: string): boolean {
   if (tripleDouble % 2 === 1) return true
   const tripleSingle = (code.match(/'''/g) || []).length
   if (tripleSingle % 2 === 1) return true
+
+  // Scan structural braces/brackets & backticks outside comments and quoted strings
   let braceBalance = 0
+  let unescapedBackticks = 0
+  let quote: '"' | "'" | null = null
+  let inLineComment = false
+
   for (let i = 0; i < code.length; i += 1) {
     const ch = code[i]
+    const next = code[i + 1]
+
+    if (ch === '\n') {
+      inLineComment = false
+      continue
+    }
+    if (inLineComment) continue
+
+    if (quote) {
+      if (ch === '\\' && quote === '"') {
+        i += 1
+        continue
+      }
+      if (ch === quote) {
+        quote = null
+      }
+      continue
+    }
+
+    if (ch === '/' && next === '/') {
+      inLineComment = true
+      i += 1
+      continue
+    }
+    if (ch === '#' && (i === 0 || /\s/.test(code[i - 1]))) {
+      inLineComment = true
+      continue
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch
+      continue
+    }
+
     if (ch === '{' || ch === '[') braceBalance += 1
     else if (ch === '}' || ch === ']') braceBalance -= 1
-  }
-  let unescapedBackticks = 0
-  for (let i = 0; i < code.length; i += 1) {
-    if (code[i] === '`' && (i === 0 || code[i - 1] !== '\\')) {
+    else if (ch === '`' && (i === 0 || code[i - 1] !== '\\')) {
       unescapedBackticks += 1
     }
   }
+
   if (unescapedBackticks % 2 === 1) return true
   return braceBalance >= 1
 }
@@ -697,7 +734,7 @@ async function repairBrokenSequenceFromCodeCard(
         if (!rawTextNode) continue
         const assembledSoFar = [headCode, previousTail, ...spilledChunks].filter(Boolean).join('\n')
         const stillOpen = hasUnclosedCodeDelimiter(assembledSoFar)
-        if (!stillOpen && isNaturalLanguageProseBlock(rawTextNode)) {
+        if (isNaturalLanguageProseBlock(rawTextNode)) {
           break
         }
         if (stillOpen || looksLikeCodeFragment(rawTextNode)) {
@@ -751,7 +788,7 @@ async function repairBrokenSequenceFromCodeCard(
           /^[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ][a-zàâäéèêëîïôöùûüç]+(?:\s+[a-zàâäéèêëîïôöùûüçA-Z0-9_-]+){2,}:$/.test(
             cleaned
           )
-        if ((!stillOpen && isNaturalLanguageProseBlock(cleaned)) || isNaturalIntroColon) {
+        if (isNaturalLanguageProseBlock(cleaned) || isNaturalIntroColon) {
           reachedTerminalBoundary = true
           break
         }
