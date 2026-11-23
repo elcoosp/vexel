@@ -12,10 +12,15 @@ import Foundation
 import Vision
 import AppKit
 
-let args = CommandLine.arguments
-let downloadsURL = URL(fileURLWithPath: args[1])
-let outDirURL = URL(fileURLWithPath: args[2])
+var argIter = CommandLine.arguments.dropFirst().makeIterator()
+guard let downloadsPath = argIter.next(), let outDirPath = argIter.next() else {
+    fputs("Missing arguments\n", stderr)
+    exit(1)
+}
+let downloadsURL = URL(fileURLWithPath: downloadsPath)
+let outDirURL = URL(fileURLWithPath: outDirPath)
 let fm = FileManager.default
+try? fm.createDirectory(at: outDirURL, withIntermediateDirectories: true)
 
 let cutoff = Date().addingTimeInterval(-3600)
 let files = (try? fm.contentsOfDirectory(
@@ -39,7 +44,8 @@ let versionRegex = try! NSRegularExpression(pattern: #"\bv\d+\.\d+\.\d+\b"#, opt
 var imported = 0
 
 for png in pngs {
-    guard let image = NSImage(contentsOf: png),
+    guard fm.fileExists(atPath: png.path),
+          let image = NSImage(contentsOf: png),
           let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
         continue
     }
@@ -58,11 +64,16 @@ for png in pngs {
     if let match = versionRegex.firstMatch(in: fullText, options: [], range: range),
        let swiftRange = Range(match.range, in: fullText) {
         let version = fullText[swiftRange].lowercased()
-        let dest = outDirURL.appendingPathComponent("banner-\(version).png")
+        let dest = outDirURL.appendingPathComponent("release-\(version).png")
         try? fm.removeItem(at: dest)
-        try fm.moveItem(at: png, to: dest)
-        print("✅ OCR detected \(version) in \(png.lastPathComponent) -> docs/releases/banner-\(version).png")
-        imported += 1
+        do {
+            try fm.copyItem(at: png, to: dest)
+            try? fm.removeItem(at: png)
+            print("✅ OCR detected \(version) in \(png.lastPathComponent) -> docs/releases/release-\(version).png")
+            imported += 1
+        } catch {
+            print("⚠️ Failed to copy \(png.lastPathComponent): \(error)")
+        }
     }
 }
 

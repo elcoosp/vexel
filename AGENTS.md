@@ -179,10 +179,10 @@ Every tagged release (`vX.Y.Z`) follows a strict 5-step sequence grounded in the
    - Draft the complete English Markdown release notes first (overview paragraph, categorized `### What's New in vX.Y.Z` bullets covering every user-facing feature, native formatter upgrade, UI/i18n change, and doc update, plus `**Compare:** vPrev...vX.Y.Z`).
 2. **Generate the Google Stitch Banner Prompt from the Release Notes (Using Reference Logo & Consistent Style):**
    - Only after the release notes are finalized, write the Google Stitch prompt directly from those release highlights.
-   - Always attach/reference **`docs/logo.png`** and enforce the exact same visual language across all `docs/releases/banner-v*.png` banners: deep obsidian-navy background (`#0D1628`), subtle technical grid/ambient glow, the Vexel logo mark, high-contrast `RELEASE vX.Y.Z` badge, and glassmorphic feature pills.
+   - Always attach/reference **`docs/logo.png`** and enforce the exact same visual language across all `docs/releases/release-v*.png` banners: clean bright ice-white studio background (`#F4F7FB`), subtle concentric technical rings, the 3D metallic cobalt-blue Vexel squircle logo mark (`docs/logo.png`) on the left, bold dark `Vexel vX.Y.Z` headline, and 3 floating translucent glass metric cards on the right.
 3. **Auto-Import & Rename Banner via Apple Vision OCR (`./scripts/import-release-banner.sh`):**
-   - Download the generated PNG from Google Stitch to `~/Downloads` and run `./scripts/import-release-banner.sh` — it uses macOS Apple Vision OCR (`VNRecognizeTextRequest` via Swift) to detect the `vX.Y.Z` version string inside the image and automatically moves/renames it to `docs/releases/banner-vX.Y.Z.png`.
-   - Update the version badge in `README.md` (`vX.Y.Z`) and commit both `docs/releases/banner-vX.Y.Z.png` and `README.md` on `main`.
+   - Download the generated PNG from Google Stitch to `~/Downloads` and run `./scripts/import-release-banner.sh` — it uses macOS Apple Vision OCR (`VNRecognizeTextRequest` via Swift) to detect the `vX.Y.Z` version string inside the image and automatically moves/renames it to `docs/releases/release-vX.Y.Z.png`.
+   - Update the version badge in `README.md` (`vX.Y.Z`) and commit both `docs/releases/release-vX.Y.Z.png` and `README.md` on `main`.
 4. **Tag & Trigger CI Release Builds (`.github/workflows/release.yml`):**
    - Push the tag (`git tag vX.Y.Z && git push origin vX.Y.Z`) to trigger `.github/workflows/release.yml`, which verifies `typecheck`, `lint`, `test:unit`, and `test:dom`, builds the store ZIP archives (`pnpm zip:store`) + `SHA256SUMS.txt`, and creates the GitHub Release via `softprops/action-gh-release`.
 5. **Update the Published GitHub Release with Banner & Final Notes:**
