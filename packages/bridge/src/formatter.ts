@@ -158,6 +158,11 @@ const FORMATTER_SPECS_BY_EXT: Record<string, FormatterSpec[]> = {
   zsh: [{ engine: 'shfmt', binName: 'shfmt', args: () => ['-i', '2', '-'] }],
   sql: [
     { engine: 'sleek', binName: 'sleek', args: () => [] },
+    {
+      engine: 'sqruff',
+      binName: 'sqruff',
+      args: (filename) => ['fix', '--stdin-filename', filename, '-'],
+    },
     { engine: 'pg_format', binName: 'pg_format', args: () => ['-'] },
   ],
   tf: [
@@ -189,13 +194,16 @@ const FORMATTER_SPECS_BY_EXT: Record<string, FormatterSpec[]> = {
   kt: [{ engine: 'ktfmt', binName: 'ktfmt', args: () => ['-'] }],
   kts: [{ engine: 'ktfmt', binName: 'ktfmt', args: () => ['-'] }],
   php: [
-    { engine: 'mago', binName: 'mago', args: () => ['fmt', '--stdin-input'] },
-    { engine: 'mago', binName: 'mago', args: () => ['format', '--stdin-input'] },
+    {
+      engine: 'mago',
+      binName: 'mago',
+      args: (filename) => ['format', '--stdin-input', '--stdin-filepath', filename],
+    },
     { engine: 'pretty-php', binName: 'pretty-php', args: () => [] },
     {
       engine: 'php-cs-fixer',
       binName: 'php-cs-fixer',
-      args: () => ['fix', '--using-cache=no', '-'],
+      args: () => ['fix', '--using-cache=no', '--quiet', '-'],
     },
   ],
   rb: [
@@ -225,6 +233,8 @@ const FORMATTER_SPECS_BY_EXT: Record<string, FormatterSpec[]> = {
   dart: [
     { engine: 'dart', binName: 'dart', args: () => ['format', '--output=show', '--summary=none'] },
   ],
+  md: [{ engine: 'rumdl', binName: 'rumdl', args: () => ['fmt', '--silent', '-'] }],
+  yaml: [{ engine: 'yamlfmt', binName: 'yamlfmt', args: () => ['-in'] }],
   java: [
     { engine: 'google-java-format', binName: 'google-java-format', args: () => ['-'] },
     {
