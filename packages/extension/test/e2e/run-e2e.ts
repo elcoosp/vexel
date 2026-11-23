@@ -419,7 +419,9 @@ try {
         (id) => {
           const el = document.querySelector(`[data-hveid="${id}"] [data-vexel-format-badge="true"]`)
           const txt =
-            el?.shadowRoot?.querySelector('[data-vexel-pill-label="true"]')?.textContent || ''
+            el?.shadowRoot?.querySelector('[data-vexel-pill-label="true"]')?.textContent ||
+            el?.textContent ||
+            ''
           return txt.length > 0 && !txt.includes(' · local · ')
         },
         turnId,
