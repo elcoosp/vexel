@@ -295,11 +295,19 @@ try {
     },
     {
       lang: 'toml',
-      expectedEngines: ['taplo', 'oxfmt'],
-      head: ['[package]', 'name = "vexel-demo"', 'serde = {'].join(NL),
-      spill: ['  version = "1.0",', '  features = ["derive"]', '}'].join(NL),
+      expectedEngines: ['taplo'],
+      head: [
+        '[package]',
+        'name = "vexel-demo"',
+        '[dependencies.serde]',
+        'version = "1.0"',
+        'features = [',
+      ].join(NL),
+      spill: ['  "derive",', ']'].join(NL),
       assertShape: (txt: string) =>
-        txt.includes('[package]') && txt.includes('serde =') && txt.trim().endsWith('}'),
+        txt.includes('[package]') &&
+        txt.includes('[dependencies.serde]') &&
+        txt.trim().endsWith(']'),
     },
     {
       lang: 'cpp',
