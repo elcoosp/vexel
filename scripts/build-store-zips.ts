@@ -81,14 +81,21 @@ try {
 } catch {
   try {
     try {
-      execFileSync(
-        'ffmpeg',
-        ['-y', '-i', srcLogo, '-vf', 'scale=300:300:flags=lanczos', edgeIconOut],
-        {
-          stdio: 'ignore',
+      try {
+        execFileSync(
+          'ffmpeg',
+          ['-y', '-i', srcLogo, '-vf', 'scale=300:300:flags=lanczos', edgeIconOut],
+          {
+            stdio: 'ignore',
+          }
+        )
+        console.log('✓ Generated Edge 300x300 icon via ffmpeg:', path.relative(ROOT, edgeIconOut))
+      } catch {
+        if (!fs.existsSync(edgeIconOut)) {
+          throw new Error('Neither sips, ffmpeg, nor existing store-icon-300x300.png available')
         }
-      )
-      console.log('✓ Generated Edge 300x300 icon via ffmpeg:', path.relative(ROOT, edgeIconOut))
+        console.log('✓ Reused committed Edge 300x300 icon:', path.relative(ROOT, edgeIconOut))
+      }
     } catch {
       if (!fs.existsSync(edgeIconOut)) {
         throw new Error('Neither sips, ffmpeg, nor existing store-icon-300x300.png available')
