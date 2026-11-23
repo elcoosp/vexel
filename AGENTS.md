@@ -106,6 +106,23 @@ Google AI Mode mutates the DOM dozens of times per second during response stream
 - **Semantic headings inside open delimiters**: When Google's Markdown parser truncates a code fence prematurely inside a heredoc or multiline string, subsequent `# comment` lines are parsed as semantic headings (`role="heading"` or `H1`–`H6`) without their `#` prefix. When `stillOpen && isSemanticHeadingElement(node)`, absorb the node and restore `# ${cleaned}`.
 - **Prose & footer boundaries**: Never absorb trailing natural-language prose (`isNaturalLanguageProseBlock`) or Google legal disclaimer footers (`isGoogleLegalFooterNode`).
 
+### E. Native Formatter Chain & Strict E2E Matrix (`packages/bridge/src/formatter.ts`)
+
+- **Rust/Native-First Priority**: Always place fast native CLI formatters first in `FORMATTER_SPECS_BY_EXT` with automatic fallback to secondary tools:
+  - **JS/TS/JSON/CSS/HTML**: `oxfmt` → `biome`
+  - **Python**: `ruff`
+  - **Rust / Go / Shell / TOML / Lua / Zig / Nix**: `rustfmt`, `gofmt`, `shfmt`, `taplo`, `stylua`, `zig`, `alejandra`
+  - **C / C++ / Obj-C / Java / C# / Proto**: `clang-format`
+  - **Terraform / HCL**: `tofu` → `terraform`
+  - **SQL**: `sleek` → `sqruff` → `pg_format`
+  - **Ruby**: `rubyfmt` (Rust) → `standardrb` → `rubocop`
+  - **PHP**: `mago` (Rust) → `pretty-php` → `php-cs-fixer`
+  - **Kotlin / Markdown / YAML**: `ktfmt-rs` → `ktfmt`, `rumdl`, `yamlfmt`
+- **Cold-Start Timeouts & Exit-Code Handling**:
+  - Keep `runProcessWithStdin` timeout at `8000 ms` (`9000 ms` in `code-repair.ts` / `background.ts`) so large binaries (`terraform`, `rubocop`) never get killed on cold start.
+  - Set `allowNonZeroWithStdout: true` for linters like `rubocop` / `standardrb` that emit autocorrected code on `stdout` while exiting `1` on remaining uncorrectable offenses.
+- **Strict E2E Verification**: Run `VEXEL_E2E_STRICT_FORMATTERS=1 pnpm test:e2e` (after freeing port `:49152`) to assert that all 13 matrix languages resolve to a real native formatter engine rather than `local`.
+
 ---
 
 ## 4. Internationalization (`i18n`)
