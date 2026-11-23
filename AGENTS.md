@@ -162,3 +162,28 @@ Google AI Mode mutates the DOM dozens of times per second during response stream
 - Always use **single-quoted heredoc delimiters** (`node <<'EOF'`) when running inline Node scripts from bash so `$` template expressions and backticks inside TypeScript/JavaScript snippets are never expanded by the shell.
 
 - Never emit literal `http://` or `https://` URLs with hostnames, paths, or query strings inside generated scripts or test fixtures; assemble URLs programmatically from atomic tokens (`['https', ':', '//', 'sub', '.domain.tld', '/path'].join('')`).
+
+---
+
+## 7. Release & Custom Banner Workflow
+
+Every tagged release (`vX.Y.Z`) follows a strict 5-step sequence grounded in the full Git diff and commit history since the previous tag (`vPrev`):
+
+1. **Audit `git log` & `git diff` Since `vPrev` and Write Complete English Release Notes First:**
+   - Inspect the full commit log and diff stat from the latest tag (`vPrev`) to `HEAD` before writing anything:
+     ```bash
+     PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || git rev-list --max-parents=0 HEAD)
+     git --no-pager log --oneline "${PREV_TAG}..HEAD"
+     git --no-pager diff --stat "${PREV_TAG}..HEAD"
+     ```
+   - Draft the complete English Markdown release notes first (overview paragraph, categorized `### What's New in vX.Y.Z` bullets covering every user-facing feature, native formatter upgrade, UI/i18n change, and doc update, plus `**Compare:** vPrev...vX.Y.Z`).
+2. **Generate the Google Stitch Banner Prompt from the Release Notes (Using Reference Logo & Consistent Style):**
+   - Only after the release notes are finalized, write the Google Stitch prompt directly from those release highlights.
+   - Always attach/reference **`docs/logo.png`** and enforce the exact same visual language across all `docs/releases/banner-v*.png` banners: deep obsidian-navy background (`#0D1628`), subtle technical grid/ambient glow, the Vexel logo mark, high-contrast `RELEASE vX.Y.Z` badge, and glassmorphic feature pills.
+3. **Auto-Import & Rename Banner via Apple Vision OCR (`./scripts/import-release-banner.sh`):**
+   - Download the generated PNG from Google Stitch to `~/Downloads` and run `./scripts/import-release-banner.sh` — it uses macOS Apple Vision OCR (`VNRecognizeTextRequest` via Swift) to detect the `vX.Y.Z` version string inside the image and automatically moves/renames it to `docs/releases/banner-vX.Y.Z.png`.
+   - Update the version badge in `README.md` (`vX.Y.Z`) and commit both `docs/releases/banner-vX.Y.Z.png` and `README.md` on `main`.
+4. **Tag & Trigger CI Release Builds (`.github/workflows/release.yml`):**
+   - Push the tag (`git tag vX.Y.Z && git push origin vX.Y.Z`) to trigger `.github/workflows/release.yml`, which verifies `typecheck`, `lint`, `test:unit`, and `test:dom`, builds the store ZIP archives (`pnpm zip:store`) + `SHA256SUMS.txt`, and creates the GitHub Release via `softprops/action-gh-release`.
+5. **Update the Published GitHub Release with Banner & Final Notes:**
+   - Once the CI release job publishes `vX.Y.Z`, immediately update the GitHub Release title (`Vexel vX.Y.Z — <Headline>`) and body via `gh release edit vX.Y.Z` so the Stitch banner (`![Vexel vX.Y.Z Release Banner](https://jsdelivr.net)`) and the complete English Markdown release notes from Step 1 are live on the release page.

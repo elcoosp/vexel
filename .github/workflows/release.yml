@@ -1,0 +1,41 @@
+name: Release Vexel
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies & verify checks
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm typecheck
+          pnpm lint
+          pnpm test:unit
+          pnpm test:dom
+
+      - name: Build Store Archives & Checksums
+        run: |
+          pnpm zip:store
+          mkdir -p dist
+          cp release/*.zip dist/
+          (cd dist && shasum -a 256 *.zip > SHA256SUMS.txt)
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: dist/*
