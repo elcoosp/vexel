@@ -875,7 +875,11 @@ async function repairBrokenSequenceFromCodeCard(
     } else {
       headCode = (codeEl.textContent || '').replace(/\n$/, '')
     }
-    const headerEl = (pre.parentElement?.previousElementSibling as HTMLElement | null) || null
+    const headerEl =
+      (pre.previousElementSibling as HTMLElement | null) ||
+      (pre.parentElement && pre.parentElement !== codeCard
+        ? (pre.parentElement.previousElementSibling as HTMLElement | null)
+        : null)
     const detectedLang = detectSemanticLang(codeEl, headerEl)
     const wizPayload = extractWizFullCodeFromCard(codeCard, anchorBlock)
     const lang = detectedLang || wizPayload?.lang || ''

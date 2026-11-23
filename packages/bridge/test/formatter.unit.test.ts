@@ -48,7 +48,7 @@ describe('formatter.ts native CLI routing & fallback matrix', () => {
   })
   it('exposes high-speed native candidate specs across all supported ecosystems', () => {
     expect(getCandidateSpecs('ts').map((s) => s.engine)).toEqual(['oxfmt', 'biome'])
-    expect(getCandidateSpecs('toml').map((s) => s.engine)).toEqual(['taplo', 'oxfmt'])
+    expect(getCandidateSpecs('toml').map((s) => s.engine)).toEqual(['taplo'])
     expect(getCandidateSpecs('py').map((s) => s.engine)).toEqual(['ruff'])
     expect(getCandidateSpecs('rs').map((s) => s.engine)).toEqual(['rustfmt'])
     expect(getCandidateSpecs('go').map((s) => s.engine)).toEqual(['gofmt'])

@@ -129,10 +129,7 @@ export const LANG_TO_EXT: Record<string, string> = {
 }
 
 const FORMATTER_SPECS_BY_EXT: Record<string, FormatterSpec[]> = {
-  toml: [
-    { engine: 'taplo', binName: 'taplo', args: () => ['format', '-'] },
-    { engine: 'oxfmt', binName: 'oxfmt', args: (filename) => ['--stdin-filepath', filename] },
-  ],
+  toml: [{ engine: 'taplo', binName: 'taplo', args: () => ['format', '-'] }],
   py: [
     {
       engine: 'ruff',
