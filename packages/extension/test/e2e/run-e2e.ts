@@ -411,7 +411,7 @@ try {
     )
 
     const turnLoc = page.locator(`[data-hveid="${turnId}"]`)
-    await turnLoc.locator('.spilled-e2e').waitFor({ state: 'detached', timeout: 6000 })
+    await turnLoc.locator('.spilled-e2e').waitFor({ state: 'hidden', timeout: 6000 })
     const badge = turnLoc.locator('[data-vexel-format-badge="true"]')
     await badge.waitFor({ state: 'attached', timeout: 6000 })
     if (strictFormatters) {
