@@ -79,10 +79,20 @@ try {
   execFileSync('sips', ['-z', '300', '300', srcLogo, '--out', edgeIconOut], { stdio: 'ignore' })
   console.log('✓ Generated Edge 300x300 icon:', path.relative(ROOT, edgeIconOut))
 } catch {
-  execFileSync('ffmpeg', ['-y', '-i', srcLogo, '-vf', 'scale=300:300:flags=lanczos', edgeIconOut], {
-    stdio: 'ignore',
-  })
-  console.log('✓ Generated Edge 300x300 icon via ffmpeg:', path.relative(ROOT, edgeIconOut))
+  try {
+    execFileSync(
+      'ffmpeg',
+      ['-y', '-i', srcLogo, '-vf', 'scale=300:300:flags=lanczos', edgeIconOut],
+      {
+        stdio: 'ignore',
+      }
+    )
+    console.log('✓ Generated Edge 300x300 icon via ffmpeg:', path.relative(ROOT, edgeIconOut))
+  } catch {
+    if (!fs.existsSync(edgeIconOut))
+      throw new Error('Neither sips, ffmpeg, nor existing store-icon-300x300.png available')
+    console.log('✓ Reused committed Edge 300x300 icon:', path.relative(ROOT, edgeIconOut))
+  }
 }
 
 // 4. Build reproducible source archive for Firefox AMO review (excludes node_modules/dist/sockets)
