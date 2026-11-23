@@ -288,7 +288,8 @@ function looksLikeCodeFragment(text: string): boolean {
       ) ||
       /[{};=]$/.test(line) ||
       line.endsWith(';') ||
-      /^\}[;,]?$/.test(line) ||
+      /^[\])}][;,]?$/.test(line) ||
+      /^['"][^'"\n]*['"]\s*[,)\]]*$/.test(line) ||
       /^[a-zA-Z_$][a-zA-Z0-9_$.]*\s*\(/.test(line) ||
       /^[a-zA-Z_$][a-zA-Z0-9_$?]*\s*:\s*\S+/.test(line) ||
       /^@[a-zA-Z_][a-zA-Z0-9_.]*/.test(line) ||
