@@ -121,7 +121,7 @@ try {
   const ob = page.locator('#vexel-onboarding-host')
   if ((await ob.count()) > 0) {
     await ob.evaluate((el) => el.shadowRoot?.querySelector<HTMLButtonElement>('.skip-btn')?.click())
-    await ob.waitFor({ state: 'detached', timeout: 10000 })
+    await ob.waitFor({ state: 'hidden', timeout: 10000 })
   }
 
   logStep('Stage 2: goto AI Mode')
@@ -135,7 +135,7 @@ try {
     chips[1]?.click()
   })
   await ob.evaluate((el) => el.shadowRoot?.querySelector<HTMLButtonElement>('.skip-btn')?.click())
-  await ob.waitFor({ state: 'detached', timeout: 10000 })
+  await ob.waitFor({ state: 'hidden', timeout: 10000 })
 
   logStep('Stage 3: Large paste -> .txt file')
   // 3. Large paste (>8,000 chars) auto-attaches as .txt file
