@@ -435,7 +435,7 @@ try {
           return txt.length > 0 && !txt.includes(' · local · ')
         },
         turnId,
-        { timeout: 6000 }
+        { timeout: 15000 }
       )
     } else {
       await page.waitForTimeout(350)
