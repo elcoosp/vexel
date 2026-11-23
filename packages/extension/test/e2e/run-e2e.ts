@@ -302,11 +302,13 @@ try {
         '[dependencies.serde]',
         'version = "1.0"',
         'features = [',
+        '  "serde",',
       ].join(NL),
-      spill: ['  "derive",', ']'].join(NL),
+      spill: ['  "tokio",', ']'].join(NL),
       assertShape: (txt: string) =>
         txt.includes('[package]') &&
         txt.includes('[dependencies.serde]') &&
+        txt.includes('"tokio"') &&
         txt.trim().endsWith(']'),
     },
     {
