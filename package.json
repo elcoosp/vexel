@@ -39,5 +39,6 @@
     "playwright": "^1.65.1",
     "vitest": "^5.1.0",
     "yaml": "^2.9.1"
-  }
+  },
+  "packageManager": "pnpm@undefined"
 }
