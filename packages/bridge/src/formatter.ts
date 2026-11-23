@@ -17,6 +17,7 @@ export interface FormatterSpec {
   engine: string
   binName: string
   args: (filename: string) => string[]
+  allowNonZeroWithStdout?: boolean
 }
 
 const OXFMT_EXTS = new Set([
@@ -198,15 +199,27 @@ const FORMATTER_SPECS_BY_EXT: Record<string, FormatterSpec[]> = {
     },
   ],
   rb: [
+    { engine: 'rubyfmt', binName: 'rubyfmt', args: () => [] },
     {
       engine: 'standardrb',
       binName: 'standardrb',
       args: (filename) => ['--stdin', filename, '--fix', '--format', 'quiet', '--stderr'],
+      allowNonZeroWithStdout: true,
     },
     {
       engine: 'rubocop',
       binName: 'rubocop',
-      args: (filename) => ['--stdin', filename, '-a', '--format', 'quiet', '--stderr'],
+      args: (filename) => [
+        '--stdin',
+        filename,
+        '-a',
+        '--except',
+        'Style/FrozenStringLiteralComment',
+        '--format',
+        'quiet',
+        '--stderr',
+      ],
+      allowNonZeroWithStdout: true,
     },
   ],
   dart: [
@@ -234,7 +247,20 @@ function getSearchDirs(): string[] {
   const rootNodeBin = path.resolve(here, '..', '..', '..', 'node_modules', '.bin')
   const localNodeBin = path.resolve(here, '..', '..', 'extension', 'node_modules', '.bin')
   const pathDirs = (process.env.PATH || '').split(path.delimiter).filter(Boolean)
+
+  const gemDirs: string[] = []
+  for (const gemRoot of [
+    path.join(home, '.gem', 'ruby'),
+    path.join(home, '.local', 'share', 'gem', 'ruby'),
+  ]) {
+    try {
+      for (const ver of fs.readdirSync(gemRoot)) {
+        gemDirs.push(path.join(gemRoot, ver, 'bin'))
+      }
+    } catch {}
+  }
   const fallbackDirs = [
+    ...gemDirs,
     rootNodeBin,
     localNodeBin,
     path.join(home, '.local', 'bin'),
@@ -313,7 +339,8 @@ function runProcessWithStdin(
   binPath: string,
   args: string[],
   stdinText: string,
-  timeoutMs = 2500
+  timeoutMs = 8000,
+  allowNonZeroWithStdout = false
 ): Promise<string | null> {
   return new Promise((resolve) => {
     let settled = false
@@ -335,14 +362,16 @@ function runProcessWithStdin(
     }, timeoutMs)
 
     const outChunks: Buffer[] = []
+    const errChunks: Buffer[] = []
     child.stdout.on('data', (chunk: Buffer) => outChunks.push(chunk))
+    child.stderr.on('data', (chunk: Buffer) => errChunks.push(chunk))
     child.on('error', () => {
       clearTimeout(timer)
       finish(null)
     })
     child.on('close', (code) => {
       clearTimeout(timer)
-      if (code === 0 && outChunks.length > 0) {
+      if ((code === 0 || (allowNonZeroWithStdout && code === 1)) && outChunks.length > 0) {
         finish(Buffer.concat(outChunks).toString('utf8'))
       } else {
         finish(null)
@@ -367,7 +396,13 @@ export async function formatCodeWithNativeTool(
   for (const spec of specs) {
     const binPath = await resolveBinary(spec.binName)
     if (!binPath) continue
-    const output = await runProcessWithStdin(binPath, spec.args(safeName), code)
+    const output = await runProcessWithStdin(
+      binPath,
+      spec.args(safeName),
+      code,
+      8000,
+      Boolean(spec.allowNonZeroWithStdout)
+    )
     if (output && output.trim().length > 0) {
       return {
         ok: true,

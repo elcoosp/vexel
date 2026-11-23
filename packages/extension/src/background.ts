@@ -76,7 +76,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === 'FORMAT_CODE') {
     fetch(LOCAL_HOST + '/format', {
       method: 'POST',
-      signal: AbortSignal.timeout(3500),
+      signal: AbortSignal.timeout(9000),
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         code: message.code,

@@ -72,7 +72,11 @@ describe('formatter.ts native CLI routing & fallback matrix', () => {
       'pretty-php',
       'php-cs-fixer',
     ])
-    expect(getCandidateSpecs('rb').map((s) => s.engine)).toEqual(['standardrb', 'rubocop'])
+    expect(getCandidateSpecs('rb').map((s) => s.engine)).toEqual([
+      'rubyfmt',
+      'standardrb',
+      'rubocop',
+    ])
     expect(getCandidateSpecs('dart').map((s) => s.engine)).toEqual(['dart'])
     expect(getCandidateSpecs('unknown_ext')).toEqual([])
   })

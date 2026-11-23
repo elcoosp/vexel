@@ -360,7 +360,7 @@ try {
     },
     {
       lang: 'ruby',
-      expectedEngines: ['standardrb', 'rubocop'],
+      expectedEngines: ['rubyfmt', 'standardrb', 'rubocop'],
       head: ['def format_price(cents)', '  opts = {'].join(NL),
       spill: [
         '    currency: "EUR",',
@@ -425,18 +425,28 @@ try {
     const badge = turnLoc.locator('[data-vexel-format-badge="true"]')
     await badge.waitFor({ state: 'attached', timeout: 6000 })
     if (strictFormatters) {
-      await page.waitForFunction(
-        (id) => {
-          const el = document.querySelector(`[data-hveid="${id}"] [data-vexel-format-badge="true"]`)
-          const txt =
-            el?.shadowRoot?.querySelector('[data-vexel-pill-label="true"]')?.textContent ||
-            el?.textContent ||
-            ''
-          return txt.length > 0 && !txt.includes(' · local · ')
-        },
-        turnId,
-        { timeout: 15000 }
-      )
+      await page
+        .waitForFunction(
+          (id) => {
+            const el = document.querySelector(
+              `[data-hveid="${id}"] [data-vexel-format-badge="true"]`
+            )
+            const txt =
+              el?.shadowRoot?.querySelector('[data-vexel-pill-label="true"]')?.textContent ||
+              el?.textContent ||
+              ''
+            return txt.length > 0 && !txt.includes(' · local · ')
+          },
+          turnId,
+          { timeout: 15000 }
+        )
+        .catch(async (err) => {
+          const cur = await badge
+            .evaluate((el) => el.shadowRoot?.textContent || el.textContent || '')
+            .catch(() => '<none>')
+          console.error(`[e2e-fail] [${tc.lang}] badge="${cur}"`)
+          throw err
+        })
     } else {
       await page.waitForTimeout(350)
     }

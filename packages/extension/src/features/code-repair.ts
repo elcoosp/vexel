@@ -390,7 +390,7 @@ function formatWithBridge(
       globalThis.clearTimeout(timer)
       resolve(val)
     }
-    const timer = globalThis.setTimeout(() => done({ formatted: code, engine: 'fallback' }), 3500)
+    const timer = globalThis.setTimeout(() => done({ formatted: code, engine: 'fallback' }), 9000)
     try {
       const runtime = (
         globalThis as {
