@@ -1071,6 +1071,9 @@ async function repairBrokenSequenceFromCodeCard(
         tailSpan.style.whiteSpace = 'pre'
         renderHighlightedTail(tailSpan, formattedTail, lang)
         if (!existingTailEl) codeEl.appendChild(tailSpan)
+      } else {
+        codeEl.style.whiteSpace = 'pre'
+        renderHighlightedTail(codeEl, formatted, lang)
       }
     }
     const postNextSib = anchorBlock.nextElementSibling
