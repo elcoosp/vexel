@@ -140,7 +140,7 @@ try {
   logStep('Stage 3: Large paste -> .txt file')
   // 3. Large paste (>8,000 chars) auto-attaches as .txt file
   const prompt = page.locator('#aim-prompt')
-  await prompt.click({ timeout: 5000 })
+  await prompt.focus()
   await prompt.evaluate((el) => {
     const dt = new DataTransfer()
     dt.setData('text/plain', 'ERROR: stack trace\n'.repeat(650))
@@ -155,7 +155,7 @@ try {
 
   logStep('Stage 4: / Skills, @ Bridge Files, Export .md & Save to disk')
   // 4. "/" Skills & "@" Bridge Files + Copy + Export .md
-  await prompt.click()
+  await prompt.focus()
   await prompt.type('/')
   const pal = page.locator('#vexel-inline-menu-host')
   await pal.waitFor({ state: 'attached', timeout: 3000 })
