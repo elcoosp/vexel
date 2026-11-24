@@ -1563,5 +1563,18 @@ export function initCodeRepair(showToast: (msg: string) => void): void {
     }
   }, 900)
 
+  window.setInterval(() => {
+    if (document.visibilityState !== 'visible') return
+    const isStreaming = Boolean(
+      document.querySelector(
+        'button[aria-label*="Stop" i], button[aria-label*="Arrêter" i], button[aria-label*="Interrompre" i]'
+      )
+    )
+    if (isStreaming) return
+    if (document.querySelector('pre:not([data-vexel-final-pre]) code')) {
+      scanAndRepairCodeBlocks(document, showToast)
+    }
+  }, 900)
+
   scheduleScan(80)
 }
