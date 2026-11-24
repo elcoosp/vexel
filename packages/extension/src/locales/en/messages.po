@@ -19,6 +19,10 @@ msgstr "{0, plural, one {# item} other {# items}}"
 msgid "{0, plural, one {# ref} other {# refs}}"
 msgstr "{0, plural, one {# ref} other {# refs}}"
 
+#: src/features/code-repair.ts:580
+msgid "{count} errors"
+msgstr "{count} errors"
+
 #: src/features/palette.ts:1013
 msgid "{installsCount} installs"
 msgstr "{installsCount} installs"
@@ -100,7 +104,8 @@ msgstr "Built for effortless keyboard flow"
 msgid "Cancel"
 msgstr "Cancel"
 
-#: src/features/code-repair.ts:513
+#: src/features/code-repair.ts:580
+#: src/features/code-repair.ts:582
 msgid "Check syntax"
 msgstr "Check syntax"
 
@@ -167,15 +172,15 @@ msgid "Copied"
 msgstr "Copied"
 
 #. placeholder {0}: record.engine
-#: src/features/code-repair.ts:1001
+#: src/features/code-repair.ts:1314
 msgid "Copied repaired & formatted code ({0})"
 msgstr "Copied repaired & formatted code ({0})"
 
-#: src/features/code-repair.ts:998
+#: src/features/code-repair.ts:1311
 msgid "Copied with unverified syntax"
 msgstr "Copied with unverified syntax"
 
-#: src/features/code-repair.ts:996
+#: src/features/code-repair.ts:1309
 msgid "Copied with unverified syntax (Line {errLine})"
 msgstr "Copied with unverified syntax (Line {errLine})"
 
@@ -235,14 +240,6 @@ msgstr "Folder"
 msgid "folder/filename.ext"
 msgstr "folder/filename.ext"
 
-#: src/features/code-repair.ts:430
-#~ msgid "Follow-up copied to clipboard"
-#~ msgstr "Follow-up copied to clipboard"
-
-#: src/features/code-repair.ts:427
-#~ msgid "Follow-up prompt filled"
-#~ msgstr "Follow-up prompt filled"
-
 #: src/features/builtin-skills.ts:76
 msgid "Generate high-signal unit and integration tests covering happy paths, boundaries, and failures."
 msgstr "Generate high-signal unit and integration tests covering happy paths, boundaries, and failures."
@@ -292,7 +289,7 @@ msgstr "Isolates root cause, reproduces failure mode, and writes a surgical regr
 msgid "Jump to last user prompt"
 msgstr "Jump to last user prompt"
 
-#: src/features/code-repair.ts:680
+#: src/features/code-repair.ts:877
 msgid "Jump to line"
 msgstr "Jump to line"
 
@@ -340,6 +337,10 @@ msgstr "new folder"
 #: src/features/code-save.ts:583
 msgid "New folder on save"
 msgstr "New folder on save"
+
+#: src/features/code-repair.ts:869
+msgid "Next error"
+msgstr "Next error"
 
 #: src/features/thread-tools.ts:313
 #: src/features/thread-tools.ts:330
@@ -390,11 +391,15 @@ msgstr "Packing {dirName}/..."
 msgid "Packing Git diff..."
 msgstr "Packing Git diff..."
 
-#: src/features/code-repair.ts:535
+#: src/features/code-repair.ts:868
+msgid "Previous error"
+msgstr "Previous error"
+
+#: src/features/code-repair.ts:602
 msgid "Reassembled and verified with {engineLabel} ({durationMs} ms)"
 msgstr "Reassembled and verified with {engineLabel} ({durationMs} ms)"
 
-#: src/features/code-repair.ts:542
+#: src/features/code-repair.ts:609
 msgid "Reassembled from split blocks (no native syntax check available)"
 msgstr "Reassembled from split blocks (no native syntax check available)"
 
@@ -432,14 +437,10 @@ msgstr "Removing {removingName}..."
 msgid "Removing..."
 msgstr "Removing..."
 
-#: src/features/code-repair.ts:515
-#: src/features/code-repair.ts:516
+#: src/features/code-repair.ts:573
+#: src/features/code-repair.ts:574
 msgid "Repaired"
 msgstr "Repaired"
-
-#: src/features/code-repair.ts:239
-#~ msgid "Repaired · {engine}"
-#~ msgstr "Repaired · {engine}"
 
 #: src/popup.ts:140
 msgid "Report a bug"
@@ -530,17 +531,13 @@ msgstr "Step 3 of 3 · Flow & Speed"
 msgid "Switch folder"
 msgstr "Switch folder"
 
-#: src/features/code-repair.ts:527
+#: src/features/code-repair.ts:594
 msgid "Syntax issue detected by native formatter"
 msgstr "Syntax issue detected by native formatter"
 
 #: src/features/builtin-skills.ts:37
 msgid "Systematic root-cause diagnosis from stack traces, logs, and code without guesswork."
 msgstr "Systematic root-cause diagnosis from stack traces, logs, and code without guesswork."
-
-#: src/features/code-repair.ts:312
-#~ msgid "Truncated code block automatically reassembled and formatted by Vexel"
-#~ msgstr "Truncated code block automatically reassembled and formatted by Vexel"
 
 #: src/features/onboarding.ts:169
 msgid "Turn repetitive engineering prompts into one-keystroke slash commands—ready out of the box with zero setup."
