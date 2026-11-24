@@ -637,67 +637,213 @@ function measureLineOffsetInCode(
   }
 }
 
+export interface HighlightDiagnosticItem {
+  tool?: string
+  line?: number
+  column?: number
+  message: string
+}
+
+function getOrCreateLineHoverTooltip(doc: Document): HTMLElement {
+  let tip = doc.querySelector<HTMLElement>('[data-vexel-line-hover-tooltip="true"]')
+  if (!tip) {
+    tip = doc.createElement('div')
+    tip.setAttribute('data-vexel-ui', 'true')
+    tip.setAttribute('data-vexel-line-hover-tooltip', 'true')
+    Object.assign(tip.style, {
+      position: 'fixed',
+      zIndex: '2147483647',
+      maxWidth: '360px',
+      padding: '7px 10px',
+      borderRadius: '8px',
+      backgroundColor: '#ffffff',
+      border: '1px solid #fde293',
+      boxShadow: '0 6px 20px rgba(32, 33, 36, 0.16)',
+      color: '#202124',
+      fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      fontSize: '11.5px',
+      lineHeight: '1.4',
+      pointerEvents: 'none',
+      display: 'none',
+      flexDirection: 'column',
+      gap: '3px',
+    })
+    ;(doc.body || doc.documentElement).appendChild(tip)
+  }
+  return tip
+}
+
+function hideLineHoverTooltip(doc: Document): void {
+  const tip = doc.querySelector<HTMLElement>('[data-vexel-line-hover-tooltip="true"]')
+  if (tip) tip.style.display = 'none'
+}
+
+export function highlightErrorLinesInCodeBlock(
+  preEl: HTMLElement,
+  diagnostics: HighlightDiagnosticItem[],
+  activeIndex = 0,
+  onSelectIndex?: (idx: number) => void,
+  pulseActive = false
+): void {
+  const doc = preEl.ownerDocument || document
+  clearErrorLineHighlight(preEl)
+
+  const itemsWithLine = diagnostics
+    .map((d, idx) => ({ diag: d, idx }))
+    .filter(
+      (entry): entry is { diag: HighlightDiagnosticItem & { line: number }; idx: number } =>
+        typeof entry.diag.line === 'number' && Number.isFinite(entry.diag.line) && entry.diag.line > 0
+    )
+  if (itemsWithLine.length === 0) return
+
+  const codeEl = preEl.querySelector('code') || preEl
+  if (!preEl.hasAttribute('data-vexel-orig-pl')) {
+    preEl.setAttribute('data-vexel-orig-pl', preEl.style.paddingLeft || '')
+  }
+  preEl.style.paddingLeft = '8px'
+  const totalLines = Math.max(1, (codeEl.textContent || '').split('\n').length)
+  const preStyle = window.getComputedStyle(preEl)
+  const codeStyle = window.getComputedStyle(codeEl)
+  if (preStyle.position === 'static') preEl.style.position = 'relative'
+
+  const parsedLineHeight = parseFloat(codeStyle.lineHeight) || parseFloat(preStyle.lineHeight)
+  const lineHeight = Number.isFinite(parsedLineHeight) && parsedLineHeight > 0 ? parsedLineHeight : 20
+  const paddingTop = (parseFloat(preStyle.paddingTop) || 0) + (parseFloat(codeStyle.paddingTop) || 0)
+  const totalCount = diagnostics.length
+
+  for (const { diag, idx } of itemsWithLine) {
+    const clampedLine = Math.max(1, Math.min(totalLines, Math.floor(diag.line)))
+    const isActive = idx === activeIndex
+    const { topPx, heightPx } = measureLineOffsetInCode(preEl, codeEl, clampedLine, lineHeight, paddingTop)
+
+    const marker = doc.createElement('div')
+    marker.setAttribute('data-vexel-ui', 'true')
+    marker.setAttribute('data-vexel-error-line-marker', 'true')
+    marker.setAttribute('data-line', String(clampedLine))
+    marker.setAttribute('data-diag-index', String(idx))
+    if (isActive) marker.setAttribute('data-active', 'true')
+
+    const restBg = isActive ? 'rgba(251, 188, 4, 0.18)' : 'rgba(251, 188, 4, 0.09)'
+    const hoverBg = isActive ? 'rgba(251, 188, 4, 0.28)' : 'rgba(251, 188, 4, 0.16)'
+    const baseBg = isActive && pulseActive ? 'rgba(251, 188, 4, 0.30)' : restBg
+
+    Object.assign(marker.style, {
+      position: 'absolute',
+      left: '0',
+      right: '0',
+      top: topPx + 'px',
+      height: heightPx + 'px',
+      backgroundColor: baseBg,
+      borderLeft: isActive ? '3px solid #ea8600' : '3px solid rgba(234, 134, 0, 0.45)',
+      pointerEvents: 'auto',
+      cursor: 'pointer',
+      boxSizing: 'border-box',
+      transition: 'background-color 180ms ease',
+      zIndex: isActive ? '2' : '1',
+    })
+
+    const showTip = (ev: MouseEvent) => {
+      const tip = getOrCreateLineHoverTooltip(doc)
+      tip.replaceChildren()
+
+      const headerRow = doc.createElement('div')
+      Object.assign(headerRow.style, {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '8px',
+        fontWeight: '600',
+        fontSize: '11px',
+        color: '#b06000',
+      })
+      const toolPrefix = diag.tool ? diag.tool + ' · ' : ''
+      const colSuffix = diag.column ? ':' + String(diag.column) : ''
+      const countBadge = totalCount > 1 ? ' (' + String(idx + 1) + '/' + String(totalCount) + ')' : ''
+      const leftLbl = doc.createElement('span')
+      leftLbl.textContent = toolPrefix + 'L' + String(clampedLine) + colSuffix + countBadge
+      headerRow.appendChild(leftLbl)
+
+      if (totalCount > 1) {
+        const hintLbl = doc.createElement('span')
+        hintLbl.style.fontWeight = '500'
+        hintLbl.style.color = '#5f6368'
+        hintLbl.textContent = isActive ? 'Active' : 'Click to focus'
+        headerRow.appendChild(hintLbl)
+      }
+
+      const msgBody = doc.createElement('div')
+      Object.assign(msgBody.style, {
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+        fontSize: '11px',
+        color: '#3c4043',
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-word',
+      })
+      msgBody.textContent = diag.message
+
+      tip.append(headerRow, msgBody)
+      tip.style.display = 'flex'
+
+      const markerRect = marker.getBoundingClientRect()
+      const tipRect = tip.getBoundingClientRect()
+      const tipW = tipRect.width || 260
+      const tipH = tipRect.height || 52
+      const left = Math.max(12, Math.min(window.innerWidth - tipW - 12, ev.clientX - Math.min(48, tipW / 3)))
+      const top =
+        markerRect.top > tipH + 14
+          ? markerRect.top - tipH - 6
+          : Math.min(window.innerHeight - tipH - 12, markerRect.bottom + 6)
+      tip.style.left = left + 'px'
+      tip.style.top = top + 'px'
+    }
+
+    marker.addEventListener('mouseenter', (ev) => {
+      marker.style.backgroundColor = hoverBg
+      showTip(ev)
+    })
+    marker.addEventListener('mousemove', (ev) => showTip(ev))
+    marker.addEventListener('mouseleave', () => {
+      marker.style.backgroundColor = restBg
+      hideLineHoverTooltip(doc)
+    })
+    marker.addEventListener('click', (ev) => {
+      ev.preventDefault()
+      ev.stopPropagation()
+      hideLineHoverTooltip(doc)
+      if (onSelectIndex) onSelectIndex(idx)
+      else highlightErrorLinesInCodeBlock(preEl, diagnostics, idx, onSelectIndex, true)
+    })
+
+    preEl.appendChild(marker)
+
+    if (isActive && pulseActive) {
+      window.setTimeout(() => {
+        if (marker.isConnected) marker.style.backgroundColor = restBg
+      }, 650)
+    }
+  }
+}
+
 export function highlightErrorLineInCodeBlock(
   preEl: HTMLElement,
   lineNumber: number,
   pulse = false
 ): void {
-  const codeEl = preEl.querySelector('code') || preEl
-  const totalLines = Math.max(1, (codeEl.textContent || '').split('\n').length)
-  const clampedLine = Math.max(1, Math.min(totalLines, Math.floor(lineNumber)))
-
-  const preStyle = window.getComputedStyle(preEl)
-  const codeStyle = window.getComputedStyle(codeEl)
-  if (preStyle.position === 'static') {
-    preEl.style.position = 'relative'
-  }
-
-  const parsedLineHeight = parseFloat(codeStyle.lineHeight) || parseFloat(preStyle.lineHeight)
-  const lineHeight =
-    Number.isFinite(parsedLineHeight) && parsedLineHeight > 0 ? parsedLineHeight : 20
-  const paddingTop =
-    (parseFloat(preStyle.paddingTop) || 0) + (parseFloat(codeStyle.paddingTop) || 0)
-  const { topPx, heightPx } = measureLineOffsetInCode(
+  highlightErrorLinesInCodeBlock(
     preEl,
-    codeEl,
-    clampedLine,
-    lineHeight,
-    paddingTop
+    [{ line: lineNumber, message: 'Syntax error on line ' + String(Math.floor(lineNumber)) }],
+    0,
+    undefined,
+    pulse
   )
-
-  let marker = preEl.querySelector<HTMLElement>('[data-vexel-error-line-marker="true"]')
-  if (!marker) {
-    marker = (preEl.ownerDocument || document).createElement('div')
-    marker.setAttribute('data-vexel-ui', 'true')
-    marker.setAttribute('data-vexel-error-line-marker', 'true')
-    marker.setAttribute('aria-hidden', 'true')
-    preEl.appendChild(marker)
-  }
-
-  marker.setAttribute('data-line', String(clampedLine))
-  Object.assign(marker.style, {
-    position: 'absolute',
-    left: '0',
-    right: '0',
-    top: topPx + 'px',
-    height: heightPx + 'px',
-    backgroundColor: pulse ? 'rgba(251, 188, 4, 0.28)' : 'rgba(251, 188, 4, 0.14)',
-    borderLeft: '3px solid #ea8600',
-    pointerEvents: 'none',
-    boxSizing: 'border-box',
-    transition: 'background-color 240ms ease',
-    zIndex: '1',
-  })
-
-  if (pulse) {
-    window.setTimeout(() => {
-      if (marker && marker.isConnected) {
-        marker.style.backgroundColor = 'rgba(251, 188, 4, 0.14)'
-      }
-    }, 650)
-  }
 }
 
 export function clearErrorLineHighlight(preEl: HTMLElement): void {
-  preEl.querySelector('[data-vexel-error-line-marker="true"]')?.remove()
+  if (preEl.hasAttribute('data-vexel-orig-pl')) {
+    preEl.style.paddingLeft = preEl.getAttribute('data-vexel-orig-pl') || ''
+    preEl.removeAttribute('data-vexel-orig-pl')
+  }
+  const doc = preEl.ownerDocument || document
+  hideLineHoverTooltip(doc)
+  preEl.querySelectorAll('[data-vexel-error-line-marker="true"]').forEach((el) => el.remove())
 }
