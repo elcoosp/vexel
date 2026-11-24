@@ -19,6 +19,10 @@ msgstr "{0, plural, one {# élément} other {# éléments}}"
 msgid "{0, plural, one {# ref} other {# refs}}"
 msgstr "{0, plural, one {# réf.} other {# réfs.}}"
 
+#: src/features/code-repair.ts:580
+msgid "{count} errors"
+msgstr "{count} erreurs"
+
 #: src/features/palette.ts:1013
 msgid "{installsCount} installs"
 msgstr "{installsCount} installations"
@@ -100,7 +104,8 @@ msgstr "Conçu pour un flux clavier sans effort"
 msgid "Cancel"
 msgstr "Annuler"
 
-#: src/features/code-repair.ts:513
+#: src/features/code-repair.ts:580
+#: src/features/code-repair.ts:582
 msgid "Check syntax"
 msgstr "Vérifier la syntaxe"
 
@@ -167,15 +172,15 @@ msgid "Copied"
 msgstr "Copié"
 
 #. placeholder {0}: record.engine
-#: src/features/code-repair.ts:1001
+#: src/features/code-repair.ts:1314
 msgid "Copied repaired & formatted code ({0})"
 msgstr "Code réparé et formaté copié ({0})"
 
-#: src/features/code-repair.ts:998
+#: src/features/code-repair.ts:1311
 msgid "Copied with unverified syntax"
 msgstr "Copié avec une syntaxe non vérifiée"
 
-#: src/features/code-repair.ts:996
+#: src/features/code-repair.ts:1309
 msgid "Copied with unverified syntax (Line {errLine})"
 msgstr "Copié avec une syntaxe non vérifiée (Ligne {errLine})"
 
@@ -235,14 +240,6 @@ msgstr "Dossier"
 msgid "folder/filename.ext"
 msgstr "dossier/nom-fichier.ext"
 
-#: src/features/code-repair.ts:430
-#~ msgid "Follow-up copied to clipboard"
-#~ msgstr "Suggestion de suivi copiée dans le presse-papiers"
-
-#: src/features/code-repair.ts:427
-#~ msgid "Follow-up prompt filled"
-#~ msgstr "Prompt de suivi pré-rempli"
-
 #: src/features/builtin-skills.ts:76
 msgid "Generate high-signal unit and integration tests covering happy paths, boundaries, and failures."
 msgstr "Générer des tests unitaires et d'intégration couvrant les cas normaux, les limites et les erreurs."
@@ -292,7 +289,7 @@ msgstr "Isole la cause racine, reproduit le bug et écrit un test de non-régres
 msgid "Jump to last user prompt"
 msgstr "Aller au dernier prompt utilisateur"
 
-#: src/features/code-repair.ts:680
+#: src/features/code-repair.ts:877
 msgid "Jump to line"
 msgstr "Aller à la ligne"
 
@@ -340,6 +337,10 @@ msgstr "nouveau dossier"
 #: src/features/code-save.ts:583
 msgid "New folder on save"
 msgstr "Nouveau dossier lors de l'enregistrement"
+
+#: src/features/code-repair.ts:869
+msgid "Next error"
+msgstr "Erreur suivante"
 
 #: src/features/thread-tools.ts:313
 #: src/features/thread-tools.ts:330
@@ -390,11 +391,15 @@ msgstr "Empaquetage de {dirName}/..."
 msgid "Packing Git diff..."
 msgstr "Empaquetage du diff Git..."
 
-#: src/features/code-repair.ts:535
+#: src/features/code-repair.ts:868
+msgid "Previous error"
+msgstr "Erreur précédente"
+
+#: src/features/code-repair.ts:602
 msgid "Reassembled and verified with {engineLabel} ({durationMs} ms)"
 msgstr "Réassemblé et vérifié avec {engineLabel} ({durationMs} ms)"
 
-#: src/features/code-repair.ts:542
+#: src/features/code-repair.ts:609
 msgid "Reassembled from split blocks (no native syntax check available)"
 msgstr "Réassemblé depuis des blocs fragmentés (aucune vérification syntaxique native disponible)"
 
@@ -432,14 +437,10 @@ msgstr "Suppression de {removingName}..."
 msgid "Removing..."
 msgstr "Suppression..."
 
-#: src/features/code-repair.ts:515
-#: src/features/code-repair.ts:516
+#: src/features/code-repair.ts:573
+#: src/features/code-repair.ts:574
 msgid "Repaired"
 msgstr "Réparé"
-
-#: src/features/code-repair.ts:239
-#~ msgid "Repaired · {engine}"
-#~ msgstr "Réparé · {engine}"
 
 #: src/popup.ts:140
 msgid "Report a bug"
@@ -530,17 +531,13 @@ msgstr "Étape 3 sur 3 · Flux et vitesse"
 msgid "Switch folder"
 msgstr "Changer de dossier"
 
-#: src/features/code-repair.ts:527
+#: src/features/code-repair.ts:594
 msgid "Syntax issue detected by native formatter"
 msgstr "Problème de syntaxe détecté par le formateur natif"
 
 #: src/features/builtin-skills.ts:37
 msgid "Systematic root-cause diagnosis from stack traces, logs, and code without guesswork."
 msgstr "Diagnostic systématique de la cause racine à partir des stack traces, logs et du code sans approximation."
-
-#: src/features/code-repair.ts:312
-#~ msgid "Truncated code block automatically reassembled and formatted by Vexel"
-#~ msgstr "Bloc de code tronqué réassemblé et formaté automatiquement par Vexel"
 
 #: src/features/onboarding.ts:169
 msgid "Turn repetitive engineering prompts into one-keystroke slash commands—ready out of the box with zero setup."
