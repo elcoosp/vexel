@@ -569,8 +569,125 @@ try {
     )
   }
 
+  logStep(
+    'Stage 6: MAIN-world stream-hook events (vexel:stream-end & vexel:spa-nav) & repair trigger'
+  )
+  {
+    await page.evaluate(() => {
+      const w = window as unknown as {
+        __vexelStreamEvents?: Array<{ type: string; at: number }>
+      }
+      w.__vexelStreamEvents = []
+      const record = (type: string) =>
+        document.addEventListener(type, () => {
+          w.__vexelStreamEvents?.push({ type, at: Date.now() })
+        })
+      record('vexel:stream-end')
+      record('vexel:spa-nav')
+    })
+
+    await page.route('**/async/vexel-hook-stream*', async (route) => {
+      await new Promise((r) => setTimeout(r, 140))
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json; charset=utf-8',
+        body: '{"part":1}\n{"part":2}\n',
+      })
+    })
+
+    const streamReadDone = await page.evaluate(async () => {
+      const r = await fetch('/async/vexel-hook-stream')
+      const txt = await r.text()
+      return txt.includes('"part":1') && txt.includes('"part":2')
+    })
+    assert.equal(streamReadDone, true, 'Page branch of teed stream must remain intact')
+
+    await page.waitForFunction(
+      () => {
+        const w = window as unknown as {
+          __vexelStreamEvents?: Array<{ type: string; at: number }>
+        }
+        return (w.__vexelStreamEvents || []).some((e) => e.type === 'vexel:stream-end')
+      },
+      { timeout: 4000 }
+    )
+
+    const streamTurnId = 'e2e-stream-hook-turn'
+    await page.evaluate((id) => {
+      const main = document.querySelector('main')!
+      const turn = document.createElement('div')
+      turn.className = 'CKgc1d'
+      turn.setAttribute('data-scope-id', 'turn')
+      turn.setAttribute('data-hveid', id)
+      turn.setAttribute('data-complete', 'true')
+
+      const aimc = document.createElement('div')
+      aimc.className = 'pWvJNd'
+      aimc.setAttribute('data-subtree', 'aimc')
+
+      const card = document.createElement('div')
+      card.className = 'BpxUDf aiModeUiCodeBlock__Container'
+      card.setAttribute('data-hveid', `card-${id}`)
+      const header = document.createElement('div')
+      header.className = 'GlO4G'
+      header.textContent = 'typescript'
+      const pre = document.createElement('pre')
+      const code = document.createElement('code')
+      const fillerLines = Array.from(
+        { length: 95 },
+        (_, idx) => `  // stream hook payload padding line ${idx + 1}: x = ${idx * 3}`
+      )
+      code.textContent = [
+        'export function streamHookCalc(n: number): number {',
+        ...fillerLines,
+        '  const doubled = n * 2',
+      ].join(String.fromCharCode(10))
+      pre.appendChild(code)
+      const footer = document.createElement('div')
+      const btnWrap = document.createElement('div')
+      const copyBtn = document.createElement('button')
+      copyBtn.type = 'button'
+      copyBtn.setAttribute('aria-label', 'Copy code')
+      btnWrap.appendChild(copyBtn)
+      footer.appendChild(btnWrap)
+      card.append(header, pre, footer)
+
+      const sib = document.createElement('div')
+      sib.className = 'n6owBd awi2gc spilled-stream-e2e'
+      sib.setAttribute('data-sfc-cp', '')
+      sib.innerHTML = ['  return doubled + 1', '}'].join('<br>')
+
+      aimc.append(card, sib)
+      turn.appendChild(aimc)
+      main.appendChild(turn)
+    }, streamTurnId)
+
+    const streamTurnLoc = page.locator(`[data-hveid="${streamTurnId}"]`)
+    await streamTurnLoc.locator('.spilled-stream-e2e').waitFor({ state: 'hidden', timeout: 6000 })
+    await streamTurnLoc.locator('[data-vexel-format-badge="true"]').waitFor({
+      state: 'attached',
+      timeout: 8000,
+    })
+
+    await page.evaluate(() => {
+      history.pushState({ e2e: true }, '', '/search?q=vexel-spa-nav&udm=50')
+    })
+
+    await page.waitForFunction(
+      () => {
+        const w = window as unknown as {
+          __vexelStreamEvents?: Array<{ type: string; at: number }>
+        }
+        return (w.__vexelStreamEvents || []).some((e) => e.type === 'vexel:spa-nav')
+      },
+      { timeout: 3000 }
+    )
+
+    logStep('  ✓ MAIN-world stream-hook verified: vexel:stream-end, teed stream & vexel:spa-nav')
+  }
+
   console.log(
-    '✓ All full-pyramid Vexel E2E assertions (including real disk write, paste-to-file & .md export) passed!'
+    '✓ All full-pyramid Vexel E2E assertions (including real disk write, paste-to-file, .md export & stream-hook) passed!'
   )
 } finally {
   await context?.close().catch(() => {})
