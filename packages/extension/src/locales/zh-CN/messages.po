@@ -19,6 +19,10 @@ msgstr "{0, plural, other {# 项}}"
 msgid "{0, plural, one {# ref} other {# refs}}"
 msgstr "{0, plural, other {# 个引用}}"
 
+#: src/features/code-repair.ts:580
+msgid "{count} errors"
+msgstr "{count} 个错误"
+
 #: src/features/palette.ts:1013
 msgid "{installsCount} installs"
 msgstr "{installsCount} 次安装"
@@ -100,7 +104,8 @@ msgstr "专为流畅的键盘操作流而打造"
 msgid "Cancel"
 msgstr "取消"
 
-#: src/features/code-repair.ts:513
+#: src/features/code-repair.ts:580
+#: src/features/code-repair.ts:582
 msgid "Check syntax"
 msgstr "检查语法"
 
@@ -167,15 +172,15 @@ msgid "Copied"
 msgstr "已复制"
 
 #. placeholder {0}: record.engine
-#: src/features/code-repair.ts:1001
+#: src/features/code-repair.ts:1314
 msgid "Copied repaired & formatted code ({0})"
 msgstr "已复制修复并格式化的代码 ({0})"
 
-#: src/features/code-repair.ts:998
+#: src/features/code-repair.ts:1311
 msgid "Copied with unverified syntax"
 msgstr "已复制（语法未验证）"
 
-#: src/features/code-repair.ts:996
+#: src/features/code-repair.ts:1309
 msgid "Copied with unverified syntax (Line {errLine})"
 msgstr "已复制（语法未验证，第 {errLine} 行）"
 
@@ -235,14 +240,6 @@ msgstr "文件夹"
 msgid "folder/filename.ext"
 msgstr "folder/filename.ext"
 
-#: src/features/code-repair.ts:430
-#~ msgid "Follow-up copied to clipboard"
-#~ msgstr "已将后续建议复制到剪贴板"
-
-#: src/features/code-repair.ts:427
-#~ msgid "Follow-up prompt filled"
-#~ msgstr "已填充后续提示词"
-
 #: src/features/builtin-skills.ts:76
 msgid "Generate high-signal unit and integration tests covering happy paths, boundaries, and failures."
 msgstr "生成高价值的单元测试和集成测试，覆盖正常路径、边界条件和异常情况。"
@@ -292,7 +289,7 @@ msgstr "定位根本原因、复现故障模式并编写精准的回归测试。
 msgid "Jump to last user prompt"
 msgstr "跳转到最后一条用户提问"
 
-#: src/features/code-repair.ts:680
+#: src/features/code-repair.ts:877
 msgid "Jump to line"
 msgstr "跳转到行"
 
@@ -340,6 +337,10 @@ msgstr "新建文件夹"
 #: src/features/code-save.ts:583
 msgid "New folder on save"
 msgstr "保存时新建文件夹"
+
+#: src/features/code-repair.ts:869
+msgid "Next error"
+msgstr "下一个错误"
 
 #: src/features/thread-tools.ts:313
 #: src/features/thread-tools.ts:330
@@ -390,11 +391,15 @@ msgstr "正在打包 {dirName}/..."
 msgid "Packing Git diff..."
 msgstr "正在打包 Git diff..."
 
-#: src/features/code-repair.ts:535
+#: src/features/code-repair.ts:868
+msgid "Previous error"
+msgstr "上一个错误"
+
+#: src/features/code-repair.ts:602
 msgid "Reassembled and verified with {engineLabel} ({durationMs} ms)"
 msgstr "已重组并通过 {engineLabel} 验证（{durationMs} ms）"
 
-#: src/features/code-repair.ts:542
+#: src/features/code-repair.ts:609
 msgid "Reassembled from split blocks (no native syntax check available)"
 msgstr "已从拆分代码块重组（无可用原生语法检查）"
 
@@ -432,14 +437,10 @@ msgstr "正在移除 {removingName}..."
 msgid "Removing..."
 msgstr "正在移除..."
 
-#: src/features/code-repair.ts:515
-#: src/features/code-repair.ts:516
+#: src/features/code-repair.ts:573
+#: src/features/code-repair.ts:574
 msgid "Repaired"
 msgstr "已修复"
-
-#: src/features/code-repair.ts:239
-#~ msgid "Repaired · {engine}"
-#~ msgstr "已修复 · {engine}"
 
 #: src/popup.ts:140
 msgid "Report a bug"
@@ -530,17 +531,13 @@ msgstr "第 3 步，共 3 步 · 流畅与速度"
 msgid "Switch folder"
 msgstr "切换文件夹"
 
-#: src/features/code-repair.ts:527
+#: src/features/code-repair.ts:594
 msgid "Syntax issue detected by native formatter"
 msgstr "原生格式化工具检测到语法问题"
 
 #: src/features/builtin-skills.ts:37
 msgid "Systematic root-cause diagnosis from stack traces, logs, and code without guesswork."
 msgstr "基于堆栈跟踪、日志和代码进行系统性根因诊断，拒绝盲目猜测。"
-
-#: src/features/code-repair.ts:312
-#~ msgid "Truncated code block automatically reassembled and formatted by Vexel"
-#~ msgstr "Vexel 已自动重组并格式化被截断的代码块"
 
 #: src/features/onboarding.ts:169
 msgid "Turn repetitive engineering prompts into one-keystroke slash commands—ready out of the box with zero setup."
