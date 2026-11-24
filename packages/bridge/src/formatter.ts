@@ -22,6 +22,7 @@ export interface FormatResult {
   formatted: string
   engine: string
   diagnostic?: FormatDiagnostic
+  diagnostics?: FormatDiagnostic[]
 }
 
 export interface FormatterSpec {
@@ -367,51 +368,147 @@ function stripAnsi(text: string): string {
   return text.replaceAll(new RegExp(esc + '\\[[0-9;]*[A-Za-z]', 'g'), '')
 }
 
-export function parseFormatterDiagnostic(tool: string, rawStderr: string): FormatDiagnostic {
-  const cleaned = stripAnsi(rawStderr).trim()
-  const lines = cleaned
+export function isPureDecorationLine(line: string): boolean {
+  const stripped = line.replace(/[\s:|│·╭┌╮┐╯┘╰└─~^\-_=[]0-9]+/g, "").trim();
+  return stripped.length === 0;
+}
+
+function parseOxcBoxDiagnostics(clean: string, tool: string): FormatDiagnostic[] {
+  const lines = clean.split(/\r?\n/);
+  const results: FormatDiagnostic[] = [];
+  const seen = new Set<string>();
+
+  for (let i = 0; i < lines.length; i++) {
+    const locMatch = lines[i].match(/(?:\[[^\]\r\n]+:(\d+):(\d+)\]|-->\s*\S+:(\d+):(\d+))/);
+    if (!locMatch) continue;
+
+    const lineNum = Number(locMatch.at(1) ?? locMatch.at(3));
+    const colNum = Number(locMatch.at(2) ?? locMatch.at(4));
+
+    let headline = "";
+    for (let j = i - 1; j >= Math.max(0, i - 4); j--) {
+      const prev = lines[j].trim();
+      if (!prev || isPureDecorationLine(prev)) continue;
+      const cleanedPrev = prev.replace(/^(?:[×xX✘✗]\s*|error(?:\[[^\]]+\])?:\s*)/i, "").trim();
+      if (cleanedPrev) {
+        headline = cleanedPrev;
+        break;
+      }
+    }
+
+    let helpText = "";
+    for (let k = i + 1; k < Math.min(lines.length, i + 12); k++) {
+      const next = lines[k].trim();
+      if (/^(?:[╭┌][─-]*\[|-->\s*)/.test(next) || /^(?:[×xX✘✗]\s+|error(?:\[[^\]]+\])?:\s*)/i.test(next)) break;
+      const helpMatch = next.match(/^help:\s*(.+)$/i);
+      if (helpMatch) {
+        helpText = helpMatch[1].trim();
+        break;
+      }
+    }
+
+    const fullMsg = headline
+      ? helpText
+        ? headline + "\nhelp: " + helpText
+        : headline
+      : helpText || "Syntax error";
+
+    const key = String(lineNum) + ":" + String(colNum) + ":" + fullMsg;
+    if (!seen.has(key)) {
+      seen.add(key);
+      results.push({
+        tool,
+        line: lineNum > 0 ? lineNum : undefined,
+        column: colNum > 0 ? colNum : undefined,
+        message: fullMsg,
+      });
+    }
+  }
+
+  return results;
+}
+
+function parseFormatterDiagnostics(rawOutput: string, tool: string): FormatDiagnostic[] {
+  const clean = stripAnsi(rawOutput).trim();
+  if (!clean) {
+    return [{ tool, message: "Syntax error" }];
+  }
+
+  const boxDiagnostics = parseOxcBoxDiagnostics(clean, tool);
+  if (boxDiagnostics.length > 0) {
+    return boxDiagnostics.slice(0, 12);
+  }
+
+  const lines = clean
     .split(/\r?\n/)
     .map((l) => l.trim())
-    .filter(Boolean)
+    .filter((l) => Boolean(l) && !isPureDecorationLine(l));
 
-  let line: number | undefined
-  let column: number | undefined
+  const results: FormatDiagnostic[] = [];
+  const seen = new Set<string>();
 
-  for (const l of lines) {
-    const locMatch = l.match(/(?:-->\s*)?(?:<stdin>|[^\s:]+):(\d+):(\d+)/)
-    if (locMatch) {
-      line = Number(locMatch[1])
-      column = Number(locMatch[2])
-      break
+  const pushDiag = (line: number | undefined, column: number | undefined, msg: string) => {
+    const normalizedMsg = msg.replace(/^[×xX✘✗]\s*/, "").trim();
+    if (!normalizedMsg || isPureDecorationLine(normalizedMsg) || /^[\d\s:\][()]+$/.test(normalizedMsg)) return;
+    const validLine = typeof line === "number" && Number.isFinite(line) && line > 0 ? line : undefined;
+    const validCol = typeof column === "number" && Number.isFinite(column) && column > 0 ? column : undefined;
+    const key = String(validLine ?? "") + ":" + String(validCol ?? "") + ":" + normalizedMsg;
+    if (seen.has(key)) return;
+    seen.add(key);
+    results.push({
+      tool,
+      line: validLine,
+      column: validCol,
+      message: normalizedMsg,
+    });
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (/^[╭┌]/.test(l)) continue;
+    const fileLocMatch = l.match(/(?:stdin(?:\.[a-z0-9_+-]+)?|<stdin>|\.(?:ts|tsx|js|jsx|py|rs|go|sh|sql|toml|tf|lua|zig|nix|rb|cpp|c|h|hpp|swift|kt)):(\d+)(?::(\d+))?:\s*(.+)$/i);
+    if (fileLocMatch) {
+      pushDiag(Number(fileLocMatch[1]), fileLocMatch[2] ? Number(fileLocMatch[2]) : undefined, fileLocMatch[3]);
+      continue;
     }
-    const wordMatch = l.match(/\bline\s+(\d+)(?:[,:\s]+col(?:umn)?\s+(\d+))?/i)
-    if (wordMatch) {
-      line = Number(wordMatch[1])
-      if (wordMatch[2]) column = Number(wordMatch[2])
-      break
+    const arrowLocMatch = l.match(/^(?:-->|->)\s*[^\s:]+:(\d+):(\d+)$/);
+    if (arrowLocMatch) {
+      const prevHeadline = i > 0 ? lines[i - 1].replace(/^error(?:\[[^\]]+\])?:\s*/i, "").trim() : "Syntax error";
+      pushDiag(Number(arrowLocMatch.at(1)), Number(arrowLocMatch.at(2)), prevHeadline || "Syntax error");
+      continue;
     }
-    const simpleLineMatch = l.match(/:(\d+):/)
-    if (simpleLineMatch) {
-      line = Number(simpleLineMatch[1])
-      break
+    const parenLocMatch = l.match(/\((\d+):(\d+)\):\s*(.+)$/);
+    if (parenLocMatch) {
+      pushDiag(Number(parenLocMatch[1]), Number(parenLocMatch[2]), parenLocMatch[3]);
+      continue;
+    }
+    const tfLocMatch = l.match(/^on\s+\S+\s+line\s+(\d+)(?:,\s*in\s+(.+))?$/i);
+    if (tfLocMatch) {
+      const prevErr = i > 0 ? lines[i - 1].replace(/^Error:\s*/i, "").trim() : "";
+      const ctx = tfLocMatch.at(2) ? " (" + tfLocMatch.at(2) + ")" : "";
+      pushDiag(Number(tfLocMatch.at(1)), undefined, (prevErr || "HCL syntax error") + ctx);
+      continue;
+    }
+    const lineWordMatch = l.match(/\bline\s+(\d+)(?:[,:\s]+col(?:umn)?\s*(\d+))?[:\s-]+(.+)$/i);
+    if (lineWordMatch) {
+      pushDiag(Number(lineWordMatch[1]), lineWordMatch[2] ? Number(lineWordMatch[2]) : undefined, lineWordMatch[3]);
     }
   }
 
-  const meaningfulLine =
-    lines.find((l) => /\b(?:error|parse|syntax|unexpected|expected|invalid|failed)\b/i.test(l)) ||
-    lines.find((l) => !l.startsWith('-->') && !l.startsWith('|') && !/^\d+\s*\|/.test(l)) ||
+  if (results.length > 0) {
+    return results.slice(0, 12);
+  }
+
+  const summary =
+    lines.find((l) => /error|invalid|unexpected|expected|unterminated|failed|syntax/i.test(l)) ||
     lines[0] ||
-    tool + ' reported a syntax error'
+    "Syntax error";
 
-  const message =
-    meaningfulLine.length > 220 ? meaningfulLine.slice(0, 217) + '...' : meaningfulLine
+  return [{ tool, message: summary }];
+}
 
-  return {
-    tool,
-    ...(line !== undefined && Number.isFinite(line) && line > 0 ? { line } : {}),
-    ...(column !== undefined && Number.isFinite(column) && column > 0 ? { column } : {}),
-    message,
-  }
+export function parseFormatterDiagnostic(tool: string, rawStderr: string): FormatDiagnostic {
+  return parseFormatterDiagnostics(rawStderr, tool)[0];
 }
 
 function runProcessWithStdin(
@@ -486,7 +583,7 @@ export async function formatCodeWithNativeTool(
 
   const specs = getCandidateSpecs(ext)
   let sawTimeout = false
-  let firstSyntaxError: { engine: string; diagnostic: FormatDiagnostic } | null = null
+  let firstSyntaxError: { engine: string; diagnostics: FormatDiagnostic[] } | null = null
 
   for (const spec of specs) {
     const binPath = await resolveBinary(spec.binName)
@@ -513,7 +610,7 @@ export async function formatCodeWithNativeTool(
     if (outcome.kind === 'syntax_error' && !firstSyntaxError) {
       firstSyntaxError = {
         engine: spec.engine,
-        diagnostic: parseFormatterDiagnostic(spec.engine, outcome.stderr),
+        diagnostics: parseFormatterDiagnostics(outcome.stderr, spec.engine),
       }
     }
   }
@@ -524,7 +621,8 @@ export async function formatCodeWithNativeTool(
       status: 'syntax_error',
       formatted: code,
       engine: firstSyntaxError.engine,
-      diagnostic: firstSyntaxError.diagnostic,
+      diagnostic: firstSyntaxError.diagnostics[0],
+      diagnostics: firstSyntaxError.diagnostics,
     }
   }
 
