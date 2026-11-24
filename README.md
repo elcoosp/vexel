@@ -20,9 +20,9 @@
   </p>
 </div>
 
-## Quick Install (v0.2.2 — Free, No Web Store Account Required)
+## Quick Install (v0.3.0 — Free, No Web Store Account Required)
 
-1. Download **`vexel-extension-store.zip`** from the [Vexel v0.2.2 Release](https://github.com/releases/tag/v0.2.2) and unzip it.
+1. Download **`vexel-extension-store.zip`** from the [Vexel v0.3.0 Release](https://github.com/releases/tag/v0.3.0) and unzip it.
 2. Open `chrome://extensions` (or `edge://extensions` / `brave://extensions`) and enable **Developer mode**.
 3. Click **Load unpacked** and select the unzipped folder.
 
