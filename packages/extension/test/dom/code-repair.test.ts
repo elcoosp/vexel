@@ -1519,14 +1519,19 @@ Exécute \`./wr.sh\` avec ce script.
     expect(lineMarker?.getAttribute('data-line')).toBe('4')
 
     // Popover opens on click and Jump to line scrolls + closes popover
-    const popover = sr.querySelector<HTMLElement>('[data-vexel-diag-popover="true"]')!
+    const portalSr = document.querySelector<HTMLElement>(
+      '[data-vexel-diag-portal="true"]'
+    )!.shadowRoot!
+    const popover = portalSr.querySelector<HTMLElement>('[data-vexel-diag-popover="true"]')!
     expect(popover.style.display).toBe('none')
     pillBtn.click()
     expect(popover.style.display).toBe('flex')
     expect(popover.textContent).toContain('rustfmt · Line 4, Col 20')
     expect(popover.textContent).toContain('expected expression')
 
-    const jumpBtn = Array.from(popover.querySelectorAll('button')).find((b) => b !== pillBtn)
+    const jumpBtn = Array.from(popover.querySelectorAll('button')).find(
+      (b) => b.textContent?.includes('Jump') || b.textContent?.includes('Aller')
+    )
     expect(jumpBtn).toBeDefined()
     jumpBtn!.click()
     expect(popover.style.display).toBe('none')

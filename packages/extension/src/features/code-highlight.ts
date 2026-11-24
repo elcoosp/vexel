@@ -566,6 +566,59 @@ export function createLightCodeCardElement(
   return wrapper
 }
 
+function measureLineOffsetInCode(
+  preEl: HTMLElement,
+  codeEl: Element,
+  clampedLine: number,
+  fallbackLineHeight: number,
+  fallbackPaddingTop: number
+): { topPx: number; heightPx: number } {
+  try {
+    const doc = preEl.ownerDocument || document
+    const text = codeEl.textContent || ''
+    const lines = text.split('\n')
+    let charOffset = 0
+    for (let i = 0; i < clampedLine - 1 && i < lines.length; i += 1) {
+      charOffset += lines[i].length + 1
+    }
+    const targetLen = Math.max(1, (lines[clampedLine - 1] || '').length)
+    const walker = doc.createTreeWalker(codeEl, NodeFilter.SHOW_TEXT)
+    let traversed = 0
+    let startNode: Text | null = null
+    let startOffset = 0
+    let current = walker.nextNode() as Text | null
+    while (current) {
+      const len = current.nodeValue?.length || 0
+      if (traversed + len > charOffset || (traversed + len === charOffset && len > 0)) {
+        startNode = current
+        startOffset = Math.max(0, Math.min(len, charOffset - traversed))
+        break
+      }
+      traversed += len
+      current = walker.nextNode() as Text | null
+    }
+    if (startNode) {
+      const range = doc.createRange()
+      const endOffset = Math.min(
+        startNode.nodeValue?.length || 0,
+        startOffset + Math.min(targetLen, 1)
+      )
+      range.setStart(startNode, startOffset)
+      range.setEnd(startNode, Math.max(startOffset, endOffset))
+      const rangeRect = range.getBoundingClientRect()
+      const preRect = preEl.getBoundingClientRect()
+      if (rangeRect.height > 0 && preRect.height > 0) {
+        const topPx = Math.max(0, rangeRect.top - preRect.top + preEl.scrollTop)
+        return { topPx, heightPx: Math.max(fallbackLineHeight, rangeRect.height) }
+      }
+    }
+  } catch {}
+  return {
+    topPx: fallbackPaddingTop + (clampedLine - 1) * fallbackLineHeight,
+    heightPx: fallbackLineHeight,
+  }
+}
+
 export function highlightErrorLineInCodeBlock(
   preEl: HTMLElement,
   lineNumber: number,
@@ -586,7 +639,13 @@ export function highlightErrorLineInCodeBlock(
     Number.isFinite(parsedLineHeight) && parsedLineHeight > 0 ? parsedLineHeight : 20
   const paddingTop =
     (parseFloat(preStyle.paddingTop) || 0) + (parseFloat(codeStyle.paddingTop) || 0)
-  const topPx = paddingTop + (clampedLine - 1) * lineHeight
+  const { topPx, heightPx } = measureLineOffsetInCode(
+    preEl,
+    codeEl,
+    clampedLine,
+    lineHeight,
+    paddingTop
+  )
 
   let marker = preEl.querySelector<HTMLElement>('[data-vexel-error-line-marker="true"]')
   if (!marker) {
@@ -603,7 +662,7 @@ export function highlightErrorLineInCodeBlock(
     left: '0',
     right: '0',
     top: topPx + 'px',
-    height: lineHeight + 'px',
+    height: heightPx + 'px',
     backgroundColor: pulse ? 'rgba(251, 188, 4, 0.28)' : 'rgba(251, 188, 4, 0.14)',
     borderLeft: '3px solid #ea8600',
     pointerEvents: 'none',

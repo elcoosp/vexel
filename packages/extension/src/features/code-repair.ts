@@ -638,16 +638,39 @@ function mountFormatStatusPill(
     clearErrorLineHighlight(preEl)
   }
 
+  const existingPortalId = host.getAttribute('data-vexel-popover-id')
+  if (existingPortalId) {
+    document.getElementById(existingPortalId)?.remove()
+    host.removeAttribute('data-vexel-popover-id')
+  }
+
   if (effectiveStatus === 'syntax_error' && record.diagnostic) {
     const diag = record.diagnostic
+    const portalId = 'vexel-diag-portal-' + Math.random().toString(36).slice(2, 9)
+    host.setAttribute('data-vexel-popover-id', portalId)
+
+    const portalHost = document.createElement('div')
+    portalHost.id = portalId
+    portalHost.setAttribute('data-vexel-ui', 'true')
+    portalHost.setAttribute('data-vexel-diag-portal', 'true')
+    Object.assign(portalHost.style, {
+      position: 'fixed',
+      top: '0px',
+      left: '0px',
+      width: '0px',
+      height: '0px',
+      zIndex: '2147483647',
+      pointerEvents: 'none',
+    })
+    const portalShadow = portalHost.attachShadow({ mode: 'open' })
+    ;(document.body || document.documentElement).appendChild(portalHost)
+
     const popover = document.createElement('div')
     popover.setAttribute('data-vexel-diag-popover', 'true')
     Object.assign(popover.style, {
-      position: 'absolute',
-      bottom: 'calc(100% + 6px)',
-      right: '0',
-      width: '290px',
-      maxWidth: '80vw',
+      position: 'fixed',
+      width: '310px',
+      maxWidth: 'calc(100vw - 24px)',
       padding: '10px 12px',
       borderRadius: UI_RADII.row,
       backgroundColor: UI_COLORS.surface,
@@ -658,7 +681,8 @@ function mountFormatStatusPill(
       fontSize: '12px',
       lineHeight: '1.45',
       whiteSpace: 'normal',
-      zIndex: '2147483646',
+      zIndex: '2147483647',
+      pointerEvents: 'auto',
       display: 'none',
       flexDirection: 'column',
       gap: '6px',
@@ -683,6 +707,36 @@ function mountFormatStatusPill(
     topTitle.textContent = locLabel
     topRow.appendChild(topTitle)
 
+    let pinned = false
+    const hidePopover = () => {
+      pinned = false
+      popover.style.display = 'none'
+    }
+
+    const positionPopover = () => {
+      if (!host || !host.isConnected) {
+        portalHost.remove()
+        return
+      }
+      const r = pill.getBoundingClientRect()
+      const popWidth = Math.min(310, Math.max(220, window.innerWidth - 24))
+      const leftPx = Math.max(12, Math.min(window.innerWidth - popWidth - 12, r.right - popWidth))
+      popover.style.width = popWidth + 'px'
+      popover.style.left = leftPx + 'px'
+      if (r.top > 170) {
+        popover.style.top = 'auto'
+        popover.style.bottom = Math.max(12, window.innerHeight - r.top + 6) + 'px'
+      } else {
+        popover.style.bottom = 'auto'
+        popover.style.top = Math.min(window.innerHeight - 140, r.bottom + 6) + 'px'
+      }
+    }
+
+    const showPopover = () => {
+      positionPopover()
+      popover.style.display = 'flex'
+    }
+
     if (diag.line) {
       const targetLine = diag.line
       const jumpBtn = document.createElement('button')
@@ -703,7 +757,7 @@ function mountFormatStatusPill(
         ev.preventDefault()
         ev.stopPropagation()
         scrollCodeBlockToLine(preEl, targetLine)
-        popover.style.display = 'none'
+        hidePopover()
       })
       topRow.appendChild(jumpBtn)
     }
@@ -722,24 +776,53 @@ function mountFormatStatusPill(
       color: UI_COLORS.textSecondary,
       whiteSpace: 'pre-wrap',
       wordBreak: 'break-word',
+      maxHeight: '140px',
+      overflowY: 'auto',
     })
 
     popover.append(topRow, msgEl)
-    shadow.appendChild(popover)
+    portalShadow.appendChild(popover)
 
-    let pinned = false
     pill.addEventListener('mouseenter', () => {
-      popover.style.display = 'flex'
+      showPopover()
     })
     pill.addEventListener('mouseleave', () => {
-      if (!pinned) popover.style.display = 'none'
+      if (!pinned) hidePopover()
+    })
+    popover.addEventListener('mouseenter', () => {
+      showPopover()
+    })
+    popover.addEventListener('mouseleave', () => {
+      if (!pinned) hidePopover()
     })
     pill.addEventListener('click', (ev) => {
       ev.preventDefault()
       ev.stopPropagation()
       pinned = !pinned
-      popover.style.display = pinned ? 'flex' : 'none'
+      if (pinned) showPopover()
+      else hidePopover()
     })
+    document.addEventListener(
+      'pointerdown',
+      (ev) => {
+        if (!pinned) return
+        const path = ev.composedPath()
+        if (!path.includes(pill) && !path.includes(popover)) {
+          hidePopover()
+        }
+      },
+      true
+    )
+    window.addEventListener(
+      'scroll',
+      () => {
+        if (popover.style.display === 'flex') {
+          if (pinned) positionPopover()
+          else hidePopover()
+        }
+      },
+      { passive: true, capture: true }
+    )
   }
 }
 
@@ -1064,16 +1147,14 @@ async function repairBrokenSequenceFromCodeCard(
       !anchorBlock.nextElementSibling &&
       anchorBlock.parentElement &&
       !anchorBlock.parentElement.matches(
-        '[data-scope-id="turn"], [jsname="CS7uPe"], [data-subtree="aimc"], main, body'
+        '[data-scope-id="turn"], [data-subtree="aimc"], main, body'
       ) &&
       anchorBlock.parentElement.querySelectorAll('pre code').length === 1
     ) {
       anchorBlock = anchorBlock.parentElement
     }
     const turnRoot =
-      anchorBlock.closest('[data-scope-id="turn"], [jsname="CS7uPe"]') ||
-      anchorBlock.parentElement ||
-      document.body
+      anchorBlock.closest('[data-scope-id="turn"]') || anchorBlock.parentElement || document.body
     topo = { pre, codeEl, anchorBlock, turnRoot }
     cardTopologyCache.set(codeCard, topo)
   }
@@ -1085,11 +1166,25 @@ async function repairBrokenSequenceFromCodeCard(
   const isTurnFinished = turnRoot.getAttribute('data-complete') === 'true' || hasFollowingZzy
 
   const rawCodeLen = (codeEl.textContent || '').length
-  const nextSib = anchorBlock.nextElementSibling
-  const nextSibSig = nextSib
-    ? nextSib.tagName + ':' + nextSib.className + ':' + (nextSib.textContent || '').length
-    : 'none'
-  const cardSig = rawCodeLen + '|' + nextSibSig + '|' + (isTurnFinished ? '1' : '0')
+  let followingSibCount = 0
+  let followingSibChars = 0
+  let sigWalk: Element | null = anchorBlock
+  while (sigWalk && sigWalk !== turnRoot) {
+    for (let s = sigWalk.nextElementSibling; s; s = s.nextElementSibling) {
+      if (s.hasAttribute('data-vexel-ui')) continue
+      followingSibCount += 1
+      followingSibChars += (s.textContent || '').length
+    }
+    sigWalk = sigWalk.parentElement
+  }
+  const cardSig =
+    rawCodeLen +
+    '|' +
+    followingSibCount +
+    ':' +
+    followingSibChars +
+    '|' +
+    (isTurnFinished ? '1' : '0')
   if (scannedCardSignatures.get(codeCard) === cardSig) return
   scannedCardSignatures.set(codeCard, cardSig)
 
@@ -1149,10 +1244,7 @@ async function repairBrokenSequenceFromCodeCard(
       if (NON_CODE_ELEMENT_TAGS.has(node.tagName.toUpperCase())) return
       if (node.hasAttribute('data-vexel-ui') || isGoogleLegalFooterNode(node)) return
       const isResponseChunkBlock =
-        node.hasAttribute('data-sfc-cp') ||
-        node.classList.contains('n6owBd') ||
-        node.classList.contains('Y3BBE') ||
-        node.parentElement === anchorBlock.parentElement
+        node.hasAttribute('data-sfc-cp') || node.parentElement === anchorBlock.parentElement
       if (
         isResponseChunkBlock ||
         (node.querySelector('pre code') !== null &&
@@ -1220,12 +1312,7 @@ async function repairBrokenSequenceFromCodeCard(
         break
       }
 
-      if (
-        node.hasAttribute('data-sfc-cp') ||
-        node.classList.contains('n6owBd') ||
-        node.classList.contains('Y3BBE') ||
-        node.parentElement === anchorBlock.parentElement
-      ) {
+      if (node.hasAttribute('data-sfc-cp') || node.parentElement === anchorBlock.parentElement) {
         if (isGoogleLegalFooterNode(node)) {
           reachedTerminalBoundary = true
           break
@@ -1445,10 +1532,10 @@ export function initCodeRepair(showToast: (msg: string) => void): void {
         const el = node as Element
         if (el.hasAttribute('data-vexel-ui') || el.closest('[data-vexel-ui]')) continue
         if (
-          el.matches('pre, code, [data-sfc-cp], [data-zzy], .n6owBd, .Y3BBE') ||
+          el.matches('pre, code, [data-sfc-cp], [data-zzy], p, ul, ol') ||
           el.querySelector('pre, code, [data-sfc-cp], [data-zzy]') !== null
         ) {
-          const turnContainer = el.closest('[data-scope-id="turn"], [jsname="CS7uPe"]') || undefined
+          const turnContainer = el.closest('[data-scope-id="turn"]') || undefined
           scheduleScan(turnContainer)
           break
         }

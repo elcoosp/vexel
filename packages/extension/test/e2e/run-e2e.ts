@@ -550,7 +550,11 @@ try {
       const sr = el.shadowRoot
       const pill = sr?.querySelector<HTMLButtonElement>('button')
       pill?.click()
-      const pop = sr?.querySelector<HTMLElement>('[data-vexel-diag-popover="true"]')
+      const portalId = el.getAttribute('data-vexel-popover-id')
+      const portal = portalId
+        ? document.getElementById(portalId)
+        : document.querySelector('[data-vexel-diag-portal="true"]')
+      const pop = portal?.shadowRoot?.querySelector<HTMLElement>('[data-vexel-diag-popover="true"]')
       return Boolean(
         pop && pop.style.display === 'flex' && (pop.textContent || '').includes('rustfmt')
       )
