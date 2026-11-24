@@ -566,6 +566,41 @@ export function createLightCodeCardElement(
   return wrapper
 }
 
+function locateLineGlyphRect(
+  doc: Document,
+  codeEl: Element,
+  lines: string[],
+  lineIndexZeroBased: number
+): DOMRect | null {
+  if (lineIndexZeroBased < 0 || lineIndexZeroBased >= lines.length) return null
+  let charOffset = 0
+  for (let i = 0; i < lineIndexZeroBased; i += 1) {
+    charOffset += lines[i].length + 1
+  }
+  const rawLine = lines[lineIndexZeroBased] || ''
+  const leadingWs = rawLine.match(/^\s*/)?.[0].length || 0
+  charOffset += leadingWs
+
+  const walker = doc.createTreeWalker(codeEl, NodeFilter.SHOW_TEXT)
+  let traversed = 0
+  let current = walker.nextNode() as Text | null
+  while (current) {
+    const len = current.nodeValue?.length || 0
+    if (len > 0 && traversed + len >= charOffset) {
+      const startOffset = Math.max(0, Math.min(len - 1, charOffset - traversed))
+      const endOffset = Math.min(len, startOffset + 1)
+      const range = doc.createRange()
+      range.setStart(current, startOffset)
+      range.setEnd(current, Math.max(startOffset, endOffset))
+      const rect = range.getBoundingClientRect()
+      if (rect.height > 0) return rect
+    }
+    traversed += len
+    current = walker.nextNode() as Text | null
+  }
+  return null
+}
+
 function measureLineOffsetInCode(
   preEl: HTMLElement,
   codeEl: Element,
@@ -577,43 +612,23 @@ function measureLineOffsetInCode(
     const doc = preEl.ownerDocument || document
     const text = codeEl.textContent || ''
     const lines = text.split('\n')
-    let charOffset = 0
-    for (let i = 0; i < clampedLine - 1 && i < lines.length; i += 1) {
-      charOffset += lines[i].length + 1
-    }
-    const rawTargetLine = lines[clampedLine - 1] || ''
-    const leadingWs = rawTargetLine.match(/^\s*/)?.[0].length || 0
-    charOffset += leadingWs
-    const targetLen = Math.max(1, rawTargetLine.length - leadingWs)
-    const walker = doc.createTreeWalker(codeEl, NodeFilter.SHOW_TEXT)
-    let traversed = 0
-    let startNode: Text | null = null
-    let startOffset = 0
-    let current = walker.nextNode() as Text | null
-    while (current) {
-      const len = current.nodeValue?.length || 0
-      if (traversed + len > charOffset || (traversed + len === charOffset && len > 0)) {
-        startNode = current
-        startOffset = Math.max(0, Math.min(len, charOffset - traversed))
-        break
-      }
-      traversed += len
-      current = walker.nextNode() as Text | null
-    }
-    if (startNode) {
-      const range = doc.createRange()
-      const endOffset = Math.min(
-        startNode.nodeValue?.length || 0,
-        startOffset + Math.min(targetLen, 1)
-      )
-      range.setStart(startNode, startOffset)
-      range.setEnd(startNode, Math.max(startOffset, endOffset))
-      const rangeRect = range.getBoundingClientRect()
-      const preRect = preEl.getBoundingClientRect()
-      if (rangeRect.height > 0 && preRect.height > 0) {
-        const topPx = Math.max(0, rangeRect.top - preRect.top + preEl.scrollTop)
-        return { topPx, heightPx: Math.max(fallbackLineHeight, rangeRect.height) }
-      }
+    const targetIdx = clampedLine - 1
+    const targetRect = locateLineGlyphRect(doc, codeEl, lines, targetIdx)
+    const preRect = preEl.getBoundingClientRect()
+    if (targetRect && preRect.height > 0) {
+      const nextRect = locateLineGlyphRect(doc, codeEl, lines, targetIdx + 1)
+      const prevRect = locateLineGlyphRect(doc, codeEl, lines, targetIdx - 1)
+      const measuredStep =
+        nextRect && nextRect.top > targetRect.top + 4
+          ? nextRect.top - targetRect.top
+          : prevRect && targetRect.top > prevRect.top + 4
+            ? targetRect.top - prevRect.top
+            : 0
+      const heightPx =
+        measuredStep > 0 ? Math.round(measuredStep * 100) / 100 : fallbackLineHeight
+      const glyphCenterY = targetRect.top - preRect.top + preEl.scrollTop + targetRect.height / 2
+      const topPx = Math.max(0, Math.round((glyphCenterY - heightPx / 2) * 100) / 100)
+      return { topPx, heightPx }
     }
   } catch {}
   return {

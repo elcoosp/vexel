@@ -120,6 +120,15 @@ function extractCleanSiblingCode(el: HTMLElement, lang = ''): string {
     const inner = codeNode.textContent || ''
     codeNode.replaceWith(document.createTextNode(BT1 + inner + BT1))
   }
+  const tagUpper = el.tagName.toUpperCase()
+  if (tagUpper === "UL" || tagUpper === "OL") {
+    const items = Array.from(clone.querySelectorAll(":scope > li"))
+      .map((li) => (li.textContent || "").replace(/\u00a0/g, " ").trim())
+      .filter(Boolean)
+    if (items.length > 0) {
+      return items.map((item) => (item.startsWith("*") ? item : " * " + item)).join("\n")
+    }
+  }
   let finalCode = (clone.textContent || '').replace(/\u00a0/g, ' ').trim()
   if (lang === 'sql') {
     finalCode = finalCode.replace(/^[\u2013\u2014]\s*/gm, '-- ')
@@ -128,6 +137,45 @@ function extractCleanSiblingCode(el: HTMLElement, lang = ''): string {
     finalCode = finalCode.replace(/^[\u2013\u2014]\s*/gm, '-- ')
   }
   return finalCode
+}
+
+function hasUnclosedBlockComment(code: string): boolean {
+  let inBlock = false
+  let inLine = false
+  let quote: string | null = null
+  for (let i = 0; i < code.length; i++) {
+    const ch = code[i]
+    const next = code[i + 1]
+    if (inLine) {
+      if (ch === "\n") inLine = false
+      continue
+    }
+    if (inBlock) {
+      if (ch === "*" && next === "/") {
+        inBlock = false
+        i += 1
+      }
+      continue
+    }
+    if (quote) {
+      if (ch === "\\") {
+        i += 1
+        continue
+      }
+      if (ch === quote) quote = null
+      continue
+    }
+    if (ch === "/" && next === "/") {
+      inLine = true
+      i += 1
+    } else if (ch === "/" && next === "*") {
+      inBlock = true
+      i += 1
+    } else if (ch === '"' || ch === "'" || ch === String.fromCharCode(96)) {
+      quote = ch
+    }
+  }
+  return inBlock
 }
 
 function hasUnclosedCodeDelimiter(code: string): boolean {
@@ -252,7 +300,7 @@ function hasUnclosedCodeDelimiter(code: string): boolean {
     else if (ch === '}' || ch === ']') braceBalance -= 1
   }
 
-  if (rawRustHashes >= 0 || quote === '"""' || quote === "'''") return true
+  if (inBlockComment || rawRustHashes >= 0 || quote === '"""' || quote === "'''") return true
   if (unescapedBackticks % 2 === 1) return true
   if (braceBalance >= 1) return true
 
@@ -1337,9 +1385,11 @@ async function repairBrokenSequenceFromCodeCard(
           /^[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ][a-zàâäéèêëîïôöùûüç]+(?:\s+[a-zàâäéèêëîïôöùûüçA-Z0-9_-]+){2,}:$/.test(
             cleaned
           )
-        const isProse = isNaturalLanguageProseBlock(cleaned)
+        const inOpenBlockComment = hasUnclosedBlockComment(assembledSoFar)
+        const hasFollowUpTag = cleaned.includes(String.fromCharCode(60) + "FollowUp>")
+        const isProse = !hasFollowUpTag && inOpenBlockComment ? false : isNaturalLanguageProseBlock(cleaned)
 
-        if (isProse || (!withinWizBudget && isNaturalIntroColon)) {
+        if (isProse || (!withinWizBudget && !inOpenBlockComment && isNaturalIntroColon)) {
           reachedTerminalBoundary = true
           break
         }

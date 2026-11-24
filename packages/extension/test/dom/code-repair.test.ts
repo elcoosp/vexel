@@ -1542,4 +1542,108 @@ Exécute \`./wr.sh\` avec ce script.
 
     delete (globalThis as { chrome?: unknown }).chrome
   })
+
+  it('reconstructs 420-line TypeScript block split across unclosed JSDoc /** and <ul><li> prose siblings and pinpoints syntax error at line 390', async () => {
+    ;(globalThis as { chrome?: unknown }).chrome = {
+      runtime: {
+        sendMessage: (_msg: unknown, cb?: (res: unknown) => void) => {
+          cb?.({
+            ok: true,
+            data: {
+              formatted: [
+                'export class DagValidator {',
+                '  validate(): boolean { return true }',
+                '}',
+                '/**',
+                ' * Moteur principal d\'ordonnancement de tâches distribuées avec gestion des priorités.',
+                ' * Supporte le retry exponentiel avec jitter et le circuit breaker.',
+                ' */',
+                'export class DistributedTaskScheduler {',
+                ...Array.from({ length: 380 }, (_, i) => `  private field${i} = ${i};`),
+                '  run(taskId: string) {',
+                '    this.emitEvent("task:done", taskId;',
+                '  }',
+                '}',
+              ].join('\n'),
+              engine: 'oxfmt',
+              status: 'syntax_error',
+              diagnostic: {
+                line: 390,
+                column: 36,
+                message: "')' expected.",
+              },
+            },
+          })
+        },
+      },
+    }
+
+    const turn = document.createElement('div')
+    turn.setAttribute('data-scope-id', 'turn')
+    turn.setAttribute('data-complete', 'true')
+
+    const card = document.createElement('div')
+    card.setAttribute('data-hveid', 'card-jsdoc-ul-split')
+    const header = document.createElement('div')
+    header.textContent = 'typescript'
+    const pre = document.createElement('pre')
+    const code = document.createElement('code')
+    code.textContent = [
+      'export class DagValidator {',
+      '  validate(): boolean { return true }',
+      '}',
+      '/**',
+    ].join('\n')
+    pre.appendChild(code)
+    const footer = document.createElement('div')
+    const copyWrap = document.createElement('div')
+    const copyBtn = document.createElement('button')
+    copyBtn.type = 'button'
+    copyBtn.setAttribute('aria-label', 'Copy code')
+    copyWrap.appendChild(copyBtn)
+    footer.appendChild(copyWrap)
+    card.append(header, pre, footer)
+
+    // Google AI Mode splits JSDoc body into <ul><li> with natural French prose
+    const jsdocList = document.createElement('ul')
+    jsdocList.className = 'XSq4R KI3fJ'
+    jsdocList.innerHTML = [
+      "<li class=\"Z1qcYe\">Moteur principal d'ordonnancement de tâches distribuées avec gestion des priorités.</li>",
+      "<li class=\"Z1qcYe\">Supporte le retry exponentiel avec jitter et le circuit breaker.</li>",
+    ].join('')
+
+    const classHead = document.createElement('div')
+    classHead.className = 'n6owBd awi2gc'
+    classHead.setAttribute('data-sfc-cp', '')
+    classHead.innerHTML = [
+      ' */',
+      'export class DistributedTaskScheduler {',
+      ...Array.from({ length: 382 }, (_, i) => `  private field${i} = ${i};`),
+      '  run(taskId: string) {',
+      '    this.emitEvent("task:done", taskId;',
+      '  }',
+      '}',
+    ].join('<br>')
+
+    const trailingProse = document.createElement('div')
+    trailingProse.className = 'n6owBd awi2gc'
+    trailingProse.setAttribute('data-sfc-cp', '')
+    trailingProse.textContent = 'Cette implémentation fournit un ordonnanceur complet avec validation de graphe acyclique.'
+
+    turn.append(card, jsdocList, classHead, trailingProse)
+    document.body.appendChild(turn)
+
+    scanAndRepairCodeBlocks(document, () => {})
+    await new Promise((r) => setTimeout(r, 40))
+
+    expect(code.textContent).toContain('export class DistributedTaskScheduler')
+    expect(code.textContent).toContain('this.emitEvent("task:done", taskId;')
+    expect(trailingProse.isConnected).toBe(true)
+
+    const lineMarker = pre.querySelector<HTMLElement>('[data-vexel-error-line-marker="true"]')
+    expect(lineMarker).not.toBeNull()
+    expect(lineMarker?.getAttribute('data-line')).toBe('390')
+
+    delete (globalThis as { chrome?: unknown }).chrome
+  })
 })
