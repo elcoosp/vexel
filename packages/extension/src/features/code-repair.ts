@@ -1,7 +1,7 @@
 import { franc } from 'franc-min'
 import {
   clearErrorLineHighlight,
-  highlightErrorLineInCodeBlock,
+  highlightErrorLinesInCodeBlock,
   reconstructStructuralIndentation,
   renderHighlightedTail,
 } from './code-highlight'
@@ -27,6 +27,7 @@ export interface BridgeFormatPayload {
   engine: string
   status: BridgeFormatStatus
   diagnostic?: BridgeFormatDiagnostic
+  diagnostics?: BridgeFormatDiagnostic[]
 }
 
 export interface RepairedCodeRecord {
@@ -36,6 +37,7 @@ export interface RepairedCodeRecord {
   durationMs: number
   status: BridgeFormatStatus
   diagnostic?: BridgeFormatDiagnostic
+  diagnostics?: BridgeFormatDiagnostic[]
 }
 
 const repairedCodeByContainer = new WeakMap<HTMLElement, RepairedCodeRecord>()
@@ -531,7 +533,6 @@ function scrollCodeBlockToLine(preEl: HTMLElement, lineNumber: number): void {
   const parsedLineHeight = parseFloat(computed.lineHeight)
   const lineHeight =
     Number.isFinite(parsedLineHeight) && parsedLineHeight > 0 ? parsedLineHeight : 20
-  highlightErrorLineInCodeBlock(preEl, clampedLine, true)
   const targetOffset = Math.max(0, (clampedLine - 3) * lineHeight)
   if (preEl.scrollHeight > preEl.clientHeight + 4) {
     preEl.scrollTo({ top: targetOffset, behavior: 'smooth' })
@@ -553,19 +554,31 @@ function mountFormatStatusPill(
 ): void {
   const effectiveStatus: BridgeFormatStatus =
     record.status === 'syntax_error' && !isFinalized ? 'unavailable' : record.status
+  const diagList: BridgeFormatDiagnostic[] =
+    record.diagnostics && record.diagnostics.length > 0
+      ? record.diagnostics
+      : record.diagnostic
+        ? [record.diagnostic]
+        : []
+  let activeDiagIdx = 0
+  const primaryDiag = diagList[0]
   const engineLabel = !record.engine || record.engine === 'fallback' ? 'local' : record.engine
   const durationMs = record.durationMs
-  const lineSuffix =
-    effectiveStatus === 'syntax_error' && record.diagnostic?.line
-      ? ' · L' + String(record.diagnostic.line)
-      : ''
 
-  const nextLabel =
-    effectiveStatus === 'syntax_error'
-      ? t`Check syntax` + lineSuffix
-      : effectiveStatus === 'formatted'
-        ? t`Repaired` + ' · ' + engineLabel + ' · ' + String(durationMs) + ' ms'
-        : t`Repaired` + ' · local · ' + String(durationMs) + ' ms'
+  const formatPillText = (idx: number): string => {
+    if (effectiveStatus !== 'syntax_error') {
+      return effectiveStatus === 'formatted'
+        ? t({ message: 'Repaired' }) + ' · ' + engineLabel + ' · ' + String(durationMs) + ' ms'
+        : t({ message: 'Repaired' }) + ' · local · ' + String(durationMs) + ' ms'
+    }
+    const current = diagList[idx] || primaryDiag
+    const linePart = current?.line ? ' · L' + String(current.line) : ''
+    if (diagList.length > 1) {
+      const count = diagList.length
+      return t({ message: 'Check syntax' }) + ' · ' + t`${count} errors` + linePart
+    }
+    return t({ message: 'Check syntax' }) + linePart
+  }
 
   const palette =
     effectiveStatus === 'syntax_error'
@@ -574,9 +587,9 @@ function mountFormatStatusPill(
           border: '#fde293',
           text: '#b06000',
           icon: 'alert-circle' as const,
-          title: record.diagnostic
-            ? record.diagnostic.tool + ': ' + record.diagnostic.message
-            : t`Syntax issue detected by native formatter`,
+          title: primaryDiag
+            ? primaryDiag.tool + ': ' + primaryDiag.message
+            : t({ message: 'Syntax issue detected by native formatter' }),
         }
       : effectiveStatus === 'formatted'
         ? {
@@ -591,7 +604,7 @@ function mountFormatStatusPill(
             border: UI_COLORS.primaryBorder,
             text: UI_COLORS.primaryText,
             icon: 'sparkles' as const,
-            title: t`Reassembled from split blocks (no native syntax check available)`,
+            title: t({ message: 'Reassembled from split blocks (no native syntax check available)' }),
           }
 
   let host = codeCard.querySelector<HTMLElement>('[data-vexel-format-badge="true"]')
@@ -634,11 +647,9 @@ function mountFormatStatusPill(
     })
     host.attachShadow({ mode: 'open' })
 
-    if (footerEl && copyWrapper) {
-      footerEl.insertBefore(host, copyWrapper)
-    } else if (footerEl) {
-      footerEl.appendChild(host)
-    } else if (headerEl) {
+    if (footerEl && copyWrapper) footerEl.insertBefore(host, copyWrapper)
+    else if (footerEl) footerEl.appendChild(host)
+    else if (headerEl) {
       const saveHost = headerEl.querySelector('[data-vexel-ui="true"]')
       if (saveHost) headerEl.insertBefore(host, saveHost)
       else headerEl.appendChild(host)
@@ -676,15 +687,9 @@ function mountFormatStatusPill(
   const labelSpan = document.createElement('span')
   labelSpan.setAttribute('data-vexel-pill-label', 'true')
   labelSpan.style.whiteSpace = 'nowrap'
-  labelSpan.textContent = nextLabel
+  labelSpan.textContent = formatPillText(0)
   pill.append(createLucideIcon(palette.icon, 11, 'currentColor'), labelSpan)
   shadow.appendChild(pill)
-
-  if (effectiveStatus === 'syntax_error' && record.diagnostic?.line) {
-    highlightErrorLineInCodeBlock(preEl, record.diagnostic.line, false)
-  } else {
-    clearErrorLineHighlight(preEl)
-  }
 
   const existingPortalId = host.getAttribute('data-vexel-popover-id')
   if (existingPortalId) {
@@ -692,8 +697,7 @@ function mountFormatStatusPill(
     host.removeAttribute('data-vexel-popover-id')
   }
 
-  if (effectiveStatus === 'syntax_error' && record.diagnostic) {
-    const diag = record.diagnostic
+  if (effectiveStatus === 'syntax_error' && diagList.length > 0) {
     const portalId = 'vexel-diag-portal-' + Math.random().toString(36).slice(2, 9)
     host.setAttribute('data-vexel-popover-id', portalId)
 
@@ -717,7 +721,7 @@ function mountFormatStatusPill(
     popover.setAttribute('data-vexel-diag-popover', 'true')
     Object.assign(popover.style, {
       position: 'fixed',
-      width: '310px',
+      width: '340px',
       maxWidth: 'calc(100vw - 24px)',
       padding: '10px 12px',
       borderRadius: UI_RADII.row,
@@ -733,27 +737,8 @@ function mountFormatStatusPill(
       pointerEvents: 'auto',
       display: 'none',
       flexDirection: 'column',
-      gap: '6px',
+      gap: '7px',
     })
-
-    const topRow = document.createElement('div')
-    Object.assign(topRow.style, {
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: '8px',
-      fontWeight: '600',
-      fontSize: '11.5px',
-      color: '#b06000',
-    })
-    const locLabel = diag.line
-      ? diag.column
-        ? diag.tool + ' · Line ' + String(diag.line) + ', Col ' + String(diag.column)
-        : diag.tool + ' · Line ' + String(diag.line)
-      : diag.tool + ' · Syntax error'
-    const topTitle = document.createElement('span')
-    topTitle.textContent = locLabel
-    topRow.appendChild(topTitle)
 
     let pinned = false
     const hidePopover = () => {
@@ -767,16 +752,17 @@ function mountFormatStatusPill(
         return
       }
       const r = pill.getBoundingClientRect()
-      const popWidth = Math.min(310, Math.max(220, window.innerWidth - 24))
+      const popWidth = Math.min(340, Math.max(240, window.innerWidth - 24))
       const leftPx = Math.max(12, Math.min(window.innerWidth - popWidth - 12, r.right - popWidth))
       popover.style.width = popWidth + 'px'
       popover.style.left = leftPx + 'px'
-      if (r.top > 170) {
+      const estHeight = diagList.length > 1 ? 230 : 150
+      if (r.top > estHeight + 20) {
         popover.style.top = 'auto'
         popover.style.bottom = Math.max(12, window.innerHeight - r.top + 6) + 'px'
       } else {
         popover.style.bottom = 'auto'
-        popover.style.top = Math.min(window.innerHeight - 140, r.bottom + 6) + 'px'
+        popover.style.top = Math.min(window.innerHeight - estHeight, r.bottom + 6) + 'px'
       }
     }
 
@@ -785,61 +771,225 @@ function mountFormatStatusPill(
       popover.style.display = 'flex'
     }
 
-    if (diag.line) {
-      const targetLine = diag.line
-      const jumpBtn = document.createElement('button')
-      jumpBtn.type = 'button'
-      jumpBtn.textContent = t`Jump to line`
-      Object.assign(jumpBtn.style, {
-        border: '1px solid #fde293',
-        backgroundColor: '#fef7e0',
-        color: '#b06000',
-        borderRadius: UI_RADII.chip,
-        padding: '2px 7px',
-        fontSize: '11px',
+    const renderPopoverState = (shouldScroll: boolean, shouldPulse: boolean) => {
+      const current = diagList[activeDiagIdx] || diagList[0]
+      labelSpan.textContent = formatPillText(activeDiagIdx)
+
+      highlightErrorLinesInCodeBlock(
+        preEl,
+        diagList,
+        activeDiagIdx,
+        (selectedIdx) => {
+          activeDiagIdx = selectedIdx
+          renderPopoverState(false, true)
+        },
+        shouldPulse
+      )
+
+      if (shouldScroll && current?.line) {
+        scrollCodeBlockToLine(preEl, current.line)
+      }
+
+      popover.replaceChildren()
+
+      const topRow = document.createElement('div')
+      Object.assign(topRow.style, {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '6px',
         fontWeight: '600',
-        cursor: 'pointer',
+        fontSize: '11.5px',
+        color: '#b06000',
+      })
+
+      const locLabel = current.line
+        ? current.column
+          ? current.tool + ' · Line ' + String(current.line) + ', Col ' + String(current.column)
+          : current.tool + ' · Line ' + String(current.line)
+        : current.tool + ' · Syntax error'
+      const topTitle = document.createElement('span')
+      topTitle.textContent = locLabel
+      topRow.appendChild(topTitle)
+
+      const controlsWrap = document.createElement('div')
+      Object.assign(controlsWrap.style, {
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '4px',
         flexShrink: '0',
       })
-      jumpBtn.addEventListener('click', (ev) => {
-        ev.preventDefault()
-        ev.stopPropagation()
-        scrollCodeBlockToLine(preEl, targetLine)
-        hidePopover()
+
+      if (diagList.length > 1) {
+        const counterEl = document.createElement('span')
+        counterEl.setAttribute('data-vexel-diag-counter', 'true')
+        Object.assign(counterEl.style, {
+          fontSize: '10.5px',
+          fontWeight: '600',
+          color: '#804600',
+          padding: '1px 5px',
+          borderRadius: UI_RADII.chip,
+          backgroundColor: '#fef7e0',
+        })
+        counterEl.textContent = String(activeDiagIdx + 1) + '/' + String(diagList.length)
+
+        const makeNavBtn = (label: string, titleText: string, delta: number) => {
+          const btn = document.createElement('button')
+          btn.type = 'button'
+          btn.title = titleText
+          btn.textContent = label
+          Object.assign(btn.style, {
+            border: '1px solid #fde293',
+            backgroundColor: '#ffffff',
+            color: '#b06000',
+            borderRadius: UI_RADII.chip,
+            width: '20px',
+            height: '20px',
+            padding: '0',
+            fontSize: '11px',
+            fontWeight: '700',
+            lineHeight: '1',
+            cursor: 'pointer',
+          })
+          btn.addEventListener('click', (ev) => {
+            ev.preventDefault()
+            ev.stopPropagation()
+            activeDiagIdx = (activeDiagIdx + delta + diagList.length) % diagList.length
+            renderPopoverState(true, true)
+            positionPopover()
+          })
+          return btn
+        }
+
+        controlsWrap.append(
+          counterEl,
+          makeNavBtn('↑', t({ message: 'Previous error' }), -1),
+          makeNavBtn('↓', t({ message: 'Next error' }), 1)
+        )
+      }
+
+      if (current.line) {
+        const targetLine = current.line
+        const jumpBtn = document.createElement('button')
+        jumpBtn.type = 'button'
+        jumpBtn.textContent = t({ message: 'Jump to line' })
+        Object.assign(jumpBtn.style, {
+          border: '1px solid #fde293',
+          backgroundColor: '#fef7e0',
+          color: '#b06000',
+          borderRadius: UI_RADII.chip,
+          padding: '2px 7px',
+          fontSize: '11px',
+          fontWeight: '600',
+          cursor: 'pointer',
+          flexShrink: '0',
+        })
+        jumpBtn.addEventListener('click', (ev) => {
+          ev.preventDefault()
+          ev.stopPropagation()
+          scrollCodeBlockToLine(preEl, targetLine)
+          hidePopover()
+        })
+        controlsWrap.appendChild(jumpBtn)
+      }
+
+      topRow.appendChild(controlsWrap)
+
+      const msgEl = document.createElement('pre')
+      msgEl.textContent = current.message
+      Object.assign(msgEl.style, {
+        margin: '0',
+        padding: '6px 8px',
+        borderRadius: UI_RADII.chip,
+        backgroundColor: UI_COLORS.surfaceSubtle,
+        border: '1px solid ' + UI_COLORS.borderSubtle,
+        fontFamily: UI_FONT_MONO,
+        fontSize: '11px',
+        lineHeight: '1.4',
+        color: UI_COLORS.textSecondary,
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-word',
+        maxHeight: '110px',
+        overflowY: 'auto',
       })
-      topRow.appendChild(jumpBtn)
+
+      popover.append(topRow, msgEl)
+
+      if (diagList.length > 1) {
+        const listWrap = document.createElement('div')
+        listWrap.setAttribute('data-vexel-diag-list', 'true')
+        Object.assign(listWrap.style, {
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '3px',
+          maxHeight: '104px',
+          overflowY: 'auto',
+          paddingTop: '4px',
+          borderTop: '1px solid ' + UI_COLORS.borderSubtle,
+        })
+
+        diagList.forEach((item, idx) => {
+          const rowBtn = document.createElement('button')
+          rowBtn.type = 'button'
+          const selected = idx === activeDiagIdx
+          Object.assign(rowBtn.style, {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            width: '100%',
+            textAlign: 'left',
+            padding: '4px 6px',
+            borderRadius: UI_RADII.chip,
+            border: selected ? '1px solid #fde293' : '1px solid transparent',
+            backgroundColor: selected ? '#fef7e0' : 'transparent',
+            color: selected ? '#804600' : UI_COLORS.textSecondary,
+            fontFamily: UI_FONT_SANS,
+            fontSize: '11px',
+            cursor: 'pointer',
+          })
+
+          const badge = document.createElement('span')
+          Object.assign(badge.style, {
+            fontFamily: UI_FONT_MONO,
+            fontSize: '10.5px',
+            fontWeight: '600',
+            color: '#b06000',
+            flexShrink: '0',
+          })
+          badge.textContent = item.line ? 'L' + String(item.line) : '#' + String(idx + 1)
+
+          const preview = document.createElement('span')
+          Object.assign(preview.style, {
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            flex: '1',
+          })
+          preview.textContent = item.message
+
+          rowBtn.append(badge, preview)
+          rowBtn.addEventListener('click', (ev) => {
+            ev.preventDefault()
+            ev.stopPropagation()
+            activeDiagIdx = idx
+            renderPopoverState(true, true)
+            positionPopover()
+          })
+          listWrap.appendChild(rowBtn)
+        })
+
+        popover.appendChild(listWrap)
+      }
     }
 
-    const msgEl = document.createElement('pre')
-    msgEl.textContent = diag.message
-    Object.assign(msgEl.style, {
-      margin: '0',
-      padding: '6px 8px',
-      borderRadius: UI_RADII.chip,
-      backgroundColor: UI_COLORS.surfaceSubtle,
-      border: '1px solid ' + UI_COLORS.borderSubtle,
-      fontFamily: UI_FONT_MONO,
-      fontSize: '11px',
-      lineHeight: '1.4',
-      color: UI_COLORS.textSecondary,
-      whiteSpace: 'pre-wrap',
-      wordBreak: 'break-word',
-      maxHeight: '140px',
-      overflowY: 'auto',
-    })
-
-    popover.append(topRow, msgEl)
+    renderPopoverState(false, false)
     portalShadow.appendChild(popover)
 
-    pill.addEventListener('mouseenter', () => {
-      showPopover()
-    })
+    pill.addEventListener('mouseenter', () => showPopover())
     pill.addEventListener('mouseleave', () => {
       if (!pinned) hidePopover()
     })
-    popover.addEventListener('mouseenter', () => {
-      showPopover()
-    })
+    popover.addEventListener('mouseenter', () => showPopover())
     popover.addEventListener('mouseleave', () => {
       if (!pinned) hidePopover()
     })
@@ -851,13 +1001,31 @@ function mountFormatStatusPill(
       else hidePopover()
     })
     document.addEventListener(
+      'keydown',
+      (ev) => {
+        if (!pinned || diagList.length <= 1) return
+        if (ev.key === 'ArrowDown') {
+          ev.preventDefault()
+          activeDiagIdx = (activeDiagIdx + 1) % diagList.length
+          renderPopoverState(true, true)
+          positionPopover()
+        } else if (ev.key === 'ArrowUp') {
+          ev.preventDefault()
+          activeDiagIdx = (activeDiagIdx - 1 + diagList.length) % diagList.length
+          renderPopoverState(true, true)
+          positionPopover()
+        } else if (ev.key === 'Escape') {
+          hidePopover()
+        }
+      },
+      true
+    )
+    document.addEventListener(
       'pointerdown',
       (ev) => {
         if (!pinned) return
         const path = ev.composedPath()
-        if (!path.includes(pill) && !path.includes(popover)) {
-          hidePopover()
-        }
+        if (!path.includes(pill) && !path.includes(popover)) hidePopover()
       },
       true
     )
@@ -871,6 +1039,8 @@ function mountFormatStatusPill(
       },
       { passive: true, capture: true }
     )
+  } else {
+    clearErrorLineHighlight(preEl)
   }
 }
 
@@ -1432,7 +1602,7 @@ async function repairBrokenSequenceFromCodeCard(
         : headCode
     const reindented =
       wizFullCode && wizFullCode.length >= domAssembled.length ? wizFullCode : domAssembled
-    const { formatted, engine, status, diagnostic } = await formatWithBridge(
+    const { formatted, engine, status, diagnostic, diagnostics } = await formatWithBridge(
       reindented,
       lang,
       filenameHint
@@ -1448,9 +1618,6 @@ async function repairBrokenSequenceFromCodeCard(
         tailSpan.style.whiteSpace = 'pre'
         renderHighlightedTail(tailSpan, formattedTail, lang)
         if (!existingTailEl) codeEl.appendChild(tailSpan)
-        if (status === 'syntax_error' && diagnostic?.line && isTurnFinished) {
-          highlightErrorLineInCodeBlock(pre, diagnostic.line, false)
-        }
       } else {
         codeEl.style.whiteSpace = 'pre'
         renderHighlightedTail(codeEl, formatted, lang)
@@ -1478,6 +1645,7 @@ async function repairBrokenSequenceFromCodeCard(
       durationMs,
       status,
       diagnostic,
+      diagnostics,
     }
     repairedCodeByContainer.set(codeCard as HTMLElement, record)
     bindNativeCopyOverride(codeCard, showToast)
