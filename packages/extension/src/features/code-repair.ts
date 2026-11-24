@@ -1160,10 +1160,16 @@ async function repairBrokenSequenceFromCodeCard(
   }
 
   const { pre, codeEl, anchorBlock, turnRoot } = topo
+  const isActivelyStreaming = Boolean(
+    document.querySelector(
+      'button[aria-label*="Stop" i], button[aria-label*="Arrêter" i], button[aria-label*="Interrompre" i]'
+    )
+  )
   const hasFollowingZzy = Array.from(
     (turnRoot.parentElement || turnRoot).querySelectorAll('[data-zzy="1"]')
   ).some((zzy) => Boolean(anchorBlock.compareDocumentPosition(zzy) & 4))
-  const isTurnFinished = turnRoot.getAttribute('data-complete') === 'true' || hasFollowingZzy
+  const isTurnFinished =
+    !isActivelyStreaming && (turnRoot.getAttribute('data-complete') === 'true' || hasFollowingZzy)
 
   const rawCodeLen = (codeEl.textContent || '').length
   let followingSibCount = 0
@@ -1432,6 +1438,34 @@ async function repairBrokenSequenceFromCodeCard(
   } catch {
   } finally {
     inFlightCards.delete(codeCard)
+    if (codeCard.isConnected && !codeCard.hasAttribute('data-vexel-repaired-final')) {
+      let postSibCount = 0
+      let postSibChars = 0
+      let w: Element | null = anchorBlock
+      while (w && w !== turnRoot) {
+        for (let s = w.nextElementSibling; s; s = s.nextElementSibling) {
+          if (s.hasAttribute('data-vexel-ui')) continue
+          postSibCount += 1
+          postSibChars += (s.textContent || '').length
+        }
+        w = w.parentElement
+      }
+      const postSig =
+        (codeEl.textContent || '').length +
+        '|' +
+        postSibCount +
+        ':' +
+        postSibChars +
+        '|' +
+        (isTurnFinished ? '1' : '0')
+      if (scannedCardSignatures.get(codeCard) !== postSig) {
+        window.setTimeout(() => {
+          if (codeCard.isConnected && !codeCard.hasAttribute('data-vexel-repaired-final')) {
+            void repairBrokenSequenceFromCodeCard(codeCard, showToast)
+          }
+        }, 80)
+      }
+    }
   }
 }
 export function scanAndRepairCodeBlocks(root: ParentNode, showToast: (msg: string) => void): void {
@@ -1529,24 +1563,37 @@ export function initCodeRepair(showToast: (msg: string) => void): void {
   )
   const observer = new MutationObserver((mutations) => {
     for (const m of mutations) {
+      if (m.type === 'attributes' && m.target instanceof Element) {
+        if (m.target.hasAttribute('data-vexel-ui')) continue
+        const turnContainer =
+          m.target.closest('[data-scope-id="turn"], [data-subtree="aimc"]') || undefined
+        scheduleScan(turnContainer)
+        break
+      }
       for (let i = 0; i < m.addedNodes.length; i += 1) {
         const node = m.addedNodes[i]
-        if (node.nodeType !== 1) continue
-        const el = node as Element
+        const el = node.nodeType === 1 ? (node as Element) : node.parentElement
+        if (!el) continue
         if (el.hasAttribute('data-vexel-ui') || el.closest('[data-vexel-ui]')) continue
+        const turnContainer = el.closest('[data-scope-id="turn"], [data-subtree="aimc"]')
         if (
+          turnContainer ||
           el.matches('pre, code, [data-sfc-cp], [data-zzy], p, ul, ol') ||
           el.querySelector('pre, code, [data-sfc-cp], [data-zzy]') !== null
         ) {
-          const turnContainer = el.closest('[data-scope-id="turn"]') || undefined
-          scheduleScan(turnContainer)
+          scheduleScan(turnContainer || undefined)
           break
         }
       }
     }
   })
   if (document.body) {
-    observer.observe(document.body, { childList: true, subtree: true })
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['data-complete'],
+    })
     scheduleScan()
   }
 }
