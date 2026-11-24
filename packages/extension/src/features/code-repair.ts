@@ -1535,8 +1535,23 @@ export function initCodeRepair(showToast: (msg: string) => void): void {
 
   document.addEventListener('aimRenderComplete', runImmediateAndSettle, true)
   document.addEventListener('aimBodyComplete', runImmediateAndSettle, true)
-  document.addEventListener('vexel:stream-end', runImmediateAndSettle, true)
-  document.addEventListener('vexel:spa-nav', () => scheduleScan(250), true)
+  if (typeof PerformanceObserver !== 'undefined') {
+    try {
+      const perfObs = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if (/\/(?:async\/|search\?|folwr|udm=50)/i.test(entry.name)) {
+            runImmediateAndSettle()
+            break
+          }
+        }
+      })
+      perfObs.observe({ type: 'resource', buffered: false })
+    } catch {}
+  }
+  const nav = (window as unknown as { navigation?: EventTarget }).navigation
+  if (nav) {
+    nav.addEventListener('navigatesuccess', () => scheduleScan(250))
+  }
   window.addEventListener('popstate', () => scheduleScan(250))
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') scheduleScan(120)

@@ -14,7 +14,6 @@ export default defineConfig({
         ? { content: resolve(import.meta.dirname, 'src/content.ts') }
         : {
             background: resolve(import.meta.dirname, 'src/background.ts'),
-            'stream-hook': resolve(import.meta.dirname, 'src/stream-hook.ts'),
             popup: resolve(import.meta.dirname, 'src/popup.ts'),
           },
       output: {

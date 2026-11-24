@@ -570,24 +570,22 @@ try {
   }
 
   logStep(
-    'Stage 6: MAIN-world stream-hook events (vexel:stream-end & vexel:spa-nav) & repair trigger'
+    'Stage 6: Zero MAIN-world fetch/XHR monkey-patching & passive PerformanceObserver repair trigger'
   )
   {
-    await page.evaluate(() => {
-      const w = window as unknown as {
-        __vexelStreamEvents?: Array<{ type: string; at: number }>
-      }
-      w.__vexelStreamEvents = []
-      const record = (type: string) =>
-        document.addEventListener(type, () => {
-          w.__vexelStreamEvents?.push({ type, at: Date.now() })
-        })
-      record('vexel:stream-end')
-      record('vexel:spa-nav')
+    const nativeGlobalsIntact = await page.evaluate(() => {
+      const fetchSrc = Function.prototype.toString.call(window.fetch)
+      const xhrSendSrc = Function.prototype.toString.call(XMLHttpRequest.prototype.send)
+      return fetchSrc.includes('[native code]') && xhrSendSrc.includes('[native code]')
     })
+    assert.equal(
+      nativeGlobalsIntact,
+      true,
+      'window.fetch and XMLHttpRequest.prototype.send must remain untouched [native code] in MAIN world'
+    )
 
     await page.route('**/async/vexel-hook-stream*', async (route) => {
-      await new Promise((r) => setTimeout(r, 140))
+      await new Promise((r) => setTimeout(r, 120))
       await route.fulfill({
         status: 200,
         contentType: 'application/json; charset=utf-8',
@@ -595,25 +593,11 @@ try {
       })
     })
 
-    const streamReadDone = await page.evaluate(async () => {
+    const streamTurnId = 'e2e-stream-hook-turn'
+    const streamReadDone = await page.evaluate(async (id) => {
       const r = await fetch('/async/vexel-hook-stream')
       const txt = await r.text()
-      return txt.includes('"part":1') && txt.includes('"part":2')
-    })
-    assert.equal(streamReadDone, true, 'Page branch of teed stream must remain intact')
 
-    await page.waitForFunction(
-      () => {
-        const w = window as unknown as {
-          __vexelStreamEvents?: Array<{ type: string; at: number }>
-        }
-        return (w.__vexelStreamEvents || []).some((e) => e.type === 'vexel:stream-end')
-      },
-      { timeout: 4000 }
-    )
-
-    const streamTurnId = 'e2e-stream-hook-turn'
-    await page.evaluate((id) => {
       const main = document.querySelector('main')!
       const turn = document.createElement('div')
       turn.className = 'CKgc1d'
@@ -660,7 +644,10 @@ try {
       aimc.append(card, sib)
       turn.appendChild(aimc)
       main.appendChild(turn)
+
+      return txt.includes('"part":1') && txt.includes('"part":2')
     }, streamTurnId)
+    assert.equal(streamReadDone, true, 'Native fetch stream must remain intact')
 
     const streamTurnLoc = page.locator(`[data-hveid="${streamTurnId}"]`)
     await streamTurnLoc.locator('.spilled-stream-e2e').waitFor({ state: 'hidden', timeout: 6000 })
@@ -669,25 +656,11 @@ try {
       timeout: 8000,
     })
 
-    await page.evaluate(() => {
-      history.pushState({ e2e: true }, '', '/search?q=vexel-spa-nav&udm=50')
-    })
-
-    await page.waitForFunction(
-      () => {
-        const w = window as unknown as {
-          __vexelStreamEvents?: Array<{ type: string; at: number }>
-        }
-        return (w.__vexelStreamEvents || []).some((e) => e.type === 'vexel:spa-nav')
-      },
-      { timeout: 3000 }
-    )
-
-    logStep('  ✓ MAIN-world stream-hook verified: vexel:stream-end, teed stream & vexel:spa-nav')
+    logStep('  ✓ Native fetch/XHR verified intact & passive PerformanceObserver repair trigger succeeded')
   }
 
   console.log(
-    '✓ All full-pyramid Vexel E2E assertions (including real disk write, paste-to-file, .md export & stream-hook) passed!'
+    '✓ All full-pyramid Vexel E2E assertions (including real disk write, paste-to-file, .md export & passive resource observer) passed!'
   )
 } finally {
   await context?.close().catch(() => {})
