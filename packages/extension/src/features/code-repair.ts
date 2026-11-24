@@ -1519,81 +1519,49 @@ export function scanAndRepairCodeBlocks(root: ParentNode, showToast: (msg: strin
 
 export function initCodeRepair(showToast: (msg: string) => void): void {
   let scanTimer: number | undefined
-  let fullScanNeeded = false
-  const dirtyRoots = new Set<Element>()
 
-  const scheduleScan = (root?: Element) => {
-    if (root) dirtyRoots.add(root)
-    else fullScanNeeded = true
+  const scheduleScan = (delayMs = 180) => {
     if (scanTimer) window.clearTimeout(scanTimer)
     scanTimer = window.setTimeout(() => {
       scanTimer = undefined
-      if (fullScanNeeded || dirtyRoots.size === 0) {
-        fullScanNeeded = false
-        dirtyRoots.clear()
-        scanAndRepairCodeBlocks(document, showToast)
-        return
-      }
-      const roots = [...dirtyRoots]
-      dirtyRoots.clear()
-      for (const r of roots) {
-        if (r.isConnected) scanAndRepairCodeBlocks(r, showToast)
-      }
-    }, 320)
+      scanAndRepairCodeBlocks(document, showToast)
+    }, delayMs)
   }
-  document.addEventListener(
-    'aimRenderComplete',
-    () => {
-      fullScanNeeded = false
-      dirtyRoots.clear()
-      scanAndRepairCodeBlocks(document, showToast)
-      scheduleScan()
-    },
-    true
-  )
-  document.addEventListener(
-    'aimBodyComplete',
-    () => {
-      fullScanNeeded = false
-      dirtyRoots.clear()
-      scanAndRepairCodeBlocks(document, showToast)
-      scheduleScan()
-    },
-    true
-  )
-  const observer = new MutationObserver((mutations) => {
-    for (const m of mutations) {
-      if (m.type === 'attributes' && m.target instanceof Element) {
-        if (m.target.hasAttribute('data-vexel-ui')) continue
-        const turnContainer =
-          m.target.closest('[data-scope-id="turn"], [data-subtree="aimc"]') || undefined
-        scheduleScan(turnContainer)
-        break
-      }
-      for (let i = 0; i < m.addedNodes.length; i += 1) {
-        const node = m.addedNodes[i]
-        const el = node.nodeType === 1 ? (node as Element) : node.parentElement
-        if (!el) continue
-        if (el.hasAttribute('data-vexel-ui') || el.closest('[data-vexel-ui]')) continue
-        const turnContainer = el.closest('[data-scope-id="turn"], [data-subtree="aimc"]')
-        if (
-          turnContainer ||
-          el.matches('pre, code, [data-sfc-cp], [data-zzy], p, ul, ol') ||
-          el.querySelector('pre, code, [data-sfc-cp], [data-zzy]') !== null
-        ) {
-          scheduleScan(turnContainer || undefined)
-          break
-        }
-      }
-    }
+
+  const runImmediateAndSettle = () => {
+    scanAndRepairCodeBlocks(document, showToast)
+    scheduleScan(260)
+  }
+
+  document.addEventListener('aimRenderComplete', runImmediateAndSettle, true)
+  document.addEventListener('aimBodyComplete', runImmediateAndSettle, true)
+  document.addEventListener('vexel:stream-end', runImmediateAndSettle, true)
+  document.addEventListener('vexel:spa-nav', () => scheduleScan(250), true)
+  window.addEventListener('popstate', () => scheduleScan(250))
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') scheduleScan(120)
   })
-  if (document.body) {
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['data-complete'],
-    })
-    scheduleScan()
-  }
+  document.addEventListener(
+    'contentvisibilityautostatechange',
+    (ev: Event) => {
+      const target = ev.target as HTMLElement | null
+      if (target && target.getAttribute('data-scope-id') === 'turn') scheduleScan(100)
+    },
+    true
+  )
+
+  window.setInterval(() => {
+    if (document.visibilityState !== 'visible') return
+    const isStreaming = Boolean(
+      document.querySelector(
+        'button[aria-label*="Stop" i], button[aria-label*="Arrêter" i], button[aria-label*="Interrompre" i]'
+      )
+    )
+    if (isStreaming) return
+    if (document.querySelector('pre:not([data-vexel-final-pre]) code')) {
+      scanAndRepairCodeBlocks(document, showToast)
+    }
+  }, 900)
+
+  scheduleScan(80)
 }
