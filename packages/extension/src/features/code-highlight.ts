@@ -565,3 +565,62 @@ export function createLightCodeCardElement(
   wrapper.append(bar, pre)
   return wrapper
 }
+
+export function highlightErrorLineInCodeBlock(
+  preEl: HTMLElement,
+  lineNumber: number,
+  pulse = false
+): void {
+  const codeEl = preEl.querySelector('code') || preEl
+  const totalLines = Math.max(1, (codeEl.textContent || '').split('\n').length)
+  const clampedLine = Math.max(1, Math.min(totalLines, Math.floor(lineNumber)))
+
+  const preStyle = window.getComputedStyle(preEl)
+  const codeStyle = window.getComputedStyle(codeEl)
+  if (preStyle.position === 'static') {
+    preEl.style.position = 'relative'
+  }
+
+  const parsedLineHeight = parseFloat(codeStyle.lineHeight) || parseFloat(preStyle.lineHeight)
+  const lineHeight =
+    Number.isFinite(parsedLineHeight) && parsedLineHeight > 0 ? parsedLineHeight : 20
+  const paddingTop =
+    (parseFloat(preStyle.paddingTop) || 0) + (parseFloat(codeStyle.paddingTop) || 0)
+  const topPx = paddingTop + (clampedLine - 1) * lineHeight
+
+  let marker = preEl.querySelector<HTMLElement>('[data-vexel-error-line-marker="true"]')
+  if (!marker) {
+    marker = (preEl.ownerDocument || document).createElement('div')
+    marker.setAttribute('data-vexel-ui', 'true')
+    marker.setAttribute('data-vexel-error-line-marker', 'true')
+    marker.setAttribute('aria-hidden', 'true')
+    preEl.appendChild(marker)
+  }
+
+  marker.setAttribute('data-line', String(clampedLine))
+  Object.assign(marker.style, {
+    position: 'absolute',
+    left: '0',
+    right: '0',
+    top: topPx + 'px',
+    height: lineHeight + 'px',
+    backgroundColor: pulse ? 'rgba(251, 188, 4, 0.28)' : 'rgba(251, 188, 4, 0.14)',
+    borderLeft: '3px solid #ea8600',
+    pointerEvents: 'none',
+    boxSizing: 'border-box',
+    transition: 'background-color 240ms ease',
+    zIndex: '1',
+  })
+
+  if (pulse) {
+    window.setTimeout(() => {
+      if (marker && marker.isConnected) {
+        marker.style.backgroundColor = 'rgba(251, 188, 4, 0.14)'
+      }
+    }, 650)
+  }
+}
+
+export function clearErrorLineHighlight(preEl: HTMLElement): void {
+  preEl.querySelector('[data-vexel-error-line-marker="true"]')?.remove()
+}

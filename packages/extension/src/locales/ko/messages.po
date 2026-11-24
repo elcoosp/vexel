@@ -100,6 +100,10 @@ msgstr "매끄러운 키보드 중심 워크플로를 위한 설계"
 msgid "Cancel"
 msgstr "취소"
 
+#: src/features/code-repair.ts:513
+msgid "Check syntax"
+msgstr "구문 확인"
+
 #: src/features/thread-tools.ts:319
 msgid "Clean thread copied to clipboard ({kb} KB)"
 msgstr "정리된 스레드를 클립보드에 복사했습니다 ({kb} KB)"
@@ -163,9 +167,17 @@ msgid "Copied"
 msgstr "복사됨"
 
 #. placeholder {0}: record.engine
-#: src/features/code-repair.ts:608
+#: src/features/code-repair.ts:1001
 msgid "Copied repaired & formatted code ({0})"
 msgstr "복구 및 포맷된 코드가 복사되었습니다 ({0})"
+
+#: src/features/code-repair.ts:998
+msgid "Copied with unverified syntax"
+msgstr "검증되지 않은 구문으로 복사됨"
+
+#: src/features/code-repair.ts:996
+msgid "Copied with unverified syntax (Line {errLine})"
+msgstr "검증되지 않은 구문으로 복사됨 ({errLine}행)"
 
 #: src/features/palette.ts:172
 #: src/popup.ts:125
@@ -280,6 +292,10 @@ msgstr "근본 원인을 분리하고 실패 모드를 재현하여 정확한 �
 msgid "Jump to last user prompt"
 msgstr "마지막 사용자 프롬프트로 이동"
 
+#: src/features/code-repair.ts:680
+msgid "Jump to line"
+msgstr "줄로 이동"
+
 #: src/popup.ts:133
 msgid "Last prompt"
 msgstr "마지막 프롬프트"
@@ -374,6 +390,14 @@ msgstr "{dirName}/ 패키징 중..."
 msgid "Packing Git diff..."
 msgstr "Git diff 패키징 중..."
 
+#: src/features/code-repair.ts:535
+msgid "Reassembled and verified with {engineLabel} ({durationMs} ms)"
+msgstr "{engineLabel}로 재조립 및 검증 완료 ({durationMs} ms)"
+
+#: src/features/code-repair.ts:542
+msgid "Reassembled from split blocks (no native syntax check available)"
+msgstr "분할된 블록에서 재조립됨 (네이티브 구문 검사 불가)"
+
 #: src/features/code-save.ts:615
 msgid "Recent:"
 msgstr "최근:"
@@ -408,7 +432,8 @@ msgstr "{removingName} 제거 중..."
 msgid "Removing..."
 msgstr "제거 중..."
 
-#: src/features/code-repair.ts:266
+#: src/features/code-repair.ts:515
+#: src/features/code-repair.ts:516
 msgid "Repaired"
 msgstr "복구됨"
 
@@ -505,13 +530,17 @@ msgstr "3/3단계 · 흐름과 속도"
 msgid "Switch folder"
 msgstr "폴더 전환"
 
+#: src/features/code-repair.ts:527
+msgid "Syntax issue detected by native formatter"
+msgstr "네이티브 포매터가 구문 오류를 감지했습니다"
+
 #: src/features/builtin-skills.ts:37
 msgid "Systematic root-cause diagnosis from stack traces, logs, and code without guesswork."
 msgstr "추측 없이 스택 트레이스, 로그 및 코드를 바탕으로 체계적인 근본 원인을 진단합니다."
 
 #: src/features/code-repair.ts:312
-msgid "Truncated code block automatically reassembled and formatted by Vexel"
-msgstr "잘린 코드 블록을 Vexel이 자동으로 재조립하고 포맷했습니다"
+#~ msgid "Truncated code block automatically reassembled and formatted by Vexel"
+#~ msgstr "잘린 코드 블록을 Vexel이 자동으로 재조립하고 포맷했습니다"
 
 #: src/features/onboarding.ts:169
 msgid "Turn repetitive engineering prompts into one-keystroke slash commands—ready out of the box with zero setup."

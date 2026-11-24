@@ -1428,4 +1428,113 @@ Exécute \`./wr.sh\` avec ce script.
     expect(code.textContent).toContain('ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING')
     expect(code.textContent?.trim().endsWith('COMMIT;')).toBe(true)
   })
+  it('renders 3-state syntax_error pill, diagnostic popover, pinpoint line marker, and Copy guardrail', async () => {
+    const nl = String.fromCharCode(10)
+    const runtimeMock = {
+      lastError: undefined as { message?: string } | undefined,
+      sendMessage: (
+        _msg: unknown,
+        cb: (res?: {
+          ok?: boolean
+          data?: {
+            ok: boolean
+            status: 'syntax_error'
+            formatted: string
+            engine: string
+            diagnostic: { tool: string; line: number; column: number; message: string }
+          }
+        }) => void
+      ) => {
+        cb({
+          ok: true,
+          data: {
+            ok: true,
+            status: 'syntax_error',
+            formatted: [
+              'fn main() {',
+              '    let a = 1;',
+              '    let b = 2;',
+              '    let broken = ;',
+              '}',
+            ].join(nl),
+            engine: 'rustfmt',
+            diagnostic: {
+              tool: 'rustfmt',
+              line: 4,
+              column: 20,
+              message: 'error: expected expression, found `;`',
+            },
+          },
+        })
+      },
+    }
+    ;(globalThis as { chrome?: { runtime?: typeof runtimeMock } }).chrome = {
+      runtime: runtimeMock,
+    }
+
+    const turn = document.createElement('div')
+    turn.setAttribute('data-scope-id', 'turn')
+    turn.setAttribute('data-complete', 'true')
+
+    const card = document.createElement('div')
+    card.setAttribute('data-hveid', 'card-syntax-err')
+    const header = document.createElement('div')
+    header.textContent = 'rust'
+    const pre = document.createElement('pre')
+    const code = document.createElement('code')
+    code.className = 'language-rust'
+    code.textContent = ['fn main() {', '    let a = 1;', '    let b = 2;'].join(nl)
+    pre.appendChild(code)
+
+    const footer = document.createElement('div')
+    const copyWrap = document.createElement('div')
+    const copyBtn = document.createElement('button')
+    copyBtn.type = 'button'
+    copyBtn.setAttribute('aria-label', 'Copy code')
+    copyWrap.appendChild(copyBtn)
+    footer.appendChild(copyWrap)
+    card.append(header, pre, footer)
+
+    const spilled = document.createElement('div')
+    spilled.className = 'n6owBd awi2gc'
+    spilled.setAttribute('data-sfc-cp', '')
+    spilled.innerHTML = ['let broken = ;', '}'].join('<br>')
+
+    turn.append(card, spilled)
+    document.body.appendChild(turn)
+
+    const toasts: string[] = []
+    scanAndRepairCodeBlocks(document, (msg) => toasts.push(msg))
+    await new Promise((r) => setTimeout(r, 40))
+
+    const badgeHost = card.querySelector<HTMLElement>('[data-vexel-format-badge="true"]')
+    expect(badgeHost).not.toBeNull()
+    const sr = badgeHost!.shadowRoot!
+    const pillBtn = sr.querySelector<HTMLButtonElement>('button')!
+    expect(pillBtn.textContent).toContain('L4')
+
+    // Phase 3 pinpoint line marker in <pre> without mutating code.textContent
+    const lineMarker = pre.querySelector<HTMLElement>('[data-vexel-error-line-marker="true"]')
+    expect(lineMarker).not.toBeNull()
+    expect(lineMarker?.getAttribute('data-line')).toBe('4')
+
+    // Popover opens on click and Jump to line scrolls + closes popover
+    const popover = sr.querySelector<HTMLElement>('[data-vexel-diag-popover="true"]')!
+    expect(popover.style.display).toBe('none')
+    pillBtn.click()
+    expect(popover.style.display).toBe('flex')
+    expect(popover.textContent).toContain('rustfmt · Line 4, Col 20')
+    expect(popover.textContent).toContain('expected expression')
+
+    const jumpBtn = Array.from(popover.querySelectorAll('button')).find((b) => b !== pillBtn)
+    expect(jumpBtn).toBeDefined()
+    jumpBtn!.click()
+    expect(popover.style.display).toBe('none')
+
+    // Non-blocking Copy button guardrail toast
+    copyBtn.click()
+    expect(toasts.some((t) => t.includes('Line 4'))).toBe(true)
+
+    delete (globalThis as { chrome?: unknown }).chrome
+  })
 })

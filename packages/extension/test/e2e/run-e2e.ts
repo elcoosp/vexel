@@ -473,6 +473,98 @@ try {
     logStep(`  ✓ [${tc.lang}] badge="${badgeText.trim()}"`)
   }
 
+  // Verify 3-state confidence badge + diagnostic popover + pinpoint line highlight on broken Rust syntax
+  if (strictFormatters) {
+    const brokenTurnId = 'turn-repair-syntax-err-e2e'
+    await page.evaluate(
+      ({ turnId }) => {
+        const main = document.querySelector('main')
+        if (!main) return
+        const nl = String.fromCharCode(10)
+        const turn = document.createElement('div')
+        turn.className = 'CKgc1d'
+        turn.setAttribute('data-scope-id', 'turn')
+        turn.setAttribute('data-complete', 'true')
+        turn.setAttribute('data-hveid', turnId)
+
+        const aimc = document.createElement('div')
+        aimc.className = 'pWvJNd'
+        aimc.setAttribute('data-subtree', 'aimc')
+
+        const card = document.createElement('div')
+        card.setAttribute('data-hveid', turnId + '-card')
+        const header = document.createElement('div')
+        header.className = 'a2TNg'
+        header.textContent = 'rust'
+        const pre = document.createElement('pre')
+        const code = document.createElement('code')
+        code.className = 'language-rust'
+        code.textContent = ['fn broken_demo() {', '    let ok_val = 42;'].join(nl)
+        pre.appendChild(code)
+
+        const footer = document.createElement('div')
+        const btnWrap = document.createElement('div')
+        const copyBtn = document.createElement('button')
+        copyBtn.type = 'button'
+        copyBtn.setAttribute('aria-label', 'Copy code')
+        btnWrap.appendChild(copyBtn)
+        footer.appendChild(btnWrap)
+        card.append(header, pre, footer)
+
+        const sib = document.createElement('div')
+        sib.className = 'n6owBd awi2gc spilled-e2e'
+        sib.setAttribute('data-sfc-cp', '')
+        sib.innerHTML = ['let bad_expr = ;', '}'].join('<br>')
+
+        aimc.append(card, sib)
+        turn.appendChild(aimc)
+        main.appendChild(turn)
+      },
+      { turnId: brokenTurnId }
+    )
+
+    const brokenTurnLoc = page.locator(`[data-hveid="${brokenTurnId}"]`)
+    await brokenTurnLoc.locator('.spilled-e2e').waitFor({ state: 'hidden', timeout: 6000 })
+    const errBadge = brokenTurnLoc.locator('[data-vexel-format-badge="true"]')
+    await errBadge.waitFor({ state: 'attached', timeout: 6000 })
+    await page.waitForFunction(
+      (id) => {
+        const el = document.querySelector(`[data-hveid="${id}"] [data-vexel-format-badge="true"]`)
+        const txt =
+          el?.shadowRoot?.querySelector('[data-vexel-pill-label="true"]')?.textContent || ''
+        return /Check syntax|Vérifier la syntaxe/.test(txt) && /L\d+/.test(txt)
+      },
+      brokenTurnId,
+      { timeout: 12000 }
+    )
+
+    const markerLine = await brokenTurnLoc
+      .locator('[data-vexel-error-line-marker="true"]')
+      .getAttribute('data-line')
+    assert.ok(
+      markerLine && Number(markerLine) >= 1,
+      'Pinpoint amber error line marker must be mounted'
+    )
+
+    const popoverOpened = await errBadge.evaluate((el) => {
+      const sr = el.shadowRoot
+      const pill = sr?.querySelector<HTMLButtonElement>('button')
+      pill?.click()
+      const pop = sr?.querySelector<HTMLElement>('[data-vexel-diag-popover="true"]')
+      return Boolean(
+        pop && pop.style.display === 'flex' && (pop.textContent || '').includes('rustfmt')
+      )
+    })
+    assert.equal(
+      popoverOpened,
+      true,
+      'Clicking amber Check syntax pill must open rustfmt diagnostic popover'
+    )
+    logStep(
+      `  ✓ [rust:syntax_error] pinpoint marker at line ${markerLine} & diagnostic popover verified`
+    )
+  }
+
   console.log(
     '✓ All full-pyramid Vexel E2E assertions (including real disk write, paste-to-file & .md export) passed!'
   )

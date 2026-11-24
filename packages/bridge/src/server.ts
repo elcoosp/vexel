@@ -650,7 +650,7 @@ const server = http.createServer(async (req, res) => {
       const filename = typeof body.filename === 'string' ? body.filename.trim() : undefined
       if (!code.trim()) {
         res.writeHead(200)
-        res.end(JSON.stringify({ ok: true, formatted: code, engine: 'empty' }))
+        res.end(JSON.stringify({ ok: true, status: 'empty', formatted: code, engine: 'empty' }))
         return
       }
       const result = await formatCodeWithNativeTool(code, lang, filename)

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   formatCodeWithNativeTool,
   getCandidateSpecs,
+  parseFormatterDiagnostic,
   resetBinaryPathCacheForTests,
   resolveTargetExtension,
 } from '../src/formatter.ts'
@@ -103,21 +104,56 @@ describe('formatter.ts native CLI routing & fallback matrix', () => {
       expect(cppRes.engine).toBe('clang-format')
       expect(cppRes.formatted).toContain('// clang-formatted:--assume-filename=app.cpp')
       const sqlRes = await formatCodeWithNativeTool('select 1', 'sql')
-      expect(sqlRes).toEqual({ ok: true, formatted: 'SELECT 1;', engine: 'sleek' })
+      expect(sqlRes).toEqual({
+        ok: true,
+        status: 'formatted',
+        formatted: 'SELECT 1;',
+        engine: 'sleek',
+      })
       const tomlRes = await formatCodeWithNativeTool('[package]\nname="vexel"', 'toml')
-      expect(tomlRes).toEqual({ ok: true, formatted: '[package]\nname = "vexel"', engine: 'taplo' })
+      expect(tomlRes).toEqual({
+        ok: true,
+        status: 'formatted',
+        formatted: '[package]\nname = "vexel"',
+        engine: 'taplo',
+      })
       const tfRes = await formatCodeWithNativeTool('resource "null_resource" "ok" {}', 'terraform')
       expect(tfRes.engine).toBe('tofu')
       const luaRes = await formatCodeWithNativeTool('local x=1', 'lua')
-      expect(luaRes).toEqual({ ok: true, formatted: 'local x = 1', engine: 'stylua' })
+      expect(luaRes).toEqual({
+        ok: true,
+        status: 'formatted',
+        formatted: 'local x = 1',
+        engine: 'stylua',
+      })
       const zigRes = await formatCodeWithNativeTool('const x:u32=1;', 'zig')
-      expect(zigRes).toEqual({ ok: true, formatted: 'const x: u32 = 1;', engine: 'zig' })
+      expect(zigRes).toEqual({
+        ok: true,
+        status: 'formatted',
+        formatted: 'const x: u32 = 1;',
+        engine: 'zig',
+      })
       const nixRes = await formatCodeWithNativeTool('{pkgs}:pkgs.hello', 'nix')
-      expect(nixRes).toEqual({ ok: true, formatted: '{ pkgs }: pkgs.hello', engine: 'alejandra' })
+      expect(nixRes).toEqual({
+        ok: true,
+        status: 'formatted',
+        formatted: '{ pkgs }: pkgs.hello',
+        engine: 'alejandra',
+      })
       const swiftRes = await formatCodeWithNativeTool('let x=1', 'swift')
-      expect(swiftRes).toEqual({ ok: true, formatted: 'let x = 1', engine: 'swift-format' })
+      expect(swiftRes).toEqual({
+        ok: true,
+        status: 'formatted',
+        formatted: 'let x = 1',
+        engine: 'swift-format',
+      })
       const ktRes = await formatCodeWithNativeTool('val x=1', 'kotlin')
-      expect(ktRes).toEqual({ ok: true, formatted: 'val x = 1', engine: 'ktfmt' })
+      expect(ktRes).toEqual({
+        ok: true,
+        status: 'formatted',
+        formatted: 'val x = 1',
+        engine: 'ktfmt',
+      })
       const phpRes = await formatCodeWithNativeTool('<?php function hi(){return 1;}', 'php')
       expect(phpRes.engine).toBe('mago')
       expect(phpRes.formatted).toContain('function hi(): int')
@@ -128,12 +164,14 @@ describe('formatter.ts native CLI routing & fallback matrix', () => {
       const dartRes = await formatCodeWithNativeTool('void main(){print(1);}', 'dart')
       expect(dartRes).toEqual({
         ok: true,
+        status: 'formatted',
         formatted: 'void main() {\n  print(1);\n}',
         engine: 'dart',
       })
       const javaRes = await formatCodeWithNativeTool('class Main{}', 'java')
       expect(javaRes).toEqual({
         ok: true,
+        status: 'formatted',
         formatted: 'class Main {}',
         engine: 'google-java-format',
       })
@@ -148,8 +186,43 @@ describe('formatter.ts native CLI routing & fallback matrix', () => {
     const unknownRes = await formatCodeWithNativeTool('raw text', 'brainfuck')
     expect(unknownRes).toEqual({
       ok: true,
+      status: 'unavailable',
       formatted: 'raw text',
       engine: 'fallback',
     })
+  })
+  it('returns structured syntax_error with extracted line and column without false positives on lint warnings', async () => {
+    writeFakeFormatter(
+      'rustfmt',
+      'printf "error: expected semicolon\\n --> <stdin>:14:5\\n" >&2; exit 1'
+    )
+    const rsErr = await formatCodeWithNativeTool('fn main() { let x = 1 }', 'rust')
+    expect(rsErr.status).toBe('syntax_error')
+    expect(rsErr.engine).toBe('rustfmt')
+    expect(rsErr.diagnostic?.line).toBe(14)
+    expect(rsErr.diagnostic?.column).toBe(5)
+    expect(rsErr.diagnostic?.message).toContain('expected semicolon')
+
+    const pyDiag = parseFormatterDiagnostic(
+      'ruff',
+      'error: Failed to parse <stdin>:9:12: Expected an expression'
+    )
+    expect(pyDiag).toEqual({
+      tool: 'ruff',
+      line: 9,
+      column: 12,
+      message: 'error: Failed to parse <stdin>:9:12: Expected an expression',
+    })
+
+    writeFakeFormatter('rubyfmt', 'exit 1')
+    writeFakeFormatter('standardrb', 'exit 1')
+    writeFakeFormatter(
+      'rubocop',
+      'printf "def hi\\n  1\\nend\\n"; printf "W: Lint/UselessAssignment\\n" >&2; exit 1'
+    )
+    const rbWarn = await formatCodeWithNativeTool('def hi; x = 1; 1; end', 'ruby')
+    expect(rbWarn.status).toBe('formatted')
+    expect(rbWarn.engine).toBe('rubocop')
+    expect(rbWarn.formatted).toBe('def hi\n  1\nend')
   })
 })

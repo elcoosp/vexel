@@ -100,6 +100,10 @@ msgstr "Entwickelt für mühelosen Tastatur-Workflow"
 msgid "Cancel"
 msgstr "Abbrechen"
 
+#: src/features/code-repair.ts:513
+msgid "Check syntax"
+msgstr "Syntax prüfen"
+
 #: src/features/thread-tools.ts:319
 msgid "Clean thread copied to clipboard ({kb} KB)"
 msgstr "Bereinigter Thread in die Zwischenablage kopiert ({kb} KB)"
@@ -163,9 +167,17 @@ msgid "Copied"
 msgstr "Kopiert"
 
 #. placeholder {0}: record.engine
-#: src/features/code-repair.ts:608
+#: src/features/code-repair.ts:1001
 msgid "Copied repaired & formatted code ({0})"
 msgstr "Reparierten & formatierten Code kopiert ({0})"
+
+#: src/features/code-repair.ts:998
+msgid "Copied with unverified syntax"
+msgstr "Mit ungeprüfter Syntax kopiert"
+
+#: src/features/code-repair.ts:996
+msgid "Copied with unverified syntax (Line {errLine})"
+msgstr "Mit ungeprüfter Syntax kopiert (Zeile {errLine})"
 
 #: src/features/palette.ts:172
 #: src/popup.ts:125
@@ -280,6 +292,10 @@ msgstr "Isoliert die Grundursache, reproduziert den Fehler und schreibt einen ge
 msgid "Jump to last user prompt"
 msgstr "Zum letzten Benutzer-Prompt springen"
 
+#: src/features/code-repair.ts:680
+msgid "Jump to line"
+msgstr "Zur Zeile springen"
+
 #: src/popup.ts:133
 msgid "Last prompt"
 msgstr "Letzter Prompt"
@@ -374,6 +390,14 @@ msgstr "Packe {dirName}/..."
 msgid "Packing Git diff..."
 msgstr "Packe Git-Diff..."
 
+#: src/features/code-repair.ts:535
+msgid "Reassembled and verified with {engineLabel} ({durationMs} ms)"
+msgstr "Zusammengesetzt und mit {engineLabel} ({durationMs} ms) geprüft"
+
+#: src/features/code-repair.ts:542
+msgid "Reassembled from split blocks (no native syntax check available)"
+msgstr "Aus geteilten Blöcken zusammengesetzt (keine native Syntaxprüfung verfügbar)"
+
 #: src/features/code-save.ts:615
 msgid "Recent:"
 msgstr "Zuletzt:"
@@ -408,7 +432,8 @@ msgstr "Entferne {removingName}..."
 msgid "Removing..."
 msgstr "Wird entfernt..."
 
-#: src/features/code-repair.ts:266
+#: src/features/code-repair.ts:515
+#: src/features/code-repair.ts:516
 msgid "Repaired"
 msgstr "Repariert"
 
@@ -505,13 +530,17 @@ msgstr "Schritt 3 von 3 · Flow & Geschwindigkeit"
 msgid "Switch folder"
 msgstr "Ordner wechseln"
 
+#: src/features/code-repair.ts:527
+msgid "Syntax issue detected by native formatter"
+msgstr "Syntaxproblem vom nativen Formatierer erkannt"
+
 #: src/features/builtin-skills.ts:37
 msgid "Systematic root-cause diagnosis from stack traces, logs, and code without guesswork."
 msgstr "Systematische Ursachenanalyse aus Stack-Traces, Logs und Code ohne Raten."
 
 #: src/features/code-repair.ts:312
-msgid "Truncated code block automatically reassembled and formatted by Vexel"
-msgstr "Abgeschnittener Codeblock automatisch von Vexel zusammengesetzt und formatiert"
+#~ msgid "Truncated code block automatically reassembled and formatted by Vexel"
+#~ msgstr "Abgeschnittener Codeblock automatisch von Vexel zusammengesetzt und formatiert"
 
 #: src/features/onboarding.ts:169
 msgid "Turn repetitive engineering prompts into one-keystroke slash commands—ready out of the box with zero setup."

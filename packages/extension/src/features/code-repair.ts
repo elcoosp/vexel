@@ -1,5 +1,10 @@
 import { franc } from 'franc-min'
-import { reconstructStructuralIndentation, renderHighlightedTail } from './code-highlight'
+import {
+  clearErrorLineHighlight,
+  highlightErrorLineInCodeBlock,
+  reconstructStructuralIndentation,
+  renderHighlightedTail,
+} from './code-highlight'
 import { t } from '@lingui/core/macro'
 import '../i18n'
 import { createLucideIcon } from './icons'
@@ -8,11 +13,29 @@ import { UI_COLORS, UI_FONT_MONO, UI_FONT_SANS, UI_RADII, UI_SHADOWS } from './u
 const TRUNCATION_MIN_CHARS = 3500
 const BT1 = String.fromCharCode(96)
 
+export type BridgeFormatStatus = 'formatted' | 'syntax_error' | 'unavailable' | 'timeout' | 'empty'
+
+export interface BridgeFormatDiagnostic {
+  tool: string
+  line?: number
+  column?: number
+  message: string
+}
+
+export interface BridgeFormatPayload {
+  formatted: string
+  engine: string
+  status: BridgeFormatStatus
+  diagnostic?: BridgeFormatDiagnostic
+}
+
 export interface RepairedCodeRecord {
   code: string
   engine: string
   lang: string
   durationMs: number
+  status: BridgeFormatStatus
+  diagnostic?: BridgeFormatDiagnostic
 }
 
 const repairedCodeByContainer = new WeakMap<HTMLElement, RepairedCodeRecord>()
@@ -381,16 +404,24 @@ function formatWithBridge(
   code: string,
   lang: string,
   filenameHint?: string
-): Promise<{ formatted: string; engine: string }> {
+): Promise<BridgeFormatPayload> {
   return new Promise((resolve) => {
     let settled = false
-    const done = (val: { formatted: string; engine: string }) => {
+    const fallbackResult: BridgeFormatPayload = {
+      formatted: code,
+      engine: 'fallback',
+      status: 'unavailable',
+    }
+    const done = (val: BridgeFormatPayload) => {
       if (settled) return
       settled = true
       globalThis.clearTimeout(timer)
       resolve(val)
     }
-    const timer = globalThis.setTimeout(() => done({ formatted: code, engine: 'fallback' }), 9000)
+    const timer = globalThis.setTimeout(
+      () => done({ formatted: code, engine: 'fallback', status: 'timeout' }),
+      9000
+    )
     try {
       const runtime = (
         globalThis as {
@@ -403,7 +434,14 @@ function formatWithBridge(
                   ok?: boolean
                   formatted?: string
                   engine?: string
-                  data?: { formatted?: string; engine?: string }
+                  status?: BridgeFormatStatus
+                  diagnostic?: BridgeFormatDiagnostic
+                  data?: {
+                    formatted?: string
+                    engine?: string
+                    status?: BridgeFormatStatus
+                    diagnostic?: BridgeFormatDiagnostic
+                  }
                 }) => void
               ) => void
             }
@@ -411,79 +449,161 @@ function formatWithBridge(
         }
       ).chrome?.runtime
       if (!runtime?.sendMessage) {
-        done({ formatted: code, engine: 'fallback' })
+        done(fallbackResult)
         return
       }
       runtime.sendMessage({ type: 'FORMAT_CODE', code, lang, filename: filenameHint }, (res) => {
         const err = runtime.lastError?.message
         const payload = res?.data ?? res
         if (!err && res?.ok && typeof payload?.formatted === 'string') {
-          done({ formatted: payload.formatted, engine: String(payload.engine || 'bridge') })
+          const engine = String(payload.engine || 'bridge')
+          const status: BridgeFormatStatus =
+            payload.status || (engine === 'fallback' ? 'unavailable' : 'formatted')
+          done({
+            formatted: payload.formatted,
+            engine,
+            status,
+            diagnostic: payload.diagnostic,
+          })
         } else {
-          done({ formatted: code, engine: 'fallback' })
+          done(fallbackResult)
         }
       })
     } catch {
-      done({ formatted: code, engine: 'fallback' })
+      done(fallbackResult)
     }
   })
+}
+
+function scrollCodeBlockToLine(preEl: HTMLElement, lineNumber: number): void {
+  const codeEl = preEl.querySelector('code') || preEl
+  const totalLines = Math.max(1, (codeEl.textContent || '').split('\n').length)
+  const clampedLine = Math.max(1, Math.min(totalLines, lineNumber))
+  const computed = window.getComputedStyle(preEl)
+  const parsedLineHeight = parseFloat(computed.lineHeight)
+  const lineHeight =
+    Number.isFinite(parsedLineHeight) && parsedLineHeight > 0 ? parsedLineHeight : 20
+  highlightErrorLineInCodeBlock(preEl, clampedLine, true)
+  const targetOffset = Math.max(0, (clampedLine - 3) * lineHeight)
+  if (preEl.scrollHeight > preEl.clientHeight + 4) {
+    preEl.scrollTo({ top: targetOffset, behavior: 'smooth' })
+  } else {
+    const rect = preEl.getBoundingClientRect()
+    const absTop = window.scrollY + rect.top + targetOffset - 120
+    if (typeof window.scrollTo === 'function') {
+      window.scrollTo({ top: Math.max(0, absTop), behavior: 'smooth' })
+    }
+  }
 }
 
 function mountFormatStatusPill(
   codeCard: Element,
   preEl: HTMLElement,
   headerEl: HTMLElement | null,
-  engine: string,
-  durationMs: number
+  record: RepairedCodeRecord,
+  isFinalized: boolean
 ): void {
-  const engineLabel = !engine || engine === 'fallback' ? 'local' : engine
-  const nextLabel = `${t`Repaired`} · ${engineLabel} · ${durationMs} ms`
-  const existing = codeCard.querySelector<HTMLElement>('[data-vexel-format-badge="true"]')
-  if (existing?.shadowRoot) {
-    const labelSpan = existing.shadowRoot.querySelector('[data-vexel-pill-label="true"]')
-    if (labelSpan) labelSpan.textContent = nextLabel
-    return
-  }
+  const effectiveStatus: BridgeFormatStatus =
+    record.status === 'syntax_error' && !isFinalized ? 'unavailable' : record.status
+  const engineLabel = !record.engine || record.engine === 'fallback' ? 'local' : record.engine
+  const durationMs = record.durationMs
+  const lineSuffix =
+    effectiveStatus === 'syntax_error' && record.diagnostic?.line
+      ? ' · L' + String(record.diagnostic.line)
+      : ''
 
-  const footerEl =
-    Array.from(codeCard.querySelectorAll<HTMLElement>('div, footer, section')).find(
-      (el) =>
-        !el.hasAttribute('data-vexel-ui') &&
-        !el.contains(preEl) &&
-        !preEl.contains(el) &&
-        el.querySelector('button:not([data-vexel-ui])') !== null &&
-        Array.from(el.children).some(
-          (child) =>
+  const nextLabel =
+    effectiveStatus === 'syntax_error'
+      ? t`Check syntax` + lineSuffix
+      : effectiveStatus === 'formatted'
+        ? t`Repaired` + ' · ' + engineLabel + ' · ' + String(durationMs) + ' ms'
+        : t`Repaired` + ' · local · ' + String(durationMs) + ' ms'
+
+  const palette =
+    effectiveStatus === 'syntax_error'
+      ? {
+          bg: '#fef7e0',
+          border: '#fde293',
+          text: '#b06000',
+          icon: 'alert-circle' as const,
+          title: record.diagnostic
+            ? record.diagnostic.tool + ': ' + record.diagnostic.message
+            : t`Syntax issue detected by native formatter`,
+        }
+      : effectiveStatus === 'formatted'
+        ? {
+            bg: UI_COLORS.successSoft,
+            border: UI_COLORS.successBorder,
+            text: UI_COLORS.success,
+            icon: 'check' as const,
+            title: t`Reassembled and verified with ${engineLabel} (${durationMs} ms)`,
+          }
+        : {
+            bg: UI_COLORS.primarySoft,
+            border: UI_COLORS.primaryBorder,
+            text: UI_COLORS.primaryText,
+            icon: 'sparkles' as const,
+            title: t`Reassembled from split blocks (no native syntax check available)`,
+          }
+
+  let host = codeCard.querySelector<HTMLElement>('[data-vexel-format-badge="true"]')
+  if (!host) {
+    const footerEl =
+      Array.from(codeCard.querySelectorAll<HTMLElement>('div, footer, section')).find(
+        (el) =>
+          !el.hasAttribute('data-vexel-ui') &&
+          !el.contains(preEl) &&
+          !preEl.contains(el) &&
+          el.querySelector('button:not([data-vexel-ui])') !== null &&
+          Array.from(el.children).some(
+            (child) =>
+              child instanceof HTMLElement &&
+              !child.hasAttribute('data-vexel-ui') &&
+              child.querySelector('button') !== null
+          )
+      ) || null
+    const copyWrapper = footerEl
+      ? Array.from(footerEl.children).find(
+          (child): child is HTMLElement =>
             child instanceof HTMLElement &&
             !child.hasAttribute('data-vexel-ui') &&
-            child.querySelector('button') !== null
-        )
-    ) || null
-  const copyWrapper = footerEl
-    ? Array.from(footerEl.children).find(
-        (child): child is HTMLElement =>
-          child instanceof HTMLElement &&
-          !child.hasAttribute('data-vexel-ui') &&
-          Boolean(child.querySelector('button'))
-      ) || null
-    : null
+            Boolean(child.querySelector('button'))
+        ) || null
+      : null
 
-  const host = document.createElement('span')
-  host.setAttribute('data-vexel-ui', 'true')
-  host.setAttribute('data-vexel-format-badge', 'true')
-  Object.assign(host.style, {
-    display: 'inline-flex',
-    alignItems: 'center',
-    flexShrink: '0',
-    whiteSpace: 'nowrap',
-    marginLeft: footerEl && copyWrapper ? 'auto' : '8px',
-    marginRight: footerEl && copyWrapper ? '8px' : '0',
-    verticalAlign: 'middle',
-  })
+    host = document.createElement('span')
+    host.setAttribute('data-vexel-ui', 'true')
+    host.setAttribute('data-vexel-format-badge', 'true')
+    Object.assign(host.style, {
+      position: 'relative',
+      display: 'inline-flex',
+      alignItems: 'center',
+      flexShrink: '0',
+      whiteSpace: 'nowrap',
+      marginLeft: footerEl && copyWrapper ? 'auto' : '8px',
+      marginRight: footerEl && copyWrapper ? '8px' : '0',
+      verticalAlign: 'middle',
+    })
+    host.attachShadow({ mode: 'open' })
 
-  const shadow = host.attachShadow({ mode: 'open' })
-  const pill = document.createElement('span')
-  pill.title = t`Truncated code block automatically reassembled and formatted by Vexel`
+    if (footerEl && copyWrapper) {
+      footerEl.insertBefore(host, copyWrapper)
+    } else if (footerEl) {
+      footerEl.appendChild(host)
+    } else if (headerEl) {
+      const saveHost = headerEl.querySelector('[data-vexel-ui="true"]')
+      if (saveHost) headerEl.insertBefore(host, saveHost)
+      else headerEl.appendChild(host)
+    }
+  }
+
+  const shadow = host.shadowRoot
+  if (!shadow) return
+  shadow.replaceChildren()
+
+  const pill = document.createElement('button')
+  pill.type = 'button'
+  pill.title = palette.title
   Object.assign(pill.style, {
     display: 'inline-flex',
     alignItems: 'center',
@@ -491,9 +611,9 @@ function mountFormatStatusPill(
     height: '22px',
     padding: '0 9px',
     borderRadius: UI_RADII.pill,
-    backgroundColor: UI_COLORS.primarySoft,
-    border: `1px solid ${UI_COLORS.primaryBorder}`,
-    color: UI_COLORS.primaryText,
+    backgroundColor: palette.bg,
+    border: '1px solid ' + palette.border,
+    color: palette.text,
     fontFamily: UI_FONT_SANS,
     fontSize: '11px',
     fontWeight: '600',
@@ -502,23 +622,124 @@ function mountFormatStatusPill(
     whiteSpace: 'nowrap',
     flexShrink: '0',
     userSelect: 'none',
+    cursor: effectiveStatus === 'syntax_error' ? 'pointer' : 'default',
   })
 
   const labelSpan = document.createElement('span')
   labelSpan.setAttribute('data-vexel-pill-label', 'true')
   labelSpan.style.whiteSpace = 'nowrap'
   labelSpan.textContent = nextLabel
-  pill.append(createLucideIcon('sparkles', 11, 'currentColor'), labelSpan)
+  pill.append(createLucideIcon(palette.icon, 11, 'currentColor'), labelSpan)
   shadow.appendChild(pill)
 
-  if (footerEl && copyWrapper) {
-    footerEl.insertBefore(host, copyWrapper)
-  } else if (footerEl) {
-    footerEl.appendChild(host)
-  } else if (headerEl) {
-    const saveHost = headerEl.querySelector('[data-vexel-ui="true"]')
-    if (saveHost) headerEl.insertBefore(host, saveHost)
-    else headerEl.appendChild(host)
+  if (effectiveStatus === 'syntax_error' && record.diagnostic?.line) {
+    highlightErrorLineInCodeBlock(preEl, record.diagnostic.line, false)
+  } else {
+    clearErrorLineHighlight(preEl)
+  }
+
+  if (effectiveStatus === 'syntax_error' && record.diagnostic) {
+    const diag = record.diagnostic
+    const popover = document.createElement('div')
+    popover.setAttribute('data-vexel-diag-popover', 'true')
+    Object.assign(popover.style, {
+      position: 'absolute',
+      bottom: 'calc(100% + 6px)',
+      right: '0',
+      width: '290px',
+      maxWidth: '80vw',
+      padding: '10px 12px',
+      borderRadius: UI_RADII.row,
+      backgroundColor: UI_COLORS.surface,
+      border: '1px solid #fde293',
+      boxShadow: UI_SHADOWS.floating,
+      color: UI_COLORS.text,
+      fontFamily: UI_FONT_SANS,
+      fontSize: '12px',
+      lineHeight: '1.45',
+      whiteSpace: 'normal',
+      zIndex: '2147483646',
+      display: 'none',
+      flexDirection: 'column',
+      gap: '6px',
+    })
+
+    const topRow = document.createElement('div')
+    Object.assign(topRow.style, {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: '8px',
+      fontWeight: '600',
+      fontSize: '11.5px',
+      color: '#b06000',
+    })
+    const locLabel = diag.line
+      ? diag.column
+        ? diag.tool + ' · Line ' + String(diag.line) + ', Col ' + String(diag.column)
+        : diag.tool + ' · Line ' + String(diag.line)
+      : diag.tool + ' · Syntax error'
+    const topTitle = document.createElement('span')
+    topTitle.textContent = locLabel
+    topRow.appendChild(topTitle)
+
+    if (diag.line) {
+      const targetLine = diag.line
+      const jumpBtn = document.createElement('button')
+      jumpBtn.type = 'button'
+      jumpBtn.textContent = t`Jump to line`
+      Object.assign(jumpBtn.style, {
+        border: '1px solid #fde293',
+        backgroundColor: '#fef7e0',
+        color: '#b06000',
+        borderRadius: UI_RADII.chip,
+        padding: '2px 7px',
+        fontSize: '11px',
+        fontWeight: '600',
+        cursor: 'pointer',
+        flexShrink: '0',
+      })
+      jumpBtn.addEventListener('click', (ev) => {
+        ev.preventDefault()
+        ev.stopPropagation()
+        scrollCodeBlockToLine(preEl, targetLine)
+        popover.style.display = 'none'
+      })
+      topRow.appendChild(jumpBtn)
+    }
+
+    const msgEl = document.createElement('pre')
+    msgEl.textContent = diag.message
+    Object.assign(msgEl.style, {
+      margin: '0',
+      padding: '6px 8px',
+      borderRadius: UI_RADII.chip,
+      backgroundColor: UI_COLORS.surfaceSubtle,
+      border: '1px solid ' + UI_COLORS.borderSubtle,
+      fontFamily: UI_FONT_MONO,
+      fontSize: '11px',
+      lineHeight: '1.4',
+      color: UI_COLORS.textSecondary,
+      whiteSpace: 'pre-wrap',
+      wordBreak: 'break-word',
+    })
+
+    popover.append(topRow, msgEl)
+    shadow.appendChild(popover)
+
+    let pinned = false
+    pill.addEventListener('mouseenter', () => {
+      popover.style.display = 'flex'
+    })
+    pill.addEventListener('mouseleave', () => {
+      if (!pinned) popover.style.display = 'none'
+    })
+    pill.addEventListener('click', (ev) => {
+      ev.preventDefault()
+      ev.stopPropagation()
+      pinned = !pinned
+      popover.style.display = pinned ? 'flex' : 'none'
+    })
   }
 }
 
@@ -779,7 +1000,16 @@ function bindNativeCopyOverride(codeCard: Element, showToast: (msg: string) => v
       if (navigator.clipboard?.writeText) {
         navigator.clipboard.writeText(record.code).catch(() => {})
       }
-      showToast(t`Copied repaired & formatted code (${record.engine})`)
+      if (record.status === 'syntax_error') {
+        if (record.diagnostic?.line) {
+          const errLine = record.diagnostic.line
+          showToast(t`Copied with unverified syntax (Line ${errLine})`)
+        } else {
+          showToast(t`Copied with unverified syntax`)
+        }
+      } else {
+        showToast(t`Copied repaired & formatted code (${record.engine})`)
+      }
     },
     true
   )
@@ -1059,7 +1289,11 @@ async function repairBrokenSequenceFromCodeCard(
         : headCode
     const reindented =
       wizFullCode && wizFullCode.length >= domAssembled.length ? wizFullCode : domAssembled
-    const { formatted, engine } = await formatWithBridge(reindented, lang, filenameHint)
+    const { formatted, engine, status, diagnostic } = await formatWithBridge(
+      reindented,
+      lang,
+      filenameHint
+    )
     if (spilledSiblings.length > 0) {
       for (const sib of spilledSiblings) sib.remove()
       const headLinesCount = headCode.split('\n').length
@@ -1089,15 +1323,19 @@ async function repairBrokenSequenceFromCodeCard(
       codeCard.setAttribute('data-vexel-repaired-final', '1')
       pre.setAttribute('data-vexel-final-pre', '1')
     }
+    const isFinalized = Boolean(reachedTerminalBoundary || (isTurnFinished && !stillUnclosed))
     const durationMs = Math.max(1, Math.round(performance.now() - repairStartMs))
-    repairedCodeByContainer.set(codeCard as HTMLElement, {
+    const record: RepairedCodeRecord = {
       code: formatted,
       engine,
       lang,
       durationMs,
-    })
+      status,
+      diagnostic,
+    }
+    repairedCodeByContainer.set(codeCard as HTMLElement, record)
     bindNativeCopyOverride(codeCard, showToast)
-    mountFormatStatusPill(codeCard, pre, headerEl, engine, durationMs)
+    mountFormatStatusPill(codeCard, pre, headerEl, record, isFinalized)
     if (poisonedHost && poisonedHost.parentNode && poisonedRawMarkdown.trim()) {
       renderCleanFollowUpCard(poisonedHost, poisonedRawMarkdown, showToast)
     }

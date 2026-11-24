@@ -7,10 +7,21 @@ import { promisify } from 'node:util'
 
 const execFileAsync = promisify(execFile)
 
+export type FormatStatus = 'formatted' | 'syntax_error' | 'unavailable' | 'timeout' | 'empty'
+
+export interface FormatDiagnostic {
+  tool: string
+  line?: number
+  column?: number
+  message: string
+}
+
 export interface FormatResult {
   ok: boolean
+  status: FormatStatus
   formatted: string
   engine: string
+  diagnostic?: FormatDiagnostic
 }
 
 export interface FormatterSpec {
@@ -345,16 +356,74 @@ export function getCandidateSpecs(ext: string): FormatterSpec[] {
   return FORMATTER_SPECS_BY_EXT[ext] || []
 }
 
+interface ProcessRunOutcome {
+  kind: 'formatted' | 'syntax_error' | 'timeout' | 'spawn_error'
+  stdout: string
+  stderr: string
+}
+
+function stripAnsi(text: string): string {
+  const esc = String.fromCodePoint(27)
+  return text.replaceAll(new RegExp(esc + '\\[[0-9;]*[A-Za-z]', 'g'), '')
+}
+
+export function parseFormatterDiagnostic(tool: string, rawStderr: string): FormatDiagnostic {
+  const cleaned = stripAnsi(rawStderr).trim()
+  const lines = cleaned
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+
+  let line: number | undefined
+  let column: number | undefined
+
+  for (const l of lines) {
+    const locMatch = l.match(/(?:-->\s*)?(?:<stdin>|[^\s:]+):(\d+):(\d+)/)
+    if (locMatch) {
+      line = Number(locMatch[1])
+      column = Number(locMatch[2])
+      break
+    }
+    const wordMatch = l.match(/\bline\s+(\d+)(?:[,:\s]+col(?:umn)?\s+(\d+))?/i)
+    if (wordMatch) {
+      line = Number(wordMatch[1])
+      if (wordMatch[2]) column = Number(wordMatch[2])
+      break
+    }
+    const simpleLineMatch = l.match(/:(\d+):/)
+    if (simpleLineMatch) {
+      line = Number(simpleLineMatch[1])
+      break
+    }
+  }
+
+  const meaningfulLine =
+    lines.find((l) => /\b(?:error|parse|syntax|unexpected|expected|invalid|failed)\b/i.test(l)) ||
+    lines.find((l) => !l.startsWith('-->') && !l.startsWith('|') && !/^\d+\s*\|/.test(l)) ||
+    lines[0] ||
+    tool + ' reported a syntax error'
+
+  const message =
+    meaningfulLine.length > 220 ? meaningfulLine.slice(0, 217) + '...' : meaningfulLine
+
+  return {
+    tool,
+    ...(line !== undefined && Number.isFinite(line) && line > 0 ? { line } : {}),
+    ...(column !== undefined && Number.isFinite(column) && column > 0 ? { column } : {}),
+    message,
+  }
+}
+
 function runProcessWithStdin(
   binPath: string,
   args: string[],
   stdinText: string,
   timeoutMs = 8000,
   allowNonZeroWithStdout = false
-): Promise<string | null> {
+): Promise<ProcessRunOutcome> {
   return new Promise((resolve) => {
     let settled = false
-    const finish = (val: string | null) => {
+    const finish = (val: ProcessRunOutcome) => {
       if (settled) return
       settled = true
       resolve(val)
@@ -368,7 +437,7 @@ function runProcessWithStdin(
       try {
         child.kill('SIGKILL')
       } catch {}
-      finish(null)
+      finish({ kind: 'timeout', stdout: '', stderr: '' })
     }, timeoutMs)
 
     const outChunks: Buffer[] = []
@@ -377,14 +446,18 @@ function runProcessWithStdin(
     child.stderr.on('data', (chunk: Buffer) => errChunks.push(chunk))
     child.on('error', () => {
       clearTimeout(timer)
-      finish(null)
+      finish({ kind: 'spawn_error', stdout: '', stderr: '' })
     })
     child.on('close', (code) => {
       clearTimeout(timer)
-      if ((code === 0 || (allowNonZeroWithStdout && code === 1)) && outChunks.length > 0) {
-        finish(Buffer.concat(outChunks).toString('utf8'))
+      const stdout = Buffer.concat(outChunks).toString('utf8')
+      const stderr = Buffer.concat(errChunks).toString('utf8')
+      if ((code === 0 || (allowNonZeroWithStdout && code === 1)) && stdout.trim().length > 0) {
+        finish({ kind: 'formatted', stdout, stderr })
+      } else if (code === 0) {
+        finish({ kind: 'formatted', stdout: stdinText, stderr })
       } else {
-        finish(null)
+        finish({ kind: 'syntax_error', stdout, stderr })
       }
     })
 
@@ -398,32 +471,66 @@ export async function formatCodeWithNativeTool(
   langOrExt: string,
   filenameHint?: string
 ): Promise<FormatResult> {
+  if (!code.trim()) {
+    return {
+      ok: true,
+      status: 'empty',
+      formatted: code,
+      engine: 'empty',
+    }
+  }
+
   const ext = resolveTargetExtension(langOrExt, filenameHint)
   const safeName =
-    filenameHint && path.basename(filenameHint) ? path.basename(filenameHint) : `snippet.${ext}`
+    filenameHint && path.basename(filenameHint) ? path.basename(filenameHint) : 'snippet.' + ext
 
   const specs = getCandidateSpecs(ext)
+  let sawTimeout = false
+  let firstSyntaxError: { engine: string; diagnostic: FormatDiagnostic } | null = null
+
   for (const spec of specs) {
     const binPath = await resolveBinary(spec.binName)
     if (!binPath) continue
-    const output = await runProcessWithStdin(
+    const outcome = await runProcessWithStdin(
       binPath,
       spec.args(safeName),
       code,
       8000,
       Boolean(spec.allowNonZeroWithStdout)
     )
-    if (output && output.trim().length > 0) {
+    if (outcome.kind === 'formatted' && outcome.stdout.trim().length > 0) {
       return {
         ok: true,
-        formatted: output.replace(/\n$/, ''),
+        status: 'formatted',
+        formatted: outcome.stdout.replace(/\n$/, ''),
         engine: spec.engine,
       }
+    }
+    if (outcome.kind === 'timeout') {
+      sawTimeout = true
+      continue
+    }
+    if (outcome.kind === 'syntax_error' && !firstSyntaxError) {
+      firstSyntaxError = {
+        engine: spec.engine,
+        diagnostic: parseFormatterDiagnostic(spec.engine, outcome.stderr),
+      }
+    }
+  }
+
+  if (firstSyntaxError) {
+    return {
+      ok: true,
+      status: 'syntax_error',
+      formatted: code,
+      engine: firstSyntaxError.engine,
+      diagnostic: firstSyntaxError.diagnostic,
     }
   }
 
   return {
     ok: true,
+    status: sawTimeout ? 'timeout' : 'unavailable',
     formatted: code,
     engine: 'fallback',
   }
