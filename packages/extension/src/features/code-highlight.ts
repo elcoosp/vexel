@@ -581,7 +581,10 @@ function measureLineOffsetInCode(
     for (let i = 0; i < clampedLine - 1 && i < lines.length; i += 1) {
       charOffset += lines[i].length + 1
     }
-    const targetLen = Math.max(1, (lines[clampedLine - 1] || '').length)
+    const rawTargetLine = lines[clampedLine - 1] || ''
+    const leadingWs = rawTargetLine.match(/^\s*/)?.[0].length || 0
+    charOffset += leadingWs
+    const targetLen = Math.max(1, rawTargetLine.length - leadingWs)
     const walker = doc.createTreeWalker(codeEl, NodeFilter.SHOW_TEXT)
     let traversed = 0
     let startNode: Text | null = null

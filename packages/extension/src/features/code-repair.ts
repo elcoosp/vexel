@@ -1392,6 +1392,9 @@ async function repairBrokenSequenceFromCodeCard(
         tailSpan.style.whiteSpace = 'pre'
         renderHighlightedTail(tailSpan, formattedTail, lang)
         if (!existingTailEl) codeEl.appendChild(tailSpan)
+        if (status === 'syntax_error' && diagnostic?.line && isTurnFinished) {
+          highlightErrorLineInCodeBlock(pre, diagnostic.line, false)
+        }
       } else {
         codeEl.style.whiteSpace = 'pre'
         renderHighlightedTail(codeEl, formatted, lang)
