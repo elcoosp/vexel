@@ -211,7 +211,47 @@ describe('formatter.ts native CLI routing & fallback matrix', () => {
       tool: 'ruff',
       line: 9,
       column: 12,
-      message: 'error: Failed to parse <stdin>:9:12: Expected an expression',
+      message: 'Expected an expression',
+    })
+
+    const oxcDiag = parseFormatterDiagnostic(
+      'oxfmt',
+      [
+        "  × TS(1031): 'export' modifier cannot appear on class elements of this kind.",
+        '   ╭─[stdin.ts:36:1]',
+        '36 │ export interface PipelineStep {',
+        '   · ──────',
+        '   ╰────',
+        '  help: Remove the export modifier.',
+      ].join('\n')
+    )
+    expect(oxcDiag).toEqual({
+      tool: 'oxfmt',
+      line: 36,
+      column: 1,
+      message: "TS(1031): 'export' modifier cannot appear on class elements of this kind.\nhelp: Remove the export modifier.",
+    })
+
+    const tfDiag = parseFormatterDiagnostic(
+      'terraform',
+      'Error: Argument or block definition required\n  on <stdin> line 12, in resource "aws_s3_bucket" "logs":'
+    )
+    expect(tfDiag).toEqual({
+      tool: 'terraform',
+      line: 12,
+      column: undefined,
+      message: 'Argument or block definition required (resource "aws_s3_bucket" "logs":)',
+    })
+
+    const goDiag = parseFormatterDiagnostic(
+      'gofmt',
+      "<stdin>:8:15: expected ';', found 'IDENT' foo"
+    )
+    expect(goDiag).toEqual({
+      tool: 'gofmt',
+      line: 8,
+      column: 15,
+      message: "expected ';', found 'IDENT' foo",
     })
 
     writeFakeFormatter('rubyfmt', 'exit 1')
